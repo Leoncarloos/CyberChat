@@ -63,31 +63,38 @@ async function embedHF(text: string) {
   return emb;
 }
 
+// ✅ (2) Memoria: recorta historial para no explotar tokens
+function trimHistory(messages: ChatMsg[], maxTurns = 18): ChatMsg[] {
+  // maxTurns = mensajes totales (user+assistant) que mandamos
+  // mantenemos el final del chat
+  if (messages.length <= maxTurns) return messages;
+  return messages.slice(messages.length - maxTurns);
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const messages = body?.messages as ChatMsg[] | undefined;
+    const incoming = body?.messages as ChatMsg[] | undefined;
     const document_id = body?.document_id ? String(body.document_id) : null;
 
-    if (!Array.isArray(messages) || messages.length === 0) {
+    if (!Array.isArray(incoming) || incoming.length === 0) {
       return NextResponse.json({ error: "messages requerido" }, { status: 400 });
     }
 
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) return NextResponse.json({ error: "Falta GROQ_API_KEY" }, { status: 500 });
 
-    // ✅ supabaseServer() es async
     const supabase = await supabaseServer();
 
-    // ✅ user logueado (cookies SSR)
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr) return NextResponse.json({ error: authErr.message }, { status: 401 });
 
     const user = auth?.user;
     if (!user) return NextResponse.json({ error: "No auth" }, { status: 401 });
 
+    // ✅ usar último mensaje user para retrieval
     const lastUser =
-      [...messages].reverse().find((m) => m.role === "user")?.content?.trim() ?? "";
+      [...incoming].reverse().find((m) => m.role === "user")?.content?.trim() ?? "";
     if (!lastUser) {
       return NextResponse.json({ error: "Último mensaje vacío" }, { status: 400 });
     }
@@ -104,21 +111,29 @@ export async function POST(req: Request) {
 
     if (rpcErr) return NextResponse.json({ error: rpcErr.message }, { status: 500 });
 
+    // ✅ (4) Mejora RAG: no metas basura si similarity es baja
     const top = (matches ?? []).slice(0, 5);
-    const context = top
-      .map((m: any, idx: number) => `# Fuente ${idx + 1}\n${m.content ?? ""}`)
-      .join("\n\n");
+    const bestSim = Number((top?.[0] as any)?.similarity ?? 0); // 0..1
+    const SIM_THRESHOLD = 0.25;
+
+    const context =
+      bestSim >= SIM_THRESHOLD
+        ? top.map((m: any, idx: number) => `# Fuente ${idx + 1}\n${m.content ?? ""}`).join("\n\n")
+        : "";
 
     const system: ChatMsg = {
       role: "system",
       content:
         "Eres un asistente de concientización en ciberseguridad. Responde en español, claro, concreto y accionable.\n" +
-        "- Usa el CONTEXTO si es relevante.\n" +
-        "- Si el contexto NO ayuda, dilo y responde con conocimiento general.\n" +
+        "- Usa el CONTEXTO solo si es relevante.\n" +
+        "- Si el contexto NO ayuda o está vacío, dilo y responde con conocimiento general.\n" +
         "- No pidas datos sensibles.\n\n" +
         "CONTEXTO:\n" +
         (context || "(sin contexto relevante)"),
     };
+
+    // ✅ (2) Memoria: usar historial (pero recortado)
+    const messages = trimHistory(incoming, 18);
 
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -145,7 +160,13 @@ export async function POST(req: Request) {
     }
 
     const answer = groqData?.choices?.[0]?.message?.content ?? "No pude generar respuesta.";
-    return NextResponse.json({ answer, matchesCount: top.length });
+
+    return NextResponse.json({
+      answer,
+      matchesCount: context ? top.length : 0,
+      bestSimilarity: bestSim,
+      usedContext: Boolean(context),
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "Error desconocido" }, { status: 500 });
   }

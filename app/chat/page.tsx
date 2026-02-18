@@ -92,14 +92,24 @@ export default function ChatPage() {
     if (userMsgRes.error) return alert(userMsgRes.error.message);
 
     const userMsg = (userMsgRes.data as any) as Message;
+
+    // ✅ Importantísimo: arma el historial "real" que enviarás al backend
+    // para que no dependa del setState async.
+    const historyForApi = [
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+      { role: "user", content: text },
+    ];
+
+    // actualiza UI
     setMessages((prev) => [...prev, userMsg]);
 
-    // 2) pedir respuesta al LLM (tu endpoint /api/chat)
+    // 2) pedir respuesta al LLM (tu endpoint /api/chat) con HISTORIAL
     const apiRes = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        messages: [{ role: "user", content: text }],
+        messages: historyForApi,
+        // si luego quieres filtrar por doc: document_id: "uuid"
       }),
     });
 
