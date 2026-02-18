@@ -8,6 +8,8 @@ export default function AdminPage() {
   const supabase = useMemo(() => supabaseBrowser(), []);
   const router = useRouter();
   const [userId, setUserId] = useState<string>("");
+  const [lastDocumentId, setLastDocumentId] = useState<string>("");
+  const [status, setStatus] = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -17,47 +19,24 @@ export default function AdminPage() {
     })();
   }, [router, supabase]);
 
-  async function upload(e: React.FormEvent<HTMLFormElement>) {
+  async function uploadAndProcess(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setStatus("");
+
     const file = (e.currentTarget.file as HTMLInputElement).files?.[0];
     if (!file) return alert("Selecciona un archivo");
+    if (!userId) return alert("No auth (userId vacío). Vuelve a iniciar sesión.");
 
     const formData = new FormData();
     formData.append("file", file);
     formData.append("user_id", userId);
 
-    const res = await fetch("/api/documents/upload", {
-      method: "POST",
-      body: formData,
-    });
-
-    const text = await res.text();
-    let data: any = null;
     try {
-      data = text ? JSON.parse(text) : null;
-    } catch {}
+      setStatus("Subiendo y procesando…");
 
-    if (!res.ok) {
-      alert("Error backend:\n" + (data?.error ?? text ?? "Respuesta vacía"));
-      return;
-    }
-
-    // Si tu backend devuelve document_id, lo mostramos para no copiar manual
-    alert(
-      "Documento subido correctamente" +
-        (data?.document_id ? `\n\ndocument_id:\n${data.document_id}` : "")
-    );
-  }
-
-  async function processDoc() {
-    const documentId = prompt("Pega el document_id");
-    if (!documentId) return;
-
-    try {
-      const res = await fetch("/api/documents/process", {
+      const res = await fetch("/api/documents/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_id: documentId }),
+        body: formData,
       });
 
       const text = await res.text();
@@ -68,67 +47,79 @@ export default function AdminPage() {
 
       if (!res.ok) {
         alert("Error backend:\n" + (data?.error ?? text ?? "Respuesta vacía"));
+        setStatus("Error");
         return;
       }
 
-      alert("Procesado: " + (data?.chunks ?? "?") + " chunks");
+      const docId = String(data?.document_id ?? "");
+      if (docId) setLastDocumentId(docId);
+
+      setStatus(
+        `OK ✅ | chunks: ${data?.chunks ?? "?"} | tipo: ${data?.type ?? "?"}`
+      );
+
+      alert(
+        "Documento subido + procesado + embeddings ✅" +
+          (docId ? `\n\ndocument_id:\n${docId}` : "") +
+          (data?.chunks ? `\nchunks: ${data.chunks}` : "")
+      );
     } catch (err: any) {
       alert("Error: " + (err?.message ?? String(err)));
+      setStatus("Error");
     }
   }
 
-  // ✅ ESTO ES LO QUE TE FALTA: generar embeddings y llenar document_chunks.embedding
-  async function embedDoc() {
-    const documentId = prompt("Pega el document_id para generar embeddings");
-    if (!documentId) return;
-
-    try {
-      const res = await fetch("/api/documents/embed", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_id: documentId }),
-      });
-
-      const text = await res.text();
-      let data: any = null;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch {}
-
-      if (!res.ok) {
-        alert("Error backend:\n" + (data?.error ?? text ?? "Respuesta vacía"));
-        return;
-      }
-
-      alert("Embeddings generados. Updated: " + (data?.updated ?? "?"));
-    } catch (err: any) {
-      alert("Error: " + (err?.message ?? String(err)));
-    }
+  async function logout() {
+    await supabase.auth.signOut();
+    router.push("/login");
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>Panel Admin – Subir documentos</h1>
+    <div style={{ padding: 24, maxWidth: 720 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+        <h1 style={{ margin: 0 }}>Panel Admin – Subir documentos</h1>
+        <button onClick={logout}>Salir</button>
+      </div>
 
-      <form onSubmit={upload}>
-        <input type="file" name="file" accept="application/pdf" />
+      <p style={{ opacity: 0.8, marginTop: 8 }}>
+        Sube un archivo y el backend hará TODO: storage → documents → chunks → embeddings.
+      </p>
+
+      <form onSubmit={uploadAndProcess}>
+        <input
+          type="file"
+          name="file"
+          accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+        />
         <br />
         <br />
-        <button type="submit">Subir PDF</button>
+        <button type="submit">Subir y procesar (todo automático)</button>
       </form>
 
-      <br />
-
-      <button type="button" onClick={processDoc}>
-        Procesar documento (crear chunks)
-      </button>
-
-      <br />
-      <br />
-
-      <button type="button" onClick={embedDoc}>
-        Generar embeddings (llenar vector)
-      </button>
+      <div style={{ marginTop: 16, fontSize: 14 }}>
+        <div>
+          <b>Estado:</b> {status || "—"}
+        </div>
+        <div style={{ marginTop: 6 }}>
+          <b>Último document_id:</b>{" "}
+          {lastDocumentId ? (
+            <>
+              <code>{lastDocumentId}</code>{" "}
+              <button
+                style={{ marginLeft: 8 }}
+                onClick={() => {
+                  navigator.clipboard.writeText(lastDocumentId);
+                  alert("document_id copiado ✅");
+                }}
+              >
+                Copiar
+              </button>
+            </>
+          ) : (
+            "—"
+          )}
+        </div>
+      </div>
     </div>
   );
 }
