@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 function chunkText(text: string, size = 800, overlap = 100) {
   const chunks: string[] = [];
@@ -14,11 +15,6 @@ function chunkText(text: string, size = 800, overlap = 100) {
     if (start < 0) start = 0;
   }
   return chunks;
-}
-
-function getExt(filename: string) {
-  const parts = (filename || "").toLowerCase().split(".");
-  return parts.length > 1 ? parts.pop()! : "";
 }
 
 function meanPool(tokens: number[][]) {
@@ -43,7 +39,7 @@ function normalizeHFEmbedding(raw: any): number[] {
   throw new Error("HF devolvió formato inesperado");
 }
 
-async function embedHF(text: string): Promise<number[]> {
+async function embedHF(text: string) {
   const token = process.env.HF_TOKEN;
   if (!token) throw new Error("Falta HF_TOKEN");
 
@@ -55,6 +51,7 @@ async function embedHF(text: string): Promise<number[]> {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ inputs: text, options: { wait_for_model: true } }),
+    cache: "no-store",
   });
 
   const rawText = await resp.text();
@@ -70,34 +67,48 @@ async function embedHF(text: string): Promise<number[]> {
   return emb;
 }
 
+function getExt(filename: string) {
+  const parts = (filename || "").toLowerCase().split(".");
+  return parts.length > 1 ? parts.pop()! : "";
+}
+
 export async function POST(req: Request) {
   try {
+    // 1) user por cookies (anon)
     const supabase = await supabaseServer();
+    const { data: auth, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !auth?.user) {
+      return NextResponse.json({ error: "No auth" }, { status: 401 });
+    }
+    const userId = auth.user.id;
 
-    // usuario logueado desde cookies (en nube esto es lo correcto)
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth?.user) return NextResponse.json({ error: "No auth" }, { status: 401 });
-    const user_id = auth.user.id;
+    // 2) admin client (bypassea RLS)
+    const admin = supabaseAdmin();
 
+    // 3) leer archivo
     const form = await req.formData();
     const file = form.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "file requerido" }, { status: 400 });
 
-    // 1) subir a storage
-    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
-    const storagePath = `${user_id}/${crypto.randomUUID()}.${ext}`;
-
+    const ext = getExt(file.name) || "bin";
+    const storagePath = `${userId}/${crypto.randomUUID()}.${ext}`;
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const up = await supabase.storage.from("documents").upload(storagePath, bytes, {
+
+    // 4) subir a Storage (admin)
+    const up = await admin.storage.from("documents").upload(storagePath, bytes, {
       contentType: file.type || "application/octet-stream",
       upsert: false,
     });
     if (up.error) return NextResponse.json({ error: up.error.message }, { status: 500 });
 
-    // 2) insertar documento
-    const ins = await supabase
+    // 5) insertar documento (admin) -> evita RLS
+    const ins = await admin
       .from("documents")
-      .insert({ name: file.name, storage_path: storagePath, uploaded_by: user_id })
+      .insert({
+        name: file.name,
+        storage_path: storagePath,
+        uploaded_by: userId,
+      })
       .select("id")
       .single();
 
@@ -105,72 +116,63 @@ export async function POST(req: Request) {
 
     const document_id = ins.data.id as string;
 
-    // 3) descargar y extraer texto
-    const { data: downloaded, error: dlErr } = await supabase.storage.from("documents").download(storagePath);
-    if (dlErr || !downloaded) return NextResponse.json({ error: "No se pudo descargar" }, { status: 500 });
+    // 6) descargar para procesar (admin)
+    const { data: dl, error: dlErr } = await admin.storage.from("documents").download(storagePath);
+    if (dlErr || !dl) return NextResponse.json({ error: "No se pudo descargar" }, { status: 500 });
 
-    const arrayBuffer = await downloaded.arrayBuffer();
-    const realExt = getExt(file.name);
+    const arrayBuffer = await dl.arrayBuffer();
     let text = "";
 
-    if (realExt === "txt") {
+    if (ext === "txt") {
       text = new TextDecoder("utf-8").decode(arrayBuffer);
-    } else if (realExt === "docx") {
+    } else if (ext === "docx") {
       const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({ buffer: Buffer.from(arrayBuffer) });
       text = result.value || "";
-    } else if (realExt === "pdf") {
+    } else if (ext === "pdf") {
       const mod: any = await import("pdf-extraction");
       const pdfExtract = mod?.default ?? mod;
       const parsed = await pdfExtract(Buffer.from(arrayBuffer));
       text = parsed?.text || "";
     } else {
       return NextResponse.json(
-        { error: `Tipo no soportado: .${realExt}. Usa PDF, DOCX o TXT.` },
+        { error: `Tipo no soportado: .${ext}. Usa PDF, DOCX o TXT.` },
         { status: 400 }
       );
     }
 
     text = String(text || "").replace(/\s+/g, " ").trim();
-    if (!text) return NextResponse.json({ error: "Documento sin texto legible" }, { status: 400 });
+    if (!text) {
+      return NextResponse.json(
+        { error: "Documento sin texto legible (puede ser escaneado)" },
+        { status: 400 }
+      );
+    }
 
+    // 7) chunks
     const chunks = chunkText(text);
 
-    // 4) guardar chunks
-    await supabase.from("document_chunks").delete().eq("document_id", document_id);
+    // limpiar chunks previos (admin)
+    await admin.from("document_chunks").delete().eq("document_id", document_id);
 
-    const rows = chunks.map((content, chunk_index) => ({
-      document_id,
-      content,
-      chunk_index,
-    }));
-
-    const { error: chunkErr } = await supabase.from("document_chunks").insert(rows);
-    if (chunkErr) return NextResponse.json({ error: chunkErr.message }, { status: 500 });
-
-    // 5) embeddings + update en document_chunks.embedding
-    const { data: allChunks, error: readErr } = await supabase
-      .from("document_chunks")
-      .select("id,content")
-      .eq("document_id", document_id)
-      .order("chunk_index", { ascending: true });
-
-    if (readErr) return NextResponse.json({ error: readErr.message }, { status: 500 });
-
-    let updated = 0;
-    for (const ch of allChunks ?? []) {
-      const emb = await embedHF(ch.content);
-      const { error: upErr } = await supabase.from("document_chunks").update({ embedding: emb }).eq("id", ch.id);
-      if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
-      updated++;
+    // 8) embeddings + insert chunks con embedding (admin)
+    // (puedes batcher luego, pero esto funciona)
+    const rows: any[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const content = chunks[i];
+      const embedding = await embedHF(content);
+      rows.push({ document_id, chunk_index: i, content, embedding });
     }
+
+    const { error: chunksErr } = await admin.from("document_chunks").insert(rows);
+    if (chunksErr) return NextResponse.json({ error: chunksErr.message }, { status: 500 });
 
     return NextResponse.json({
       ok: true,
       document_id,
       storage_path: storagePath,
       chunks: rows.length,
-      embedded: updated,
+      embedded: true,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Error" }, { status: 500 });

@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) return NextResponse.json({ error: "Falta GROQ_API_KEY" }, { status: 500 });
 
-    // ✅ OJO: supabaseServer() es async
+    // ✅ supabaseServer() es async
     const supabase = await supabaseServer();
 
     // ✅ user logueado (cookies SSR)
@@ -97,9 +97,9 @@ export async function POST(req: Request) {
 
     const { data: matches, error: rpcErr } = await supabase.rpc("match_document_chunks_scoped", {
       query_embedding,
-      filter_user_id: user.id,
-      filter_document_id: document_id, // null ok
       match_count: 6,
+      filter_user_id: user.id,
+      filter_document_id: document_id ?? null,
     });
 
     if (rpcErr) return NextResponse.json({ error: rpcErr.message }, { status: 500 });
@@ -128,6 +128,7 @@ export async function POST(req: Request) {
         temperature: 0.2,
         messages: [system, ...messages],
       }),
+      cache: "no-store",
     });
 
     const groqText = await groqRes.text();
