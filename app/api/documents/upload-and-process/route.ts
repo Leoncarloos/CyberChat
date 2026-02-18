@@ -1,201 +1,178 @@
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 
 function chunkText(text: string, size = 800, overlap = 100) {
-  const clean = (text || "")
-    .replace(/\r/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-
   const chunks: string[] = [];
-  let i = 0;
-
-  while (i < clean.length) {
-    const end = Math.min(i + size, clean.length);
-    chunks.push(clean.slice(i, end));
-    if (end === clean.length) break;
-    i = end - overlap;
-    if (i < 0) i = 0;
+  let start = 0;
+  while (start < text.length) {
+    const end = start + size;
+    chunks.push(text.slice(start, end));
+    start = end - overlap;
+    if (start < 0) start = 0;
   }
-  return chunks.filter((c) => c.trim().length > 0);
+  return chunks;
+}
+
+function getExt(filename: string) {
+  const parts = (filename || "").toLowerCase().split(".");
+  return parts.length > 1 ? parts.pop()! : "";
 }
 
 function meanPool(tokens: number[][]) {
-  const nTokens = tokens.length;
+  const n = tokens.length || 1;
   const dim = tokens[0]?.length ?? 0;
-  const emb = new Array(dim).fill(0);
-
-  for (let i = 0; i < nTokens; i++) {
-    for (let j = 0; j < dim; j++) emb[j] += tokens[i][j];
+  const out = new Array(dim).fill(0);
+  for (let i = 0; i < tokens.length; i++) {
+    for (let j = 0; j < dim; j++) out[j] += tokens[i][j];
   }
-  for (let j = 0; j < dim; j++) emb[j] /= nTokens || 1;
-
-  return emb;
+  for (let j = 0; j < dim; j++) out[j] /= n;
+  return out;
 }
 
-// Acepta: [[[...]]], [[...]], [...]
 function normalizeHFEmbedding(raw: any): number[] {
-  // [dim]
   if (Array.isArray(raw) && typeof raw[0] === "number") return raw as number[];
-
-  // [[dim]]
   if (Array.isArray(raw) && Array.isArray(raw[0]) && typeof raw[0][0] === "number") {
-    return raw[0] as number[];
+    return meanPool(raw as number[][]);
   }
-
-  // [[[token][dim]]] -> mean pool
   if (Array.isArray(raw) && Array.isArray(raw[0]) && Array.isArray(raw[0][0])) {
     return meanPool(raw[0] as number[][]);
   }
-
   throw new Error("HF devolvió formato inesperado");
 }
 
-async function embedHF(text: string) {
-  const hfToken = process.env.HF_TOKEN;
-  if (!hfToken) throw new Error("Falta HF_TOKEN");
+async function embedHF(text: string): Promise<number[]> {
+  const token = process.env.HF_TOKEN;
+  if (!token) throw new Error("Falta HF_TOKEN");
 
-  const hfRes = await fetch(
-    "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${hfToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ inputs: text, options: { wait_for_model: true } }),
-    }
-  );
+  const url =
+    "https://router.huggingface.co/hf-inference/models/" +
+    "sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction";
 
-  const rawText = await hfRes.text();
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ inputs: text, options: { wait_for_model: true } }),
+  });
+
+  const rawText = await resp.text();
   let raw: any = null;
   try {
     raw = rawText ? JSON.parse(rawText) : null;
   } catch {}
 
-  if (!hfRes.ok) {
-    throw new Error(`HF error (${hfRes.status}): ${raw?.error ?? rawText ?? "Respuesta vacía"}`);
-  }
+  if (!resp.ok) throw new Error(raw?.error ?? rawText ?? "HF error");
 
-  try {
-    return normalizeHFEmbedding(raw);
-  } catch {
-    throw new Error(`HF devolvió formato inesperado: ${rawText}`);
-  }
-}
-
-async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<string> {
-  // ✅ pdf-extraction (Node). En Vercel requiere el d.ts (lo dejo abajo)
-  const mod: any = await import("pdf-extraction");
-  const pdfExtract = mod?.default ?? mod;
-  const parsed = await pdfExtract(Buffer.from(arrayBuffer));
-  return (parsed?.text ?? "").toString();
+  const emb = normalizeHFEmbedding(raw);
+  if (emb.length !== 384) throw new Error(`Embedding dim inválida: ${emb.length}`);
+  return emb;
 }
 
 export async function POST(req: Request) {
   try {
-    const supabase = supabaseServer();
+    const supabase = await supabaseServer();
 
-    // 1) leer multipart
+    // usuario logueado desde cookies (en nube esto es lo correcto)
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth?.user) return NextResponse.json({ error: "No auth" }, { status: 401 });
+    const user_id = auth.user.id;
+
     const form = await req.formData();
     const file = form.get("file") as File | null;
-    const user_id = String(form.get("user_id") ?? "");
-
     if (!file) return NextResponse.json({ error: "file requerido" }, { status: 400 });
-    if (!user_id) return NextResponse.json({ error: "user_id requerido" }, { status: 400 });
 
-    const filename = file.name || "document.pdf";
-    const ext = filename.split(".").pop()?.toLowerCase();
+    // 1) subir a storage
+    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+    const storagePath = `${user_id}/${crypto.randomUUID()}.${ext}`;
 
-    if (ext !== "pdf") {
-      return NextResponse.json({ error: "Solo se permite PDF" }, { status: 400 });
-    }
-
-    // 2) subir a storage
-    const path = `${user_id}/${crypto.randomUUID()}-${filename}`;
-    const arrayBuffer = await file.arrayBuffer();
-
-    const up = await supabase.storage.from("documents").upload(path, Buffer.from(arrayBuffer), {
-      contentType: "application/pdf",
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const up = await supabase.storage.from("documents").upload(storagePath, bytes, {
+      contentType: file.type || "application/octet-stream",
       upsert: false,
     });
+    if (up.error) return NextResponse.json({ error: up.error.message }, { status: 500 });
 
-    if (up.error) {
-      return NextResponse.json({ error: "Storage upload error", details: up.error.message }, { status: 500 });
-    }
-
-    // 3) insertar registro documents
-    //    Ajusta nombres de columnas según tu tabla real
-    const insDoc = await supabase
+    // 2) insertar documento
+    const ins = await supabase
       .from("documents")
-      .insert({
-        user_id,
-        filename,
-        storage_path: path, // si tu columna se llama distinto, cámbiala aquí
-        status: "uploaded",
-      })
+      .insert({ name: file.name, storage_path: storagePath, uploaded_by: user_id })
       .select("id")
       .single();
 
-    if (insDoc.error) {
-      return NextResponse.json({ error: "DB documents insert error", details: insDoc.error.message }, { status: 500 });
+    if (ins.error) return NextResponse.json({ error: ins.error.message }, { status: 500 });
+
+    const document_id = ins.data.id as string;
+
+    // 3) descargar y extraer texto
+    const { data: downloaded, error: dlErr } = await supabase.storage.from("documents").download(storagePath);
+    if (dlErr || !downloaded) return NextResponse.json({ error: "No se pudo descargar" }, { status: 500 });
+
+    const arrayBuffer = await downloaded.arrayBuffer();
+    const realExt = getExt(file.name);
+    let text = "";
+
+    if (realExt === "txt") {
+      text = new TextDecoder("utf-8").decode(arrayBuffer);
+    } else if (realExt === "docx") {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ buffer: Buffer.from(arrayBuffer) });
+      text = result.value || "";
+    } else if (realExt === "pdf") {
+      const mod: any = await import("pdf-extraction");
+      const pdfExtract = mod?.default ?? mod;
+      const parsed = await pdfExtract(Buffer.from(arrayBuffer));
+      text = parsed?.text || "";
+    } else {
+      return NextResponse.json(
+        { error: `Tipo no soportado: .${realExt}. Usa PDF, DOCX o TXT.` },
+        { status: 400 }
+      );
     }
 
-    const document_id = insDoc.data.id as string;
+    text = String(text || "").replace(/\s+/g, " ").trim();
+    if (!text) return NextResponse.json({ error: "Documento sin texto legible" }, { status: 400 });
 
-    // 4) extraer texto
-    const text = await extractPdfText(arrayBuffer);
+    const chunks = chunkText(text);
 
-    if (!text || text.trim().length < 20) {
-      await supabase.from("documents").update({ status: "empty_text" }).eq("id", document_id);
-      return NextResponse.json({
-        error: "No se pudo extraer texto del PDF (posible escaneado/imagen).",
-        document_id,
-      }, { status: 400 });
+    // 4) guardar chunks
+    await supabase.from("document_chunks").delete().eq("document_id", document_id);
+
+    const rows = chunks.map((content, chunk_index) => ({
+      document_id,
+      content,
+      chunk_index,
+    }));
+
+    const { error: chunkErr } = await supabase.from("document_chunks").insert(rows);
+    if (chunkErr) return NextResponse.json({ error: chunkErr.message }, { status: 500 });
+
+    // 5) embeddings + update en document_chunks.embedding
+    const { data: allChunks, error: readErr } = await supabase
+      .from("document_chunks")
+      .select("id,content")
+      .eq("document_id", document_id)
+      .order("chunk_index", { ascending: true });
+
+    if (readErr) return NextResponse.json({ error: readErr.message }, { status: 500 });
+
+    let updated = 0;
+    for (const ch of allChunks ?? []) {
+      const emb = await embedHF(ch.content);
+      const { error: upErr } = await supabase.from("document_chunks").update({ embedding: emb }).eq("id", ch.id);
+      if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+      updated++;
     }
-
-    // 5) chunking
-    const chunks = chunkText(text, 800, 100);
-
-    // 6) generar embeddings e insertar chunks
-    // ⚠️ para no reventar HF, mandamos secuencial (más estable en free)
-    let inserted = 0;
-
-    for (let i = 0; i < chunks.length; i++) {
-      const content = chunks[i];
-
-      const embedding = await embedHF(content); // devuelve number[]
-
-      const insChunk = await supabase.from("document_chunks").insert({
-        document_id,
-        chunk_index: i,
-        content,
-        embedding, // vector
-      });
-
-      if (insChunk.error) {
-        await supabase.from("documents").update({ status: "chunk_insert_error" }).eq("id", document_id);
-        return NextResponse.json(
-          { error: "Error insertando chunks", details: insChunk.error.message, document_id, at_chunk: i },
-          { status: 500 }
-        );
-      }
-
-      inserted++;
-    }
-
-    // 7) marcar documento listo
-    await supabase.from("documents").update({ status: "ready", chunks: inserted }).eq("id", document_id);
 
     return NextResponse.json({
       ok: true,
       document_id,
-      storage_path: path,
-      chunks: inserted,
+      storage_path: storagePath,
+      chunks: rows.length,
+      embedded: updated,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? "Error desconocido" }, { status: 500 });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Error" }, { status: 500 });
   }
 }

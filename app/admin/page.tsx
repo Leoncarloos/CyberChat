@@ -34,7 +34,7 @@ export default function AdminPage() {
     try {
       setStatus("Subiendo y procesando…");
 
-      const res = await fetch("/api/documents/upload", {
+      const res = await fetch("/api/documents/upload-and-process", {
         method: "POST",
         body: formData,
       });
