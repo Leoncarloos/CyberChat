@@ -1,4 +1,5 @@
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
@@ -9,21 +10,28 @@ function meanPool(tokens: number[][]) {
   const n = tokens.length || 1;
   const dim = tokens[0]?.length ?? 0;
   const out = new Array(dim).fill(0);
+
   for (let i = 0; i < tokens.length; i++) {
     for (let j = 0; j < dim; j++) out[j] += tokens[i][j];
   }
   for (let j = 0; j < dim; j++) out[j] /= n;
+
   return out;
 }
 
 function normalizeHFEmbedding(raw: any): number[] {
   if (Array.isArray(raw) && typeof raw[0] === "number") return raw as number[];
+
+  // tokens x dim
   if (Array.isArray(raw) && Array.isArray(raw[0]) && typeof raw[0][0] === "number") {
     return meanPool(raw as number[][]);
   }
+
+  // batch => [tokens x dim]
   if (Array.isArray(raw) && Array.isArray(raw[0]) && Array.isArray(raw[0][0])) {
     return meanPool(raw[0] as number[][]);
   }
+
   throw new Error("HF devolvió formato inesperado");
 }
 
@@ -39,6 +47,7 @@ async function embedHF(text: string) {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ inputs: text, options: { wait_for_model: true } }),
+    cache: "no-store",
   });
 
   const rawText = await resp.text();
@@ -58,7 +67,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const messages = body?.messages as ChatMsg[] | undefined;
-    const document_id = (body?.document_id as string | undefined) ?? null;
+    const document_id = body?.document_id ? String(body.document_id) : null;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "messages requerido" }, { status: 400 });
@@ -67,15 +76,21 @@ export async function POST(req: Request) {
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) return NextResponse.json({ error: "Falta GROQ_API_KEY" }, { status: 500 });
 
-    const supabase = supabaseServer();
+    // ✅ OJO: supabaseServer() es async
+    const supabase = await supabaseServer();
 
-    // ✅ user logueado (para filtrar chunks por dueño)
-    const { data: auth } = await supabase.auth.getUser();
+    // ✅ user logueado (cookies SSR)
+    const { data: auth, error: authErr } = await supabase.auth.getUser();
+    if (authErr) return NextResponse.json({ error: authErr.message }, { status: 401 });
+
     const user = auth?.user;
     if (!user) return NextResponse.json({ error: "No auth" }, { status: 401 });
 
-    const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content?.trim() ?? "";
-    if (!lastUser) return NextResponse.json({ error: "Último mensaje vacío" }, { status: 400 });
+    const lastUser =
+      [...messages].reverse().find((m) => m.role === "user")?.content?.trim() ?? "";
+    if (!lastUser) {
+      return NextResponse.json({ error: "Último mensaje vacío" }, { status: 400 });
+    }
 
     // ✅ RAG: embed + rpc scoped
     const query_embedding = await embedHF(lastUser);
@@ -83,7 +98,7 @@ export async function POST(req: Request) {
     const { data: matches, error: rpcErr } = await supabase.rpc("match_document_chunks_scoped", {
       query_embedding,
       filter_user_id: user.id,
-      filter_document_id: document_id,
+      filter_document_id: document_id, // null ok
       match_count: 6,
     });
 
@@ -105,7 +120,6 @@ export async function POST(req: Request) {
         (context || "(sin contexto relevante)"),
     };
 
-    // ✅ manda el historial (esto mejora coherencia)
     const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${groqKey}`, "Content-Type": "application/json" },
