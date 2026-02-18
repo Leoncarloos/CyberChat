@@ -17,7 +17,7 @@ function meanPool(tokens: number[][]) {
   return emb;
 }
 
-// ✅ Acepta: [[[...]]], [[...]], [...]
+// Acepta: [[[...]]], [[...]], [...]
 function normalizeHFEmbedding(raw: any): number[] {
   if (Array.isArray(raw) && typeof raw[0] === "number") return raw as number[];
 
@@ -34,14 +34,16 @@ function normalizeHFEmbedding(raw: any): number[] {
 
 async function embedHF(text: string) {
   const hfToken = process.env.HF_TOKEN;
-  if (!hfToken) throw new Error("Falta HF_TOKEN en .env.local");
+  if (!hfToken) throw new Error("Falta HF_TOKEN");
 
   const hfRes = await fetch(
     "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction",
     {
       method: "POST",
-      headers: { Authorization: `Bearer ${hfToken}`, "Content-Type": "application/json" },
-      // ✅ mandamos string directo (más consistente)
+      headers: {
+        Authorization: `Bearer ${hfToken}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ inputs: text, options: { wait_for_model: true } }),
     }
   );
@@ -63,11 +65,11 @@ async function embedHF(text: string) {
   }
 }
 
-async function retrieveTopChunks(query: string) {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "http://localhost:3000";
+async function retrieveTopChunks(req: Request, query: string) {
+  // ✅ origin real (local o vercel) sin env vars
+  const origin = new URL(req.url).origin;
 
-  const res = await fetch(`${base}/api/debug/search`, {
+  const res = await fetch(`${origin}/api/debug/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query }),
@@ -95,16 +97,16 @@ export async function POST(req: Request) {
 
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) {
-      return NextResponse.json({ error: "Falta GROQ_API_KEY en .env.local" }, { status: 500 });
+      return NextResponse.json({ error: "Falta GROQ_API_KEY" }, { status: 500 });
     }
 
     const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
 
-    // ✅ embedding (si falla, error claro)
+    // 1) embedding query
     await embedHF(lastUser);
 
-    // ✅ retrieval
-    const matches = await retrieveTopChunks(lastUser);
+    // 2) retrieval (usando origin real)
+    const matches = await retrieveTopChunks(req, lastUser);
 
     const context = (matches || [])
       .slice(0, 5)
@@ -148,7 +150,6 @@ export async function POST(req: Request) {
     }
 
     const answer = groqData?.choices?.[0]?.message?.content ?? "No pude generar respuesta.";
-
     return NextResponse.json({ answer, matchesCount: matches?.length ?? 0 });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "Error desconocido" }, { status: 500 });
