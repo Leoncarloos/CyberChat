@@ -18,6 +18,9 @@
   --shadow-md: rgba(26, 21, 16, 0.2);
   --background: var(--paper);
   --foreground: var(--ink);
+  --font-body: "Segoe UI", "Plus Jakarta Sans", "Trebuchet MS", Arial, sans-serif;
+  --font-display: Georgia, "Times New Roman", "Fraunces", serif;
+  --font-mono: "Consolas", "DM Mono", "Courier New", monospace;
 }
 
 @theme inline {
