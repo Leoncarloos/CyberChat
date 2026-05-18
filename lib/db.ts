@@ -43,3 +43,12 @@ export async function renameConversation(conversation_id: string, title: string)
   const supabase = supabaseBrowser();
   return supabase.from("conversations").update({ title }).eq("id", conversation_id);
 }
+
+export async function deleteConversation(conversation_id: string) {
+  const supabase = supabaseBrowser();
+
+  const messagesResult = await supabase.from("messages").delete().eq("conversation_id", conversation_id);
+  if (messagesResult.error) return messagesResult;
+
+  return supabase.from("conversations").delete().eq("id", conversation_id);
+}

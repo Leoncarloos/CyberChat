@@ -13,17 +13,21 @@ type UploadResponse = {
 export default function AdminPage() {
   const supabase = useMemo(() => supabaseBrowser(), []);
   const router = useRouter();
-  const [userId, setUserId] = useState<string>("");
-  const [userEmail, setUserEmail] = useState<string>("");
-  const [lastDocumentId, setLastDocumentId] = useState<string>("");
-  const [status, setStatus] = useState<string>("");
+  const [userId, setUserId] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [lastDocumentId, setLastDocumentId] = useState("");
+  const [status, setStatus] = useState("");
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       const { data } = await supabase.auth.getUser();
-      if (!data.user) return router.push("/login");
-      setUserId(data.user.id);
-      setUserEmail(data.user.email ?? "");
+      const user = data.user;
+
+      if (!user) return router.push("/login");
+      if (user.user_metadata?.role !== "admin") return router.push("/chat");
+
+      setUserId(user.id);
+      setUserEmail(user.email ?? "");
     })();
   }, [router, supabase]);
 
@@ -95,13 +99,13 @@ export default function AdminPage() {
             <div className="space-y-4">
               <div className="brand-mark">CG</div>
               <div>
-                <p className="eyebrow text-[rgba(245,240,232,0.45)]">Panel Operativo</p>
+                <p className="eyebrow text-[rgba(245,240,232,0.45)]">Módulo Admin</p>
                 <h1 className="display-title mt-2 text-4xl font-black leading-none">
                   Centro documental
                 </h1>
                 <p className="mt-4 text-sm leading-7 text-[rgba(245,240,232,0.68)]">
-                  Gestiona la ingesta de archivos para alimentar el retrieval del asistente y
-                  mantener actualizado el conocimiento de la plataforma.
+                  Sube documentos para el RAG y mantén actualizada la base de conocimiento de tu
+                  empresa.
                 </p>
               </div>
             </div>
@@ -125,6 +129,9 @@ export default function AdminPage() {
               </div>
 
               <div className="split-actions">
+                <a href="/manage" className="secondary-button">
+                  Ir a gestión
+                </a>
                 <a href="/chat" className="secondary-button">
                   Ir al chat
                 </a>
@@ -204,12 +211,8 @@ export default function AdminPage() {
               <button type="submit" className="primary-button">
                 Subir y procesar
               </button>
-              <button
-                type="button"
-                className="ghost-button"
-                onClick={() => router.push("/chat")}
-              >
-                Volver al chat
+              <button type="button" className="ghost-button" onClick={() => router.push("/manage")}>
+                Volver a gestión
               </button>
             </div>
           </form>

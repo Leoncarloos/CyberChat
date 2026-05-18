@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const features = [
   {
@@ -24,16 +24,55 @@ const features = [
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = supabaseBrowser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const registered = searchParams.get("registered");
+
+  const helperMessage = useMemo(() => {
+    if (registered === "admin") {
+      return "Cuenta administradora creada. Ahora inicia sesión con tus credenciales.";
+    }
+
+    if (registered === "employee") {
+      return "Solicitud de empleado registrada. Ahora inicia sesión con tus credenciales.";
+    }
+
+    return null;
+  }, [registered]);
 
   async function onLogin(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return setMsg(error.message);
+
+    const role =
+      typeof data.user?.user_metadata?.role === "string" ? data.user.user_metadata.role : "";
+    const approvalStatus =
+      typeof data.user?.user_metadata?.approval_status === "string"
+        ? data.user.user_metadata.approval_status
+        : "";
+
+    if (role === "admin") {
+      router.push("/manage");
+      return;
+    }
+
+    if (role === "employee" && approvalStatus !== "active") {
+      await supabase.auth.signOut();
+
+      if (approvalStatus === "rejected") {
+        setMsg("Tu acceso fue rechazado por el administrador de tu empresa. Contáctalo para revisar tu solicitud.");
+        return;
+      }
+
+      setMsg("Tu acceso todavía no ha sido aprobado por el administrador de tu empresa.");
+      return;
+    }
+
     router.push("/chat");
   }
 
@@ -117,6 +156,7 @@ export default function LoginPage() {
               />
             </div>
 
+            {helperMessage ? <div className="status-banner success">{helperMessage}</div> : null}
             {msg ? <div className="status-banner error">{msg}</div> : null}
 
             <button type="submit" className="primary-button w-full">
