@@ -4,67 +4,33 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { embedHF } from "@/lib/embedHF";
 
-function chunkText(text: string, size = 800, overlap = 100) {
+// Sentence-aware chunking — no corta oraciones a la mitad.
+function chunkBySentences(text: string, maxChars = 800, overlapSentences = 1): string[] {
+  const sentences = text
+    .replace(/([.!?])\s+/g, "$1\n")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 15);
+
   const chunks: string[] = [];
-  let start = 0;
-  while (start < text.length) {
-    const end = start + size;
-    chunks.push(text.slice(start, end));
-    start = end - overlap;
-    if (start < 0) start = 0;
+  let current: string[] = [];
+  let currentLen = 0;
+
+  for (const sentence of sentences) {
+    if (currentLen + sentence.length > maxChars && current.length > 0) {
+      chunks.push(current.join(" "));
+      current = current.slice(-overlapSentences);
+      currentLen = current.reduce((n, s) => n + s.length + 1, 0);
+    }
+    current.push(sentence);
+    currentLen += sentence.length + 1;
   }
-  return chunks;
-}
 
-function meanPool(tokens: number[][]) {
-  const n = tokens.length || 1;
-  const dim = tokens[0]?.length ?? 0;
-  const out = new Array(dim).fill(0);
-  for (let i = 0; i < tokens.length; i++) {
-    for (let j = 0; j < dim; j++) out[j] += tokens[i][j];
-  }
-  for (let j = 0; j < dim; j++) out[j] /= n;
-  return out;
-}
+  if (current.length > 0) chunks.push(current.join(" "));
 
-function normalizeHFEmbedding(raw: any): number[] {
-  if (Array.isArray(raw) && typeof raw[0] === "number") return raw as number[];
-  if (Array.isArray(raw) && Array.isArray(raw[0]) && typeof raw[0][0] === "number") {
-    return meanPool(raw as number[][]);
-  }
-  if (Array.isArray(raw) && Array.isArray(raw[0]) && Array.isArray(raw[0][0])) {
-    return meanPool(raw[0] as number[][]);
-  }
-  throw new Error("HF devolvió formato inesperado");
-}
-
-async function embedHF(text: string) {
-  const token = process.env.HF_TOKEN;
-  if (!token) throw new Error("Falta HF_TOKEN");
-
-  const url =
-    "https://router.huggingface.co/hf-inference/models/" +
-    "sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction";
-
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ inputs: text, options: { wait_for_model: true } }),
-    cache: "no-store",
-  });
-
-  const rawText = await resp.text();
-  let raw: any = null;
-  try {
-    raw = rawText ? JSON.parse(rawText) : null;
-  } catch {}
-
-  if (!resp.ok) throw new Error(raw?.error ?? rawText ?? "HF error");
-
-  const emb = normalizeHFEmbedding(raw);
-  if (emb.length !== 384) throw new Error(`Embedding dim inválida: ${emb.length}`);
-  return emb;
+  return chunks.filter((c) => c.trim().length > 40);
 }
 
 function getExt(filename: string) {
@@ -74,7 +40,6 @@ function getExt(filename: string) {
 
 export async function POST(req: Request) {
   try {
-    // 1) user por cookies (anon)
     const supabase = await supabaseServer();
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
@@ -82,10 +47,8 @@ export async function POST(req: Request) {
     }
     const userId = auth.user.id;
 
-    // 2) admin client (bypassea RLS)
     const admin = supabaseAdmin();
 
-    // 3) leer archivo
     const form = await req.formData();
     const file = form.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "file requerido" }, { status: 400 });
@@ -94,31 +57,27 @@ export async function POST(req: Request) {
     const storagePath = `${userId}/${crypto.randomUUID()}.${ext}`;
     const bytes = new Uint8Array(await file.arrayBuffer());
 
-    // 4) subir a Storage (admin)
     const up = await admin.storage.from("documents").upload(storagePath, bytes, {
       contentType: file.type || "application/octet-stream",
       upsert: false,
     });
     if (up.error) return NextResponse.json({ error: up.error.message }, { status: 500 });
 
-    // 5) insertar documento (admin) -> evita RLS
     const ins = await admin
       .from("documents")
-      .insert({
-        name: file.name,
-        storage_path: storagePath,
-        uploaded_by: userId,
-      })
+      .insert({ name: file.name, storage_path: storagePath, uploaded_by: userId })
       .select("id")
       .single();
-
     if (ins.error) return NextResponse.json({ error: ins.error.message }, { status: 500 });
 
     const document_id = ins.data.id as string;
 
-    // 6) descargar para procesar (admin)
-    const { data: dl, error: dlErr } = await admin.storage.from("documents").download(storagePath);
-    if (dlErr || !dl) return NextResponse.json({ error: "No se pudo descargar" }, { status: 500 });
+    const { data: dl, error: dlErr } = await admin.storage
+      .from("documents")
+      .download(storagePath);
+    if (dlErr || !dl) {
+      return NextResponse.json({ error: "No se pudo descargar el archivo" }, { status: 500 });
+    }
 
     const arrayBuffer = await dl.arrayBuffer();
     let text = "";
@@ -130,33 +89,36 @@ export async function POST(req: Request) {
       const result = await mammoth.extractRawText({ buffer: Buffer.from(arrayBuffer) });
       text = result.value || "";
     } else if (ext === "pdf") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mod: any = await import("pdf-extraction");
       const pdfExtract = mod?.default ?? mod;
       const parsed = await pdfExtract(Buffer.from(arrayBuffer));
       text = parsed?.text || "";
     } else {
       return NextResponse.json(
-        { error: `Tipo no soportado: .${ext}. Usa PDF, DOCX o TXT.` },
+        { error: `Formato no soportado: .${ext}. Usa PDF, DOCX o TXT.` },
         { status: 400 }
       );
     }
 
-    text = String(text || "").replace(/\s+/g, " ").trim();
+    text = String(text || "")
+      .replace(/\r\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim();
+
     if (!text) {
       return NextResponse.json(
-        { error: "Documento sin texto legible (puede ser escaneado)" },
+        { error: "Documento sin texto legible (puede ser una imagen escaneada)" },
         { status: 400 }
       );
     }
 
-    // 7) chunks
-    const chunks = chunkText(text);
+    const chunks = chunkBySentences(text);
 
-    // limpiar chunks previos (admin)
     await admin.from("document_chunks").delete().eq("document_id", document_id);
 
-    // 8) embeddings + insert chunks con embedding (admin)
-    // (puedes batcher luego, pero esto funciona)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const rows: any[] = [];
     for (let i = 0; i < chunks.length; i++) {
       const content = chunks[i];
@@ -174,7 +136,8 @@ export async function POST(req: Request) {
       chunks: rows.length,
       embedded: true,
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Error" }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Error desconocido";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

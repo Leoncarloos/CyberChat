@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import {
   addMessage,
@@ -33,11 +33,42 @@ type ChatApiResponse = {
   error?: string;
 };
 type ModuleKey = "chat" | "evaluations";
+type ToastTone = "success" | "error" | "info";
+type Toast = { id: number; tone: ToastTone; msg: string };
 type QuizQuestion = {
   question: string;
   options: string[];
   correctIndex: number;
   explanation: string;
+};
+type KnowledgeLevel = "bajo" | "medio" | "alto";
+type ProgressStatus = "pendiente" | "en_progreso" | "completado";
+type LearningTopic = {
+  key: string;
+  label: string;
+  icon: string;
+  starterPrompt: string;
+  level: KnowledgeLevel;
+  pct: number | null;
+  isWeak: boolean;
+  status: ProgressStatus;
+};
+type LearningPathResponse = {
+  hasData: boolean;
+  path: LearningTopic[];
+  shortcuts: LearningTopic[];
+};
+
+const LEVEL_BADGE: Record<KnowledgeLevel, { label: string; cls: string }> = {
+  bajo: { label: "Nivel bajo", cls: "border-[rgba(201,64,64,0.28)] bg-[rgba(201,64,64,0.1)] text-[var(--red)]" },
+  medio: { label: "Nivel medio", cls: "border-[rgba(232,117,10,0.28)] bg-[rgba(232,117,10,0.1)] text-[var(--amber-dim)]" },
+  alto: { label: "Nivel alto", cls: "border-[rgba(46,125,82,0.28)] bg-[rgba(46,125,82,0.1)] text-[var(--green)]" },
+};
+
+const STATUS_BADGE: Record<ProgressStatus, { label: string; cls: string }> = {
+  pendiente: { label: "Pendiente", cls: "border-[var(--border)] bg-[var(--paper-3)] text-[var(--ink-soft)]" },
+  en_progreso: { label: "En progreso", cls: "border-[rgba(232,117,10,0.28)] bg-[rgba(232,117,10,0.1)] text-[var(--amber-dim)]" },
+  completado: { label: "Completado", cls: "border-[rgba(46,125,82,0.28)] bg-[rgba(46,125,82,0.1)] text-[var(--green)]" },
 };
 
 const quickPrompts = [
@@ -198,8 +229,10 @@ function createEmptyAnswers() {
 
 export default function ChatPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useMemo(() => supabaseBrowser(), []);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [userId, setUserId] = useState("");
   const [email, setEmail] = useState("");
@@ -212,6 +245,24 @@ export default function ChatPage() {
   const [activeModule, setActiveModule] = useState<ModuleKey>("chat");
   const [quizAnswers, setQuizAnswers] = useState<number[]>(() => createEmptyAnswers());
   const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [generatedQuestions, setGeneratedQuestions] = useState<QuizQuestion[] | null>(null);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const quizFetchedRef = useRef(false);
+  const [usedCompanyDocs, setUsedCompanyDocs] = useState(false);
+
+  const [learningPath, setLearningPath] = useState<LearningPathResponse | null>(null);
+  const [learningLoading, setLearningLoading] = useState(true);
+
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toast = useCallback((tone: ToastTone, msg: string) => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, tone, msg }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3800);
+  }, []);
+
+  const [renameTarget, setRenameTarget] = useState<Conversation | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -236,8 +287,26 @@ export default function ChatPage() {
       const convs = (convRes.data ?? []) as Conversation[];
       setConversations(convs);
       if (convs.length > 0) setActiveId(convs[0].id);
+
+      const prefillQ = searchParams.get("q");
+      if (prefillQ) {
+        setInput(prefillQ);
+        setTimeout(() => inputRef.current?.focus(), 100);
+      }
     })();
-  }, [router, supabase]);
+  }, [router, supabase, searchParams]);
+
+  useEffect(() => {
+    if (!userId) return;
+    void (async () => {
+      setLearningLoading(true);
+      try {
+        const res = await fetch("/api/learning-path");
+        if (res.ok) setLearningPath((await res.json()) as LearningPathResponse);
+      } catch {}
+      setLearningLoading(false);
+    })();
+  }, [userId]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -259,12 +328,34 @@ export default function ChatPage() {
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, isSending, activeModule]);
 
+  useEffect(() => {
+    if (activeModule !== "evaluations" || quizFetchedRef.current) return;
+    quizFetchedRef.current = true;
+    void (async () => {
+      setIsGeneratingQuiz(true);
+      try {
+        const res = await fetch("/api/posttest");
+        const json = (await res.json()) as {
+          questions?: QuizQuestion[];
+          usedCompanyDocs?: boolean;
+          error?: string;
+        };
+        if (json.questions && json.questions.length > 0) {
+          setGeneratedQuestions(json.questions);
+          setQuizAnswers(Array.from({ length: json.questions.length }, () => -1));
+          setUsedCompanyDocs(json.usedCompanyDocs ?? false);
+        }
+      } catch {}
+      setIsGeneratingQuiz(false);
+    })();
+  }, [activeModule]);
+
   async function handleNewConversation(prefill?: string) {
     if (!userId) return "";
 
     const res = await createConversation(userId);
     if (res.error) {
-      alert(res.error.message);
+      toast("error", res.error.message);
       return "";
     }
 
@@ -276,45 +367,60 @@ export default function ChatPage() {
     return newConv.id;
   }
 
-  async function handleRenameConversation(conversation: Conversation) {
-    const nextTitle = window.prompt("Nuevo nombre de la conversación:", conversation.title)?.trim();
-    if (!nextTitle || nextTitle === conversation.title) return;
+  function handleRenameConversation(conversation: Conversation) {
+    setRenameTarget(conversation);
+    setRenameValue(conversation.title);
+  }
 
-    const result = await renameConversation(conversation.id, nextTitle);
+  async function saveRename() {
+    if (!renameTarget) return;
+    const target = renameTarget;
+    const nextTitle = renameValue.trim();
+    setRenameTarget(null);
+    if (!nextTitle || nextTitle === target.title) return;
+
+    const result = await renameConversation(target.id, nextTitle);
     if (result.error) {
-      alert(result.error.message);
+      toast("error", result.error.message);
       return;
     }
 
     setConversations((prev) =>
-      prev.map((item) => (item.id === conversation.id ? { ...item, title: nextTitle } : item))
+      prev.map((item) => (item.id === target.id ? { ...item, title: nextTitle } : item))
     );
+    toast("success", "Conversación renombrada");
   }
 
-  async function handleDeleteConversation(conversation: Conversation) {
-    const confirmed = window.confirm(`¿Eliminar la conversación "${conversation.title}"?`);
-    if (!confirmed) return;
+  function handleDeleteConversation(conversation: Conversation) {
+    setDeleteTarget(conversation);
+  }
 
-    const result = await deleteConversation(conversation.id);
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+
+    const result = await deleteConversation(target.id);
     if (result.error) {
-      alert(result.error.message);
+      toast("error", result.error.message);
       return;
     }
 
-    const nextConversations = conversations.filter((item) => item.id !== conversation.id);
+    const nextConversations = conversations.filter((item) => item.id !== target.id);
     setConversations(nextConversations);
 
-    if (activeId === conversation.id) {
+    if (activeId === target.id) {
       setActiveId(nextConversations[0]?.id ?? "");
       setMessages([]);
     }
+    toast("info", "Conversación eliminada");
   }
 
-  async function sendPrompt(prompt?: string) {
+  async function sendPrompt(prompt?: string, forcedConversationId?: string) {
     const text = (prompt ?? input).trim();
     if (!text || isSending) return;
 
-    let conversationId = activeId;
+    let conversationId = forcedConversationId ?? activeId;
     if (!conversationId) {
       conversationId = await handleNewConversation();
       if (!conversationId) return;
@@ -327,15 +433,16 @@ export default function ChatPage() {
     const userMsgRes = await addMessage(conversationId, "user", text);
     if (userMsgRes.error) {
       setIsSending(false);
-      alert(userMsgRes.error.message);
+      toast("error", userMsgRes.error.message);
       return;
     }
 
     const userMessage = userMsgRes.data as StoredMessage;
-    const historyForApi = [
-      ...messages.map((message) => ({ role: message.role, content: message.content })),
-      { role: "user" as const, content: text },
-    ];
+    // Conversación dirigida nueva: empieza sin historial previo.
+    const priorHistory = forcedConversationId
+      ? []
+      : messages.map((message) => ({ role: message.role, content: message.content }));
+    const historyForApi = [...priorHistory, { role: "user" as const, content: text }];
 
     setMessages((prev) => [...prev, userMessage]);
 
@@ -353,7 +460,7 @@ export default function ChatPage() {
 
     if (!apiRes.ok) {
       setIsSending(false);
-      alert("Error en /api/chat:\n" + (data?.error ?? raw ?? "Respuesta vacía"));
+      toast("error", data?.error ?? "Error al obtener respuesta del chat");
       return;
     }
 
@@ -369,7 +476,7 @@ export default function ChatPage() {
     setIsSending(false);
 
     if (asstMsgRes.error) {
-      alert(asstMsgRes.error.message);
+      toast("error", asstMsgRes.error.message);
       return;
     }
 
@@ -390,6 +497,33 @@ export default function ChatPage() {
     }
   }
 
+  function markTopicProgress(topicKey: string, status: ProgressStatus) {
+    setLearningPath((prev) => {
+      if (!prev) return prev;
+      const apply = (t: LearningTopic) =>
+        t.key === topicKey ? { ...t, status } : t;
+      return { ...prev, path: prev.path.map(apply), shortcuts: prev.shortcuts.map(apply) };
+    });
+    void fetch("/api/learning-path", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topicKey, status }),
+    });
+  }
+
+  async function startTopic(topic: LearningTopic) {
+    if (isSending) return;
+    setActiveModule("chat");
+    const conversationId = await handleNewConversation();
+    if (!conversationId) return;
+    await renameConversation(conversationId, topic.label);
+    setConversations((prev) =>
+      prev.map((item) => (item.id === conversationId ? { ...item, title: topic.label } : item))
+    );
+    markTopicProgress(topic.key, "en_progreso");
+    await sendPrompt(topic.starterPrompt, conversationId);
+  }
+
   async function logout() {
     await supabase.auth.signOut();
     router.push("/login");
@@ -402,20 +536,40 @@ export default function ChatPage() {
 
   function submitQuiz() {
     if (quizAnswers.some((value) => value === -1)) {
-      alert("Responde todas las preguntas antes de enviar la evaluación.");
+      toast("info", "Responde todas las preguntas antes de enviar.");
       return;
     }
 
     setQuizSubmitted(true);
+
+    const score = activeQuestions.reduce(
+      (n, q, i) => n + (quizAnswers[i] === q.correctIndex ? 1 : 0),
+      0
+    );
+    void fetch("/api/quiz", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ score, total: activeQuestions.length }),
+    });
+
+    // Escenario 4 — al superar el umbral, los temas en progreso pasan a completado.
+    const passed = score >= Math.ceil(activeQuestions.length * 0.6);
+    if (passed && learningPath) {
+      learningPath.path
+        .filter((t) => t.status === "en_progreso")
+        .forEach((t) => markTopicProgress(t.key, "completado"));
+    }
   }
 
   function resetQuiz() {
-    setQuizAnswers(createEmptyAnswers());
+    const len = activeQuestions.length;
+    setQuizAnswers(Array.from({ length: len }, () => -1));
     setQuizSubmitted(false);
   }
 
+  const activeQuestions = generatedQuestions ?? quizQuestions;
   const queryCount = messages.filter((message) => message.role === "user").length;
-  const quizScore = quizQuestions.reduce(
+  const quizScore = activeQuestions.reduce(
     (score, question, index) => score + (quizAnswers[index] === question.correctIndex ? 1 : 0),
     0
   );
@@ -455,6 +609,13 @@ export default function ChatPage() {
           >
             <span>📝</span>
             <span>Evaluaciones</span>
+          </button>
+          <button
+            className="mt-2 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold text-[rgba(245,240,232,0.72)] transition hover:bg-white/6"
+            onClick={() => router.push("/dashboard")}
+          >
+            <span>📊</span>
+            <span>Mi Dashboard</span>
           </button>
           {role === "admin" ? (
             <button
@@ -559,7 +720,7 @@ export default function ChatPage() {
               <p className="display-title text-2xl font-bold">
                 {activeModule === "chat" ? "Agente CyberChat" : "Evaluaciones CyberChat"}
               </p>
-              <p className="font-mono text-[11px] tracking-[0.18em] text-[var(--muted)]">
+              <p className="font-mono text-[11px] tracking-[0.18em] text-[var(--ink-soft)]">
                 {activeModule === "chat"
                   ? "Especialista en ciberseguridad para MYPES"
                   : "Test guiado para reforzar concientización"}
@@ -595,11 +756,119 @@ export default function ChatPage() {
                     Tu aliado en <span className="text-[var(--amber)] italic">ciberseguridad</span>{" "}
                     empresarial
                   </h2>
-                  <p className="mt-6 max-w-[620px] text-xl leading-9 text-[var(--muted)]">
+                  <p className="mt-6 max-w-[620px] text-xl leading-9 text-[var(--ink-soft)]">
                     Haz una pregunta directa o elige uno de los temas sugeridos para empezar.
                   </p>
 
-                  <div className="mt-10 grid w-full max-w-[720px] gap-4 md:grid-cols-3">
+                  {/* HU11 — Ruta de aprendizaje guiada */}
+                  <section
+                    className="mt-10 w-full max-w-[720px] rounded-2xl border border-[rgba(10,126,126,0.2)] bg-[rgba(10,126,126,0.06)] px-6 py-5 text-left"
+                    aria-label="Tu ruta de aprendizaje"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full border border-[rgba(10,126,126,0.2)] bg-[rgba(10,126,126,0.1)] px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--teal)]">
+                        Tu ruta de aprendizaje
+                      </span>
+                    </div>
+
+                    {learningLoading ? (
+                      <div className="mt-4 space-y-3" aria-hidden="true">
+                        {[0, 1, 2].map((i) => (
+                          <div key={i} className="h-14 animate-pulse rounded-xl bg-black/5" />
+                        ))}
+                      </div>
+                    ) : !learningPath?.hasData ? (
+                      // Escenario 5 — sin datos suficientes
+                      <div className="mt-3">
+                        <p className="text-base font-bold text-[var(--ink)]">
+                          Aún no podemos personalizar tu ruta
+                        </p>
+                        <p className="mt-1 text-sm text-[var(--ink-soft)]">
+                          Tu ruta de aprendizaje se generará tras completar la evaluación
+                          diagnóstica inicial. Mientras tanto, puedes explorar cualquier tema con los
+                          atajos de abajo.
+                        </p>
+                        <button
+                          className="mt-4 rounded-xl border border-[rgba(10,126,126,0.25)] bg-[var(--teal)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                          onClick={() => router.push("/diagnostic")}
+                        >
+                          🎯 Iniciar evaluación diagnóstica
+                        </button>
+                      </div>
+                    ) : learningPath.path.length === 0 ? (
+                      <p className="mt-3 text-sm text-[var(--ink-soft)]">
+                        ¡Excelente! No tienes temas con nivel bajo. Refuerza cualquier área cuando
+                        quieras desde los atajos de abajo.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="mt-2 text-sm text-[var(--ink-soft)]">
+                          Estos son los temas que más conviene reforzar, según tu diagnóstico.
+                        </p>
+                        <ul className="mt-4 space-y-3">
+                          {learningPath.path.map((topic) => (
+                            <li key={topic.key}>
+                              <button
+                                className="group flex w-full items-center gap-4 rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-left transition hover:border-[var(--amber)] hover:bg-[rgba(232,117,10,0.04)] disabled:cursor-not-allowed disabled:opacity-60"
+                                onClick={() => void startTopic(topic)}
+                                disabled={isSending}
+                                aria-label={`Reforzar ${topic.label}. ${LEVEL_BADGE[topic.level].label}. Estado: ${STATUS_BADGE[topic.status].label}`}
+                              >
+                                <span className="text-2xl" aria-hidden="true">{topic.icon}</span>
+                                <span className="flex-1">
+                                  <span className="block text-sm font-bold text-[var(--ink)]">
+                                    {topic.label}
+                                  </span>
+                                  <span className="mt-1.5 flex flex-wrap items-center gap-2">
+                                    <span className={`rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] ${LEVEL_BADGE[topic.level].cls}`}>
+                                      {LEVEL_BADGE[topic.level].label}
+                                    </span>
+                                    <span className={`rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] ${STATUS_BADGE[topic.status].cls}`}>
+                                      {STATUS_BADGE[topic.status].label}
+                                    </span>
+                                  </span>
+                                </span>
+                                <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--amber-dim)] opacity-0 transition group-hover:opacity-100">
+                                  Estudiar →
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </section>
+
+                  {/* Atajos temáticos (Escenario 2) */}
+                  {!learningLoading && learningPath?.shortcuts?.length ? (
+                    <nav
+                      className="mt-6 w-full max-w-[720px] text-left"
+                      aria-label="Atajos temáticos de ciberseguridad"
+                    >
+                      <p className="eyebrow mb-3 text-[var(--ink-soft)]">Atajos temáticos</p>
+                      <div className="flex flex-wrap gap-2">
+                        {learningPath.shortcuts.map((topic) => (
+                          <button
+                            key={topic.key}
+                            onClick={() => void startTopic(topic)}
+                            disabled={isSending}
+                            aria-label={`Iniciar conversación sobre ${topic.label}${topic.isWeak ? " (área a reforzar)" : ""}`}
+                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                              topic.isWeak
+                                ? "border-[rgba(232,117,10,0.35)] bg-[rgba(232,117,10,0.1)] text-[var(--amber-dim)] hover:bg-[rgba(232,117,10,0.16)]"
+                                : "border-[var(--border)] bg-white text-[var(--ink-soft)] hover:border-[var(--amber)] hover:text-[var(--amber-dim)]"
+                            }`}
+                          >
+                            <span aria-hidden="true">{topic.icon}</span>
+                            {topic.label}
+                            {topic.isWeak ? <span aria-hidden="true">•</span> : null}
+                          </button>
+                        ))}
+                      </div>
+                    </nav>
+                  ) : null}
+
+                  <div className="mt-6 grid w-full max-w-[720px] gap-4 md:grid-cols-3">
                     {quickPrompts.map((card) => (
                       <button
                         key={card.title}
@@ -608,7 +877,7 @@ export default function ChatPage() {
                       >
                         <div className="mb-3 text-3xl">{card.icon}</div>
                         <div className="text-lg font-bold text-[var(--ink)]">{card.title}</div>
-                        <div className="mt-2 font-mono text-[11px] tracking-[0.16em] text-[var(--muted)]">
+                        <div className="mt-2 font-mono text-[11px] tracking-[0.16em] text-[var(--ink-soft)]">
                           {card.hint}
                         </div>
                       </button>
@@ -622,7 +891,7 @@ export default function ChatPage() {
                       {message.role === "user" ? (
                         <div className="flex justify-end">
                           <div className="max-w-[78%]">
-                            <div className="mb-2 text-right font-mono text-[11px] tracking-[0.14em] text-[var(--muted)]">
+                            <div className="mb-2 text-right font-mono text-[11px] tracking-[0.14em] text-[var(--ink-soft)]">
                               {formatTime(message.created_at)}
                             </div>
                             <div className="rounded-[1.25rem] rounded-br-md bg-[var(--amber)] px-6 py-4 text-lg leading-8 text-white shadow-[0_12px_24px_rgba(232,117,10,0.24)]">
@@ -634,7 +903,7 @@ export default function ChatPage() {
                         <div className="flex gap-4">
                           <div className="brand-mark !mt-1 !h-10 !w-10 !rounded-full !text-xs">C</div>
                           <div className="max-w-[82%]">
-                            <div className="mb-2 font-mono text-[11px] tracking-[0.14em] text-[var(--muted)]">
+                            <div className="mb-2 font-mono text-[11px] tracking-[0.14em] text-[var(--ink-soft)]">
                               {formatTime(message.created_at)}
                             </div>
                             <div className="rounded-[1.4rem] rounded-tl-md border border-[var(--border)] bg-white px-6 py-5 shadow-[0_12px_28px_rgba(26,21,16,0.08)]">
@@ -659,7 +928,7 @@ export default function ChatPage() {
                                   {message.meta.sources.map((source) => (
                                     <div
                                       key={`${message.id}-${source.rank}`}
-                                      className="rounded-lg border border-[var(--border)] bg-white/70 px-3 py-3 text-sm text-[var(--muted)]"
+                                      className="rounded-lg border border-[var(--border)] bg-white/70 px-3 py-3 text-sm text-[var(--ink-soft)]"
                                     >
                                       <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--amber-dim)]">
                                         Fuente #{source.rank} · similitud {source.similarity.toFixed(2)}
@@ -684,7 +953,7 @@ export default function ChatPage() {
                           <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[var(--amber)]" />
                           <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[var(--amber-dim)] [animation-delay:0.15s]" />
                           <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[var(--muted)] [animation-delay:0.3s]" />
-                          <span className="ml-2 font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
+                          <span className="ml-2 font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--ink-soft)]">
                             Analizando contexto y redactando respuesta
                           </span>
                         </div>
@@ -696,34 +965,35 @@ export default function ChatPage() {
             </div>
 
             <div className="relative z-10 border-t border-[var(--border)] bg-[rgba(245,240,232,0.92)] px-6 pb-5 pt-4 backdrop-blur-xl">
-              <div className="mb-4 flex flex-wrap gap-2">
-                <button
-                  className="rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-sm text-[var(--muted)] transition hover:border-[var(--amber)] hover:text-[var(--amber-dim)]"
-                  onClick={() => setInput("Explícame qué es el phishing y cómo evitarlo en mi empresa.")}
-                >
-                  Phishing
-                </button>
-                <button
-                  className="rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-sm text-[var(--muted)] transition hover:border-[var(--amber)] hover:text-[var(--amber-dim)]"
-                  onClick={() => setInput("Dame recomendaciones sobre contraseñas seguras para mi equipo.")}
-                >
-                  Contraseñas seguras
-                </button>
-                <button
-                  className="rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-sm text-[var(--muted)] transition hover:border-[var(--amber)] hover:text-[var(--amber-dim)]"
-                  onClick={() => setInput("¿Cómo protejo mi red WiFi empresarial?")}
-                >
-                  Redes Wi-Fi
-                </button>
-              </div>
+              {learningPath?.shortcuts?.length ? (
+                <nav className="mb-4 flex flex-wrap gap-2" aria-label="Atajos temáticos de ciberseguridad">
+                  {learningPath.shortcuts.slice(0, 6).map((topic) => (
+                    <button
+                      key={topic.key}
+                      onClick={() => void startTopic(topic)}
+                      disabled={isSending}
+                      aria-label={`Iniciar conversación sobre ${topic.label}${topic.isWeak ? " (área a reforzar)" : ""}`}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                        topic.isWeak
+                          ? "border-[rgba(232,117,10,0.35)] bg-[rgba(232,117,10,0.08)] text-[var(--amber-dim)] hover:bg-[rgba(232,117,10,0.14)]"
+                          : "border-[var(--border)] bg-white text-[var(--ink-soft)] hover:border-[var(--amber)] hover:text-[var(--amber-dim)]"
+                      }`}
+                    >
+                      <span aria-hidden="true">{topic.icon}</span>
+                      {topic.label}
+                    </button>
+                  ))}
+                </nav>
+              ) : null}
 
               <div className="rounded-[1.4rem] border border-[var(--border)] bg-white px-4 py-3 shadow-[0_8px_18px_rgba(26,21,16,0.08)]">
                 <div className="flex items-end gap-3">
                   <input
+                    ref={inputRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Escribe tu mensaje o pregunta aquí..."
-                    className="min-w-0 flex-1 border-none bg-transparent px-2 py-3 text-lg text-[var(--ink)] outline-none placeholder:text-[var(--muted)]"
+                    className="min-w-0 flex-1 border-none bg-transparent px-2 py-3 text-lg text-[var(--ink)] outline-none placeholder:text-[var(--ink-soft)]"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
@@ -741,7 +1011,7 @@ export default function ChatPage() {
                 </div>
               </div>
 
-              <div className="mt-3 text-center text-xs text-[var(--muted)]">
+              <div className="mt-3 text-center text-xs text-[var(--ink-soft)]">
                 La IA puede cometer errores. Verifica la información sensible.
               </div>
             </div>
@@ -753,12 +1023,29 @@ export default function ChatPage() {
                 <div className="rounded-[1.6rem] border border-[var(--border)] bg-white/76 px-6 py-6 shadow-[0_12px_28px_rgba(26,21,16,0.08)]">
                   <p className="eyebrow">Evaluación guiada</p>
                   <h2 className="display-title mt-3 text-5xl font-black leading-none">
-                    Test rápido de ciberseguridad
+                    Post-test de ciberseguridad
                   </h2>
-                  <p className="mt-4 text-lg leading-8 text-[var(--muted)]">
-                    Responde preguntas prácticas pensadas para empleados de MYPES. Al final verás tu
-                    puntaje y recomendaciones.
+                  <p className="mt-4 text-lg leading-8 text-[var(--ink-soft)]">
+                    Evaluación final personalizada. Mide lo aprendido y actualiza tu progreso en el dashboard.
                   </p>
+                  {!isGeneratingQuiz && (
+                    <div className="mt-3 flex gap-2">
+                      {usedCompanyDocs ? (
+                        <span className="rounded-full border border-[rgba(10,126,126,0.2)] bg-[rgba(10,126,126,0.08)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--teal)]">
+                          IA · documentos empresa
+                        </span>
+                      ) : (
+                        <span className="rounded-full border border-[var(--border)] bg-[var(--paper-3)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                          IA · base general
+                        </span>
+                      )}
+                      {generatedQuestions && (
+                        <span className="rounded-full border border-[var(--border)] bg-[var(--paper-3)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                          {activeQuestions.length} preguntas generadas
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-6 flex gap-3">
                     <button className="secondary-button" onClick={resetQuiz}>
@@ -775,9 +1062,9 @@ export default function ChatPage() {
                 <div className="rounded-[1.6rem] border border-[var(--border)] bg-white/76 px-6 py-6 shadow-[0_12px_28px_rgba(26,21,16,0.08)]">
                   <p className="eyebrow">Progreso</p>
                   <div className="mt-4 display-title text-6xl font-black text-[var(--amber-dim)]">
-                    {quizSubmitted ? `${quizScore}/${quizQuestions.length}` : `${quizAnswers.filter((value) => value !== -1).length}/${quizQuestions.length}`}
+                    {quizSubmitted ? `${quizScore}/${activeQuestions.length}` : `${quizAnswers.filter((value) => value !== -1).length}/${activeQuestions.length}`}
                   </div>
-                  <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+                  <p className="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
                     {quizSubmitted
                       ? "Resultado final de tu evaluación."
                       : "Preguntas respondidas hasta ahora."}
@@ -785,8 +1072,16 @@ export default function ChatPage() {
                 </div>
               </div>
 
+              {isGeneratingQuiz && (
+                <div className="rounded-[1.5rem] border border-[var(--border)] bg-white/80 px-6 py-10 text-center shadow-[0_10px_24px_rgba(26,21,16,0.06)]">
+                  <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-[var(--amber)] border-t-transparent" />
+                  <p className="text-[var(--ink-soft)]">Generando tu evaluación personalizada con IA...</p>
+                  <p className="mt-2 font-mono text-[10px] text-[var(--ink-soft)]">Esto puede tardar unos segundos</p>
+                </div>
+              )}
+
               <div className="space-y-4">
-                {quizQuestions.map((question, questionIndex) => (
+                {activeQuestions.map((question, questionIndex) => (
                   <div
                     key={question.question}
                     className="rounded-[1.5rem] border border-[var(--border)] bg-white/80 px-6 py-6 shadow-[0_10px_24px_rgba(26,21,16,0.06)]"
@@ -852,7 +1147,7 @@ export default function ChatPage() {
               <div className="rounded-[1.5rem] border border-[var(--border)] bg-white/78 px-6 py-6 shadow-[0_10px_24px_rgba(26,21,16,0.06)]">
                 {!quizSubmitted ? (
                   <div className="flex flex-wrap items-center justify-between gap-4">
-                    <p className="text-sm text-[var(--muted)]">
+                    <p className="text-sm text-[var(--ink-soft)]">
                       Completa todas las preguntas y envía tu evaluación.
                     </p>
                     <button className="primary-button" onClick={submitQuiz}>
@@ -862,14 +1157,14 @@ export default function ChatPage() {
                 ) : (
                   <div className="space-y-4">
                     <h3 className="display-title text-4xl font-black">Resultado final</h3>
-                    <p className="text-lg leading-8 text-[var(--muted)]">
-                      Obtuviste <strong>{quizScore}</strong> de <strong>{quizQuestions.length}</strong>{" "}
+                    <p className="text-lg leading-8 text-[var(--ink-soft)]">
+                      Obtuviste <strong>{quizScore}</strong> de <strong>{activeQuestions.length}</strong>{" "}
                       respuestas correctas.
                     </p>
                     <div className="rounded-xl border border-[rgba(232,117,10,0.2)] bg-[rgba(232,117,10,0.08)] px-4 py-4 text-sm leading-7 text-[var(--ink)]">
-                      {quizScore === quizQuestions.length
+                      {quizScore === activeQuestions.length
                         ? "Muy buen nivel. Mantén estas prácticas y comparte el aprendizaje con tu equipo."
-                        : quizScore >= 2
+                        : quizScore >= Math.ceil(activeQuestions.length * 0.6)
                           ? "Vas bien, pero todavía hay puntos por reforzar. Revisa las explicaciones y vuelve a intentarlo."
                           : "Conviene reforzar conceptos básicos de phishing, backups, contraseñas y respuesta a incidentes."}
                     </div>
@@ -880,6 +1175,70 @@ export default function ChatPage() {
           </div>
         )}
       </section>
+
+      {/* ── Toasts ── */}
+      {toasts.length > 0 && (
+        <div className="ui-toast-wrap">
+          {toasts.map((t) => (
+            <div key={t.id} className={`ui-toast ${t.tone}`}>
+              <span className="ui-toast-icon">
+                {t.tone === "success" ? "✅" : t.tone === "error" ? "⚠️" : "ℹ️"}
+              </span>
+              <span>{t.msg}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Modal: renombrar conversación ── */}
+      {renameTarget && (
+        <div className="ui-modal-overlay" onClick={() => setRenameTarget(null)}>
+          <div className="ui-modal" onClick={(e) => e.stopPropagation()}>
+            <p className="eyebrow">Renombrar conversación</p>
+            <div className="mt-4">
+              <label className="field-label" htmlFor="rename-conv">Nuevo nombre</label>
+              <input
+                id="rename-conv"
+                className="field-input"
+                value={renameValue}
+                autoFocus
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void saveRename(); }}
+                placeholder="Nombre de la conversación"
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button className="ghost-button" onClick={() => setRenameTarget(null)}>Cancelar</button>
+              <button className="primary-button" onClick={() => void saveRename()}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: eliminar conversación ── */}
+      {deleteTarget && (
+        <div className="ui-modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="ui-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(201,64,64,0.12)] text-2xl">
+              🗑️
+            </div>
+            <h3 className="display-title text-2xl font-black">¿Eliminar conversación?</h3>
+            <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+              Se eliminará <strong className="text-[var(--ink)]">&ldquo;{deleteTarget.title}&rdquo;</strong> y
+              todos sus mensajes. Esta acción no se puede deshacer.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button className="ghost-button" onClick={() => setDeleteTarget(null)}>Cancelar</button>
+              <button
+                className="primary-button !bg-[var(--red)] !shadow-none"
+                onClick={() => void confirmDelete()}
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
