@@ -386,3 +386,274 @@ code.inline-code {
     padding: 1.25rem;
   }
 }
+
+/* ============================================================
+   UI KIT — additive only (refined pilot). New class names,
+   no overrides of existing tokens/classes.
+   ============================================================ */
+
+:root {
+  /* Accessible secondary text — WCAG AA on paper (~5.8:1).
+     Use instead of --muted where legibility matters. */
+  --ink-soft: #5c5040;
+}
+
+/* ── Sidebar nav (shared, dark sidebar) ── */
+.ui-nav {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.7rem;
+  border-radius: 0.8rem;
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: rgba(245, 240, 232, 0.74);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ui-nav:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(245, 240, 232, 0.96);
+}
+
+.ui-nav.active {
+  background: rgba(232, 117, 10, 0.16);
+  color: var(--amber-glow);
+  border-color: rgba(232, 117, 10, 0.28);
+}
+
+.ui-nav .ui-nav-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+  width: 1.4rem;
+  text-align: center;
+}
+
+/* ── Segmented control (filters) ── */
+.ui-seg {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.3rem;
+  background: var(--paper-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  flex-wrap: wrap;
+}
+
+.ui-seg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ui-seg-item:hover {
+  color: var(--ink);
+}
+
+.ui-seg-item.active {
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(26, 21, 16, 0.12);
+}
+
+.ui-seg-count {
+  display: inline-flex;
+  min-width: 1.4rem;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(26, 21, 16, 0.08);
+  color: var(--ink-soft);
+}
+
+.ui-seg-item.active .ui-seg-count {
+  background: rgba(232, 117, 10, 0.16);
+  color: var(--amber-dim);
+}
+
+/* ── Status badge ── */
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ui-badge::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.ui-badge.active {
+  background: rgba(46, 125, 82, 0.12);
+  color: var(--green);
+}
+
+.ui-badge.pending {
+  background: rgba(232, 117, 10, 0.13);
+  color: var(--amber-dim);
+}
+
+.ui-badge.pending::before {
+  animation: ui-pulse 1.8s ease-in-out infinite;
+}
+
+.ui-badge.rejected {
+  background: rgba(201, 64, 64, 0.12);
+  color: var(--red);
+}
+
+@keyframes ui-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* ── Count pill on nav ── */
+.ui-pill {
+  margin-left: auto;
+  display: inline-flex;
+  min-width: 1.4rem;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: var(--amber);
+  color: white;
+}
+
+/* ── Skeleton loader ── */
+.ui-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(26, 21, 16, 0.06);
+  border-radius: 0.6rem;
+}
+
+.ui-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  animation: ui-shimmer 1.4s infinite;
+}
+
+@keyframes ui-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* ── Toasts ── */
+.ui-toast-wrap {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: min(92vw, 24rem);
+}
+
+.ui-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  border-radius: 0.9rem;
+  padding: 0.85rem 1rem;
+  background: white;
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 36px rgba(26, 21, 16, 0.18);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--ink);
+  animation: ui-toast-in 0.25s ease;
+}
+
+@keyframes ui-toast-in {
+  from { opacity: 0; transform: translateX(1rem); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.ui-toast-icon {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.ui-toast.success { border-left: 4px solid var(--green); }
+.ui-toast.error { border-left: 4px solid var(--red); }
+.ui-toast.info { border-left: 4px solid var(--teal); }
+
+/* ── Modal ── */
+.ui-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(26, 21, 16, 0.45);
+  backdrop-filter: blur(4px);
+  animation: ui-fade 0.2s ease;
+}
+
+.ui-modal {
+  width: min(100%, 28rem);
+  border-radius: 1.4rem;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px rgba(26, 21, 16, 0.3);
+  padding: 1.75rem;
+  animation: ui-modal-in 0.22s ease;
+}
+
+@keyframes ui-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ui-modal-in {
+  from { opacity: 0; transform: translateY(0.75rem) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Data row hover ── */
+.ui-row {
+  transition: background 0.12s ease;
+}
+
+.ui-row:hover {
+  background: rgba(232, 117, 10, 0.04);
+}
