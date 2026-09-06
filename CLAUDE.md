@@ -24,7 +24,9 @@ npm run lint     # ESLint
 | `/api/diagnostic` | GET check status · POST guardar resultados |
 | `/dashboard` | Dashboard personal de concientización (empleado) |
 | `/api/dashboard` | GET — agrega diagnostic + quiz + chatbot usage + recomendaciones IA |
-| `/api/quiz` | POST — guarda resultado del post-test |
+| `/api/quiz` | POST — guarda resultado de evaluación (post-test/recurrente) en `quiz_results` + `evaluation_attempts` + marca preguntas vistas (HU19/HU20) |
+| `/api/posttest` | GET — arma evaluación de 16 preguntas (2×8 temas) desde banco fijo `posttest_questions`, excluyendo preguntas ya vistas (HU19/HU20) |
+| `/api/recurring-test/status` | GET — indica si corresponde evaluación recurrente (≥5 días desde la última; bloqueante para employee, omitible para admin) (HU20) |
 | `/api/chat` | POST — inferencia RAG + Groq |
 | `/api/admin/employees` | GET/PATCH — CRUD empleados |
 | `/api/documents/upload-and-process` | POST — pipeline ingesta documentos |
@@ -57,7 +59,10 @@ GROQ_API_KEY      # Groq — llama-3.1-8b-instant
 
 ## Supabase
 - `diagnostic_results` — resultados del diagnóstico inicial (score, topics_performance, completed_at)
-- `quiz_results` — resultados del post-test en /chat (score, total, taken_at)
+- `quiz_results` — resultados de evaluaciones en /chat (score, total, taken_at) — legacy, se mantiene con doble escritura
+- `posttest_questions` — banco fijo de 200 preguntas para post-test/recurrentes (25 por tema × 8 temas) — HU19. SQL en `docs/sql/posttest_questions.sql` + seed en `docs/sql/posttest_questions_seed.sql`
+- `evaluation_attempts` — intentos de evaluación con test_type (posttest/recurrente) y topics_performance por tema — HU20. SQL en `docs/sql/evaluation_attempts.sql`
+- `seen_questions` — preguntas del banco ya respondidas por usuario (anti-repetición, ciclo se reinicia por tema al agotarse) — HU20
 - `conversations` — historial de conversaciones por usuario
 - `messages` — mensajes dentro de cada conversación
 - `documents` — documentos subidos por admin

@@ -36,10 +36,20 @@ type ModuleKey = "chat" | "evaluations";
 type ToastTone = "success" | "error" | "info";
 type Toast = { id: number; tone: ToastTone; msg: string };
 type QuizQuestion = {
+  id?: string;
+  topicKey?: string;
   question: string;
   options: string[];
   correctIndex: number;
   explanation: string;
+};
+type TestType = "posttest" | "recurrente";
+type RecurringStatus = {
+  due: boolean;
+  blocking?: boolean;
+  daysSince?: number;
+  nextDueAt?: string;
+  reason?: string;
 };
 type KnowledgeLevel = "bajo" | "medio" | "alto";
 type ProgressStatus = "pendiente" | "en_progreso" | "completado";
@@ -135,6 +145,78 @@ const quizQuestions: QuizQuestion[] = [
     correctIndex: 2,
     explanation:
       "Una contraseña larga y aleatoria es mucho más resistente que combinaciones predecibles.",
+  },
+  {
+    question: "¿Cómo deben gestionarse los accesos de un empleado que deja la empresa?",
+    options: [
+      "Dejar la cuenta activa por si regresa",
+      "Revocar accesos y cambiar credenciales compartidas de inmediato",
+      "Avisarle que ya no puede entrar, sin más cambios",
+      "Esperar al cierre de mes para desactivarla",
+    ],
+    correctIndex: 1,
+    explanation:
+      "Revocar accesos apenas termina la relación laboral evita que credenciales antiguas se usen para acceder sin autorización.",
+  },
+  {
+    question: "Según la Ley 29733 de Protección de Datos Personales, ¿qué debe hacer una MYPE con los datos de sus clientes?",
+    options: [
+      "Compartirlos libremente con cualquier proveedor",
+      "Guardarlos indefinidamente sin control",
+      "Tratarlos con consentimiento del titular y medidas de seguridad adecuadas",
+      "Publicarlos para fines de marketing sin aviso",
+    ],
+    correctIndex: 2,
+    explanation:
+      "La ley exige consentimiento informado y medidas de seguridad razonables para proteger los datos personales de clientes y empleados.",
+  },
+  {
+    question: "¿Cuál es una buena práctica para la red WiFi de una MYPE?",
+    options: [
+      "Usar la misma red para clientes y para sistemas administrativos",
+      "Separar la red de invitados de la red interna del negocio",
+      "Dejar la red sin contraseña para mayor comodidad",
+      "Compartir la contraseña del WiFi en redes sociales",
+    ],
+    correctIndex: 1,
+    explanation:
+      "Separar la red de invitados de la red interna evita que un dispositivo externo comprometido acceda a sistemas críticos del negocio.",
+  },
+  {
+    question: "Un cliente reporta que recibió un mensaje pidiendo pagar por WhatsApp a un número distinto al oficial de la empresa. ¿Qué tipo de riesgo es este?",
+    options: [
+      "Un error de facturación normal",
+      "Fraude por suplantación de identidad (phishing dirigido al cliente)",
+      "Un problema del banco del cliente",
+      "Una promoción legítima de la empresa",
+    ],
+    correctIndex: 1,
+    explanation:
+      "Los atacantes suplantan canales de venta digitales para engañar a los clientes; hay que alertar y usar solo canales oficiales verificados.",
+  },
+  {
+    question: "¿Qué elemento agrega una capa extra de seguridad además de la contraseña?",
+    options: [
+      "Usar la misma contraseña en todas las cuentas",
+      "La autenticación de doble factor (2FA)",
+      "Compartir la contraseña solo con compañeros de confianza",
+      "Cambiar la contraseña una vez al año",
+    ],
+    correctIndex: 1,
+    explanation:
+      "El doble factor de autenticación exige una segunda verificación, protegiendo la cuenta incluso si la contraseña es robada.",
+  },
+  {
+    question: "Recibes una llamada de alguien que dice ser del área de soporte técnico y te pide tu contraseña para 'solucionar un problema'. ¿Qué haces?",
+    options: [
+      "Dar la contraseña porque dice ser de soporte",
+      "Colgar y verificar la solicitud por un canal oficial de la empresa",
+      "Dar una contraseña parecida pero no la real",
+      "Pedirle que llame más tarde y dársela entonces",
+    ],
+    correctIndex: 1,
+    explanation:
+      "El soporte técnico legítimo nunca pide contraseñas por teléfono; esto es vishing, una técnica de ingeniería social.",
   },
 ];
 
@@ -260,7 +342,9 @@ function ChatPageInner() {
   const [generatedQuestions, setGeneratedQuestions] = useState<QuizQuestion[] | null>(null);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const quizFetchedRef = useRef(false);
-  const [usedCompanyDocs, setUsedCompanyDocs] = useState(false);
+  const [testType, setTestType] = useState<TestType>("posttest");
+  const [recurringStatus, setRecurringStatus] = useState<RecurringStatus | null>(null);
+  const [reminderDismissed, setReminderDismissed] = useState(false);
 
   const [learningPath, setLearningPath] = useState<LearningPathResponse | null>(null);
   const [learningLoading, setLearningLoading] = useState(true);
@@ -321,6 +405,28 @@ function ChatPageInner() {
   }, [userId]);
 
   useEffect(() => {
+    if (!userId) return;
+    void (async () => {
+      try {
+        const res = await fetch("/api/recurring-test/status");
+        if (!res.ok) return;
+        const status = (await res.json()) as RecurringStatus;
+        setRecurringStatus(status);
+        if (status.due && status.blocking) {
+          setActiveModule("evaluations");
+        }
+      } catch {}
+    })();
+  }, [userId]);
+
+  const recurringBlocked = Boolean(
+    recurringStatus?.due && recurringStatus.blocking && !quizSubmitted
+  );
+  const recurringReminder = Boolean(
+    recurringStatus?.due && !recurringStatus.blocking && !quizSubmitted && !reminderDismissed
+  );
+
+  useEffect(() => {
     if (!activeId) return;
 
     void (async () => {
@@ -349,13 +455,13 @@ function ChatPageInner() {
         const res = await fetch("/api/posttest");
         const json = (await res.json()) as {
           questions?: QuizQuestion[];
-          usedCompanyDocs?: boolean;
+          testType?: TestType;
           error?: string;
         };
         if (json.questions && json.questions.length > 0) {
           setGeneratedQuestions(json.questions);
           setQuizAnswers(Array.from({ length: json.questions.length }, () => -1));
-          setUsedCompanyDocs(json.usedCompanyDocs ?? false);
+          setTestType(json.testType ?? "posttest");
         }
       } catch {}
       setIsGeneratingQuiz(false);
@@ -558,10 +664,25 @@ function ChatPageInner() {
       (n, q, i) => n + (quizAnswers[i] === q.correctIndex ? 1 : 0),
       0
     );
+
+    const topicsPerformance: Record<string, { correct: number; total: number }> = {};
+    activeQuestions.forEach((q, i) => {
+      if (!q.topicKey) return;
+      if (!topicsPerformance[q.topicKey]) topicsPerformance[q.topicKey] = { correct: 0, total: 0 };
+      topicsPerformance[q.topicKey].total++;
+      if (quizAnswers[i] === q.correctIndex) topicsPerformance[q.topicKey].correct++;
+    });
+
     void fetch("/api/quiz", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ score, total: activeQuestions.length }),
+      body: JSON.stringify({
+        score,
+        total: activeQuestions.length,
+        testType,
+        topicsPerformance,
+        questionIds: activeQuestions.map((q) => q.id).filter(Boolean),
+      }),
     });
 
     // Escenario 4 — al superar el umbral, los temas en progreso pasan a completado.
@@ -587,7 +708,7 @@ function ChatPageInner() {
   );
 
   return (
-    <main className="app-shell grid min-h-screen grid-cols-1 bg-[var(--paper)] lg:grid-cols-[280px_1fr]">
+    <main className="app-shell grid h-screen grid-cols-1 overflow-hidden bg-[var(--paper)] lg:grid-cols-[280px_1fr]">
       <aside className="flex flex-col overflow-hidden border-r border-[rgba(212,204,188,0.18)] bg-[var(--ink)] text-[var(--paper)]">
         <div className="border-b border-white/10 px-5 py-6">
           <div className="mb-4 flex items-center gap-3">
@@ -606,7 +727,13 @@ function ChatPageInner() {
                 ? "bg-[rgba(232,117,10,0.16)] text-[var(--amber-glow)]"
                 : "text-[rgba(245,240,232,0.72)] hover:bg-white/6"
             }`}
-            onClick={() => setActiveModule("chat")}
+            onClick={() => {
+              if (recurringBlocked) {
+                toast("info", "Completa tu evaluación recurrente para seguir usando el chat.");
+                return;
+              }
+              setActiveModule("chat");
+            }}
           >
             <span>💬</span>
             <span>Chat de IA</span>
@@ -662,6 +789,10 @@ function ChatPageInner() {
                   <button
                     className="w-full text-left"
                     onClick={() => {
+                      if (recurringBlocked) {
+                        toast("info", "Completa tu evaluación recurrente para seguir usando el chat.");
+                        return;
+                      }
                       setActiveModule("chat");
                       setActiveId(conversation.id);
                     }}
@@ -722,7 +853,7 @@ function ChatPageInner() {
         </div>
       </aside>
 
-      <section className="relative flex min-h-screen flex-col overflow-hidden bg-[var(--paper)]">
+      <section className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[var(--paper)]">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(26,21,16,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(26,21,16,0.025)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
 
         <header className="relative z-10 flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] bg-[rgba(245,240,232,0.88)] px-6 py-4 backdrop-blur-xl">
@@ -758,6 +889,38 @@ function ChatPageInner() {
             ) : null}
           </div>
         </header>
+
+        {recurringBlocked && (
+          <div className="relative z-10 border-b border-[rgba(201,64,64,0.28)] bg-[rgba(201,64,64,0.08)] px-6 py-3">
+            <p className="text-sm font-semibold text-[var(--red)]">
+              Evaluación recurrente obligatoria — han pasado {recurringStatus?.daysSince ?? 5}+ días
+              desde tu última evaluación. Complétala para seguir usando el chat.
+            </p>
+          </div>
+        )}
+
+        {recurringReminder && (
+          <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b border-[rgba(232,117,10,0.28)] bg-[rgba(232,117,10,0.08)] px-6 py-3">
+            <p className="text-sm font-semibold text-[var(--amber-dim)]">
+              Te corresponde una evaluación recurrente ({recurringStatus?.daysSince ?? 5} días desde
+              la última). Puedes rendirla ahora u omitirla por esta sesión.
+            </p>
+            <div className="flex gap-2">
+              <button
+                className="rounded-lg bg-[var(--amber)] px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+                onClick={() => setActiveModule("evaluations")}
+              >
+                Rendir ahora
+              </button>
+              <button
+                className="ghost-button !px-3 !py-1.5 !text-xs"
+                onClick={() => setReminderDismissed(true)}
+              >
+                Omitir
+              </button>
+            </div>
+          </div>
+        )}
 
         {activeModule === "chat" ? (
           <>
@@ -1035,27 +1198,20 @@ function ChatPageInner() {
                 <div className="rounded-[1.6rem] border border-[var(--border)] bg-white/76 px-6 py-6 shadow-[0_12px_28px_rgba(26,21,16,0.08)]">
                   <p className="eyebrow">Evaluación guiada</p>
                   <h2 className="display-title mt-3 text-5xl font-black leading-none">
-                    Post-test de ciberseguridad
+                    {testType === "recurrente"
+                      ? "Evaluación recurrente"
+                      : "Post-test de ciberseguridad"}
                   </h2>
                   <p className="mt-4 text-lg leading-8 text-[var(--ink-soft)]">
-                    Evaluación final personalizada. Mide lo aprendido y actualiza tu progreso en el dashboard.
+                    {testType === "recurrente"
+                      ? "Evaluación periódica cada 5 días. Mide tu progreso continuo y detecta áreas críticas."
+                      : "Evaluación final personalizada. Mide lo aprendido y actualiza tu progreso en el dashboard."}
                   </p>
-                  {!isGeneratingQuiz && (
+                  {!isGeneratingQuiz && generatedQuestions && (
                     <div className="mt-3 flex gap-2">
-                      {usedCompanyDocs ? (
-                        <span className="rounded-full border border-[rgba(10,126,126,0.2)] bg-[rgba(10,126,126,0.08)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--teal)]">
-                          IA · documentos empresa
-                        </span>
-                      ) : (
-                        <span className="rounded-full border border-[var(--border)] bg-[var(--paper-3)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                          IA · base general
-                        </span>
-                      )}
-                      {generatedQuestions && (
-                        <span className="rounded-full border border-[var(--border)] bg-[var(--paper-3)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--ink-soft)]">
-                          {activeQuestions.length} preguntas generadas
-                        </span>
-                      )}
+                      <span className="rounded-full border border-[var(--border)] bg-[var(--paper-3)] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                        {activeQuestions.length} preguntas
+                      </span>
                     </div>
                   )}
 

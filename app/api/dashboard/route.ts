@@ -25,6 +25,16 @@ type QuizRow = {
   taken_at: string;
 };
 
+type AttemptRow = {
+  test_type: "posttest" | "recurrente";
+  score: number;
+  total: number;
+  topics_performance: TopicPerformance;
+  taken_at: string;
+};
+
+const RECURRENCE_DAYS = 5;
+
 type MessageRow = { created_at: string };
 type ConversationRow = { id: string };
 
@@ -89,7 +99,7 @@ export async function GET() {
     const admin = supabaseAdmin();
     const userId = user.id;
 
-    const [diagRes, quizRes, convsRes] = await Promise.all([
+    const [diagRes, quizHistoryRes, attemptsRes, convsRes] = await Promise.all([
       admin
         .from("diagnostic_results")
         .select("score, total, topics_performance, completed_at")
@@ -101,9 +111,12 @@ export async function GET() {
         .from("quiz_results")
         .select("score, total, taken_at")
         .eq("user_id", userId)
-        .order("taken_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+        .order("taken_at", { ascending: false }),
+      admin
+        .from("evaluation_attempts")
+        .select("test_type, score, total, topics_performance, taken_at")
+        .eq("user_id", userId)
+        .order("taken_at", { ascending: false }),
       admin
         .from("conversations")
         .select("id")
@@ -111,7 +124,9 @@ export async function GET() {
     ]);
 
     const diagnostic = diagRes.data as DiagnosticRow | null;
-    const quiz = quizRes.data as QuizRow | null;
+    const quizHistory = (quizHistoryRes.data ?? []) as QuizRow[];
+    const attempts = (attemptsRes.data ?? []) as AttemptRow[];
+    const quiz = quizHistory[0] ?? null;
     const conversations = (convsRes.data ?? []) as ConversationRow[];
     const convIds = conversations.map((c) => c.id);
 
@@ -156,13 +171,33 @@ export async function GET() {
 
     const topicsPerformance = (diagnostic?.topics_performance ?? {}) as TopicPerformance;
 
-    const strongTopics = Object.entries(topicsPerformance)
+    // Áreas críticas: evaluación más reciente con detalle por tema (HU20),
+    // con fallback al diagnóstico inicial.
+    const latestWithTopics = attempts.find(
+      (a) => Object.keys(a.topics_performance ?? {}).length > 0
+    );
+    const currentTopicsPerformance = latestWithTopics?.topics_performance ?? topicsPerformance;
+
+    const strongTopics = Object.entries(currentTopicsPerformance)
       .filter(([, v]) => v.correct === v.total)
       .map(([k]) => TOPIC_LABELS[k] ?? k);
 
-    const weakTopics = Object.entries(topicsPerformance)
+    const weakTopics = Object.entries(currentTopicsPerformance)
       .filter(([, v]) => v.correct < v.total)
       .map(([k]) => TOPIC_LABELS[k] ?? k);
+
+    const lastEvalAt = attempts[0]?.taken_at ?? quiz?.taken_at ?? null;
+    const nextEvaluation = lastEvalAt
+      ? {
+          lastCompletedAt: lastEvalAt,
+          nextDueAt: new Date(
+            new Date(lastEvalAt).getTime() + RECURRENCE_DAYS * 86400000
+          ).toISOString(),
+          due:
+            Date.now() - new Date(lastEvalAt).getTime() >=
+            RECURRENCE_DAYS * 86400000,
+        }
+      : null;
 
     const groqKey = process.env.GROQ_API_KEY ?? "";
     const recommendations = await generateRecommendations(weakTopics, strongTopics, groqKey);
@@ -185,6 +220,18 @@ export async function GET() {
             takenAt: quiz.taken_at,
           }
         : null,
+      postTestHistory: quizHistory.map((q) => {
+        const attempt = attempts.find((a) => a.taken_at === q.taken_at);
+        return {
+          score: q.score,
+          total: q.total,
+          pct: Math.round((q.score / q.total) * 100),
+          takenAt: q.taken_at,
+          testType: attempt?.test_type ?? "posttest",
+        };
+      }),
+      currentTopicsPerformance,
+      nextEvaluation,
       improvement,
       riskLevel: risk,
       chatbotUsage: {

@@ -41,6 +41,15 @@ type OrgData = {
   riskDistribution: { low: number; medium: number; high: number };
   chatbotUsage: { totalQueries: number };
   priorityEmployees: PriorityEmployee[];
+  recurring?: {
+    avgLatestPct: number | null;
+    avgDeltaPP: number | null;
+    employeesUpToDate: number;
+    employeesOverdue: number;
+    employeesNotStarted: number;
+    upToDateRate: number | null;
+    criticalTopics: TopicAvg[];
+  };
   error?: string;
 };
 
@@ -49,6 +58,26 @@ const RISK = {
   medium: { label: "Medio", dot: "🟡", color: "text-[var(--amber-dim)]", bg: "bg-[rgba(232,117,10,0.08)]", border: "border-[rgba(232,117,10,0.25)]" },
   high:   { label: "Alto",  dot: "🔴", color: "text-[var(--red)]",       bg: "bg-[rgba(201,64,64,0.08)]",  border: "border-[rgba(201,64,64,0.25)]" },
 };
+
+async function downloadOrgCsv(type: "summary" | "employees") {
+  try {
+    const res = await fetch(`/api/org-dashboard/export?type=${type}`);
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      alert(json.error ?? "No fue posible exportar los datos.");
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = res.headers.get("X-Filename") ?? `cyberchat-export-${type}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    alert("No fue posible exportar los datos.");
+  }
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-PE", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
@@ -266,12 +295,14 @@ export default function OrgDashboardPage() {
   const supabase = useMemo(() => supabaseBrowser(), []);
   const [data, setData] = useState<OrgData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
     void (async () => {
       const { data: authData } = await supabase.auth.getUser();
       if (!authData.user) { router.push("/login"); return; }
       if (authData.user.user_metadata?.role !== "admin") { router.push("/chat"); return; }
+      setEmail(authData.user.email ?? "");
 
       const res = await fetch("/api/org-dashboard");
       const json = (await res.json()) as OrgData;
@@ -279,6 +310,11 @@ export default function OrgDashboardPage() {
       setIsLoading(false);
     })();
   }, [router, supabase]);
+
+  async function logout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
 
   if (isLoading) {
     return (
@@ -306,32 +342,118 @@ export default function OrgDashboardPage() {
   const highRisk = riskDistribution.high;
 
   return (
-    <main className="min-h-screen bg-[var(--paper)]">
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(26,21,16,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(26,21,16,0.025)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
-
-      <header className="relative z-10 border-b border-[var(--border)] bg-[rgba(245,240,232,0.88)] px-6 py-4 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+    <main className="app-shell grid h-screen grid-cols-1 overflow-hidden bg-[var(--paper)] lg:grid-cols-[280px_1fr]">
+      <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[var(--ink)] text-[var(--paper)]">
+        <div className="border-b border-white/10 px-5 py-5">
           <div className="flex items-center gap-3">
-            <div className="brand-mark !h-10 !w-10 !rounded-full !text-xs">C</div>
+            <div className="brand-mark !h-10 !w-10 !rounded-xl text-sm">C</div>
             <div>
-              <p className="display-title text-xl font-bold">Dashboard organizacional</p>
-              <p className="font-mono text-[10px] tracking-[0.18em] text-[var(--ink-soft)]">
-                RUC {ruc} · CONCIENTIZACIÓN CIBERSEGURIDAD
-              </p>
+              <div className="display-title text-2xl font-black leading-none">CyberChat</div>
+              <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[rgba(245,240,232,0.5)]">
+                Panel Admin
+              </div>
             </div>
           </div>
-          <div className="flex gap-3">
-            <button className="ghost-button !px-4 !py-2 !text-xs" onClick={() => router.push("/manage")}>
-              ← Gestión
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-3 py-4">
+          <p className="px-2 pb-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[rgba(245,240,232,0.42)]">
+            Gestión
+          </p>
+          <div className="space-y-1">
+            <button className="ui-nav" onClick={() => router.push("/manage")}>
+              <span className="ui-nav-icon">📊</span>
+              <span>Resumen</span>
             </button>
-            <button className="ghost-button !px-4 !py-2 !text-xs" onClick={() => router.push("/chat")}>
-              Chat
+            <button className="ui-nav" onClick={() => router.push("/manage")}>
+              <span className="ui-nav-icon">👥</span>
+              <span>Empleados</span>
+            </button>
+          </div>
+
+          <p className="px-2 pb-2 pt-5 font-mono text-[10px] uppercase tracking-[0.18em] text-[rgba(245,240,232,0.42)]">
+            Otros módulos
+          </p>
+          <div className="space-y-1">
+            <button className="ui-nav active">
+              <span className="ui-nav-icon">📈</span>
+              <span>Dashboard org.</span>
+            </button>
+            <button className="ui-nav" onClick={() => router.push("/admin")}>
+              <span className="ui-nav-icon">📚</span>
+              <span>Documentos RAG</span>
+            </button>
+            <button className="ui-nav" onClick={() => router.push("/chat")}>
+              <span className="ui-nav-icon">💬</span>
+              <span>Ir al chat</span>
             </button>
           </div>
         </div>
-      </header>
 
-      <div className="relative z-10 mx-auto max-w-7xl space-y-6 px-6 py-8">
+        <div className="mt-auto px-4 pb-2">
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[rgba(245,240,232,0.42)]">
+              RUC administrado
+            </div>
+            <div className="mt-1.5 text-base font-semibold text-[rgba(245,240,232,0.92)]">
+              {ruc || "—"}
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-white/8 px-4 py-4">
+          <div className="mb-3 flex items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-[rgba(245,240,232,0.9)]">
+              {(email.charAt(0) || "A").toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium text-[rgba(245,240,232,0.88)]">
+                {email || "Admin"}
+              </div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-[rgba(245,240,232,0.5)]">
+                Administrador
+              </div>
+            </div>
+          </div>
+          <button
+            className="flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/6 px-3 py-2.5 text-sm font-semibold text-[rgba(245,240,232,0.72)] transition hover:bg-white/12 hover:text-[rgba(245,240,232,0.96)]"
+            onClick={() => void logout()}
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </aside>
+
+      <section className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[var(--paper)]">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(26,21,16,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(26,21,16,0.025)_1px,transparent_1px)] bg-[size:32px_32px]" />
+
+        <header className="relative z-10 border-b border-[var(--border)] bg-[rgba(245,240,232,0.88)] px-6 py-4 backdrop-blur-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="brand-mark !h-10 !w-10 !rounded-full !text-xs">C</div>
+              <div>
+                <p className="display-title text-xl font-bold">Dashboard organizacional</p>
+                <p className="font-mono text-[10px] tracking-[0.18em] text-[var(--ink-soft)]">
+                  RUC {ruc} · CONCIENTIZACIÓN CIBERSEGURIDAD
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {!data?.empty && (
+                <>
+                  <button className="ghost-button !px-4 !py-2 !text-xs" onClick={() => void downloadOrgCsv("summary")}>
+                    ⬇ Exportar resumen
+                  </button>
+                  <button className="ghost-button !px-4 !py-2 !text-xs" onClick={() => void downloadOrgCsv("employees")}>
+                    ⬇ Exportar empleados
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <div className="relative z-10 flex-1 overflow-y-auto"><div className="mx-auto max-w-7xl space-y-6 px-6 py-8">
 
         {/* Sin datos */}
         {data.empty && (
@@ -488,6 +610,81 @@ export default function OrgDashboardPage() {
               </div>
             </div>
 
+            {/* HU20 — Evaluación recurrente */}
+            {data.recurring && (
+              <div className="rounded-[1.4rem] border border-[var(--border)] bg-white/80 px-6 py-6 shadow-[0_10px_24px_rgba(26,21,16,0.06)]">
+                <p className="eyebrow">Evaluación recurrente (cada 5 días)</p>
+                <p className="mt-1 text-sm text-[var(--ink-soft)]">
+                  Seguimiento continuo de concientización y áreas críticas de la organización.
+                </p>
+
+                <div className="mt-5 grid gap-4 md:grid-cols-4">
+                  <KpiCard
+                    label="Promedio último test"
+                    value={data.recurring.avgLatestPct !== null ? `${data.recurring.avgLatestPct}%` : "--"}
+                    sub="Evaluaciones recurrentes"
+                    colorClass={
+                      data.recurring.avgLatestPct !== null && data.recurring.avgLatestPct >= 75
+                        ? "text-[var(--green)]"
+                        : "text-[var(--amber-dim)]"
+                    }
+                  />
+                  <KpiCard
+                    label="Tendencia"
+                    value={
+                      data.recurring.avgDeltaPP !== null
+                        ? `${data.recurring.avgDeltaPP > 0 ? "+" : ""}${data.recurring.avgDeltaPP}pp`
+                        : "--"
+                    }
+                    sub="vs. intento anterior"
+                    colorClass={
+                      data.recurring.avgDeltaPP !== null && data.recurring.avgDeltaPP >= 0
+                        ? "text-[var(--green)]"
+                        : "text-[var(--red)]"
+                    }
+                  />
+                  <KpiCard
+                    label="Al día"
+                    value={data.recurring.upToDateRate !== null ? `${data.recurring.upToDateRate}%` : "--"}
+                    sub={`${data.recurring.employeesUpToDate} al día · ${data.recurring.employeesOverdue} vencidas`}
+                    colorClass="text-[var(--teal-dim)]"
+                  />
+                  <KpiCard
+                    label="Sin iniciar ciclo"
+                    value={String(data.recurring.employeesNotStarted)}
+                    sub="Post-test pendiente"
+                    colorClass="text-[var(--ink-soft)]"
+                  />
+                </div>
+
+                {data.recurring.criticalTopics.length > 0 && (
+                  <div className="mt-5">
+                    <p className="text-sm font-semibold text-[var(--ink)]">
+                      Áreas críticas actuales (última evaluación por empleado)
+                    </p>
+                    <div className="mt-3 grid gap-3 md:grid-cols-3">
+                      {data.recurring.criticalTopics.map((t, i) => (
+                        <div
+                          key={t.key}
+                          className="rounded-xl border border-[rgba(201,64,64,0.15)] bg-[rgba(201,64,64,0.04)] px-4 py-3"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--red)] font-mono text-[10px] font-bold text-white">
+                              {i + 1}
+                            </span>
+                            <span className="text-sm font-semibold text-[var(--ink)]">{t.label}</span>
+                          </div>
+                          <p className="mt-1 pl-8 font-mono text-[11px] text-[var(--red)]">
+                            {t.avgPct}% promedio · {t.count} empleado{t.count === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Tabla de atención prioritaria */}
             <div className="rounded-[1.4rem] border border-[var(--border)] bg-white/80 shadow-[0_10px_24px_rgba(26,21,16,0.06)]">
               <div className="border-b border-[var(--border)] px-6 py-5">
@@ -557,7 +754,9 @@ export default function OrgDashboardPage() {
             </div>
           </>
         )}
-      </div>
+        </div>
+        </div>
+      </section>
     </main>
   );
 }
