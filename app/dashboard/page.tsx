@@ -21,6 +21,19 @@ type DashboardData = {
     pct: number;
     takenAt: string;
   } | null;
+  postTestHistory: {
+    score: number;
+    total: number;
+    pct: number;
+    takenAt: string;
+    testType?: "posttest" | "recurrente";
+  }[];
+  currentTopicsPerformance: Record<string, TopicPerf>;
+  nextEvaluation: {
+    lastCompletedAt: string;
+    nextDueAt: string;
+    due: boolean;
+  } | null;
   improvement: number | null;
   riskLevel: "low" | "medium" | "high";
   chatbotUsage: {
@@ -107,6 +120,8 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [recommendations, setRecommendations] = useState<RecommendationCard[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
 
   useEffect(() => {
     void (async () => {
@@ -115,6 +130,8 @@ export default function DashboardPage() {
         router.push("/login");
         return;
       }
+      setEmail(authData.user.email ?? "");
+      setRole(typeof authData.user.user_metadata?.role === "string" ? authData.user.user_metadata.role : "");
 
       const res = await fetch("/api/dashboard");
       const json = (await res.json()) as DashboardData;
@@ -132,6 +149,11 @@ export default function DashboardPage() {
       }
     })();
   }, [router, supabase]);
+
+  async function logout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
 
   if (isLoading) {
     return (
@@ -161,30 +183,81 @@ export default function DashboardPage() {
   const hasDiagnostic = Boolean(data.diagnostic);
 
   return (
-    <main className="min-h-screen bg-[var(--paper)]">
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(26,21,16,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(26,21,16,0.025)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
-
-      {/* Header */}
-      <header className="relative z-10 border-b border-[var(--border)] bg-[rgba(245,240,232,0.88)] px-6 py-4 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
+    <main className="app-shell grid h-screen grid-cols-1 overflow-hidden bg-[var(--paper)] lg:grid-cols-[280px_1fr]">
+      <aside className="flex flex-col overflow-hidden border-r border-[rgba(212,204,188,0.18)] bg-[var(--ink)] text-[var(--paper)]">
+        <div className="border-b border-white/10 px-5 py-6">
           <div className="flex items-center gap-3">
-            <div className="brand-mark !h-10 !w-10 !rounded-full !text-xs">C</div>
+            <div className="brand-mark !h-11 !w-11 !rounded-2xl">C</div>
             <div>
-              <p className="display-title text-xl font-bold">Dashboard personal</p>
-              <p className="font-mono text-[10px] tracking-[0.18em] text-[var(--ink-soft)]">
-                PROGRESO EN CIBERSEGURIDAD
-              </p>
+              <div className="display-title text-3xl font-black leading-none">CyberChat</div>
+              <div className="mt-1 text-sm text-[rgba(245,240,232,0.55)]">Protección MYPE</div>
             </div>
           </div>
-          <div className="flex gap-3">
-            <button className="ghost-button !px-4 !py-2 !text-xs" onClick={() => router.push("/chat")}>
-              ← Volver al chat
-            </button>
-          </div>
         </div>
-      </header>
 
-      <div className="relative z-10 mx-auto max-w-6xl space-y-6 px-6 py-8">
+        <div className="flex-1 overflow-y-auto border-b border-white/8 px-4 py-4">
+          <button
+            className="mb-2 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold text-[rgba(245,240,232,0.72)] transition hover:bg-white/6"
+            onClick={() => router.push("/chat")}
+          >
+            <span>💬</span>
+            <span>Chat de IA</span>
+          </button>
+          <button
+            className="mb-2 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold bg-[rgba(232,117,10,0.16)] text-[var(--amber-glow)]"
+            onClick={() => router.push("/dashboard")}
+          >
+            <span>📊</span>
+            <span>Mi Dashboard</span>
+          </button>
+          {role === "admin" ? (
+            <button
+              className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold text-[rgba(245,240,232,0.72)] transition hover:bg-white/6"
+              onClick={() => router.push("/manage")}
+            >
+              <span>↩</span>
+              <span>Volver a gestión</span>
+            </button>
+          ) : null}
+        </div>
+
+        <div className="border-t border-white/8 px-5 py-4">
+          <div className="rounded-xl bg-white/5 px-4 py-3">
+            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[rgba(245,240,232,0.36)]">
+              Usuario
+            </div>
+            <div className="mt-2 text-sm text-[rgba(245,240,232,0.76)]">{email || "sesión activa"}</div>
+          </div>
+          <button className="ghost-button mt-3 w-full !rounded-xl !py-3 !text-xs" onClick={() => void logout()}>
+            Salir
+          </button>
+        </div>
+      </aside>
+
+      <section className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[var(--paper)]">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(26,21,16,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(26,21,16,0.025)_1px,transparent_1px)] bg-[size:32px_32px]" />
+
+        {/* Header */}
+        <header className="relative z-10 border-b border-[var(--border)] bg-[rgba(245,240,232,0.88)] px-6 py-4 backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="brand-mark !h-10 !w-10 !rounded-full !text-xs">C</div>
+              <div>
+                <p className="display-title text-xl font-bold">Dashboard personal</p>
+                <p className="font-mono text-[10px] tracking-[0.18em] text-[var(--ink-soft)]">
+                  PROGRESO EN CIBERSEGURIDAD
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button className="ghost-button !px-4 !py-2 !text-xs" onClick={() => router.push("/chat")}>
+                ← Volver al chat
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="relative z-10 flex-1 overflow-y-auto"><div className="mx-auto max-w-6xl space-y-6 px-6 py-8">
 
         {/* Sin diagnóstico */}
         {!hasDiagnostic && (
@@ -290,6 +363,63 @@ export default function DashboardPage() {
                     Evaluaciones
                   </button>{" "}
                   del chat.
+                </div>
+              )}
+
+              {data.postTestHistory.length > 1 && (
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-[var(--ink)]">
+                    Historial de evaluaciones
+                  </p>
+                  <ul className="space-y-1.5">
+                    {data.postTestHistory.map((h, i) => (
+                      <li
+                        key={`${h.takenAt}-${i}`}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs"
+                      >
+                        <span className="font-mono text-[var(--ink-soft)]">
+                          {formatDate(h.takenAt)}
+                        </span>
+                        <span className="rounded-full border border-[var(--border)] bg-[var(--paper-3)] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--ink-soft)]">
+                          {h.testType === "recurrente" ? "Recurrente" : "Post-test"}
+                        </span>
+                        <span className="font-mono font-semibold text-[var(--teal-dim)]">
+                          {h.score}/{h.total} ({h.pct}%)
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {data.nextEvaluation && (
+                <div
+                  className={`rounded-xl border px-4 py-3 text-sm ${
+                    data.nextEvaluation.due
+                      ? "border-[rgba(201,64,64,0.28)] bg-[rgba(201,64,64,0.06)] text-[var(--red)]"
+                      : "border-[var(--border)] bg-[var(--paper-3)] text-[var(--ink-soft)]"
+                  }`}
+                >
+                  {data.nextEvaluation.due ? (
+                    <>
+                      <span className="font-semibold">Evaluación recurrente pendiente</span> — ríndela
+                      en el módulo{" "}
+                      <button
+                        className="font-semibold underline"
+                        onClick={() => router.push("/chat")}
+                      >
+                        Evaluaciones
+                      </button>{" "}
+                      del chat.
+                    </>
+                  ) : (
+                    <>
+                      Próxima evaluación recurrente:{" "}
+                      <span className="font-semibold text-[var(--ink)]">
+                        {formatDate(data.nextEvaluation.nextDueAt)}
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -463,7 +593,9 @@ export default function DashboardPage() {
             ← Volver al chat
           </button>
         </div>
-      </div>
+        </div>
+        </div>
+      </section>
     </main>
   );
 }

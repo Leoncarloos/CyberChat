@@ -218,3 +218,353 @@
 - [ ] El componente es accesible (WCAG AA mínimo).
 - [ ] Se han escrito pruebas unitarias para el componente y pruebas de integración para el endpoint.
 - [ ] El equipo de QA validó todos los escenarios de aceptación en ambiente de staging.
+
+
+
+# Historia de Usuario — HU18
+
+---
+
+## Información General
+
+| Campo                    | Detalle                                                        |
+|--------------------------|-----------------------------------------------------------------|
+| **Código**               | HU18                                                             |
+| **Nombre**               | Exportación CSV de resultados organizacionales y por empleado   |
+| **Usuario involucrado**  | Administrador del sistema                                       |
+| **Prioridad**            | Media                                                            |
+| **Riesgo de desarrollo** | Bajo                                                             |
+| **Puntos estimados**     | 3                                                                |
+| **Puntos reales**        | —                                                                |
+| **Recurso responsable**  | Development Team                                                 |
+| **Iteración asignada**   | Sprint 5                                                          |
+
+---
+
+## Descripción
+
+**Como** administrador de la plataforma,  
+**quiero** descargar en formato CSV los resultados organizacionales agregados y el detalle de resultados por cada empleado de mi organización,  
+**para** analizar, reportar o auditar la información de concientización en ciberseguridad fuera de la plataforma, sin exponer datos de otras organizaciones.
+
+---
+
+## Criterios de Aceptación
+
+### Escenario 1 — Botón visible solo para admin en org-dashboard
+
+**Dado que** un administrador con RUC configurado accede a `/org-dashboard`,  
+**cuando** la vista carga correctamente,  
+**entonces** el sistema muestra un botón "Exportar CSV" (o dos botones: "Exportar resumen organizacional" y "Exportar por empleado") visible únicamente para rol `admin`.
+
+---
+
+### Escenario 2 — Descarga de resultados organizacionales agregados
+
+**Dado que** el administrador hace clic en "Exportar resumen organizacional",  
+**cuando** el sistema procesa la solicitud,  
+**entonces** se descarga un archivo `.csv` con las métricas agregadas de su organización (totales de empleados, tasa de completitud, promedio por tema, etc.), delimitado por RUC del administrador autenticado.
+
+---
+
+### Escenario 3 — Descarga de resultados por empleado
+
+**Dado que** el administrador hace clic en "Exportar por empleado",  
+**cuando** el sistema procesa la solicitud,  
+**entonces** se descarga un archivo `.csv` con una fila por empleado de su organización (nombre, correo, estado, score diagnóstico, score quiz, nivel por tema, última actividad), incluyendo únicamente empleados con `ruc` igual al del administrador.
+
+---
+
+### Escenario 4 — Aislamiento entre organizaciones
+
+**Dado que** un administrador de la organización A solicita cualquiera de las exportaciones,  
+**cuando** el backend arma el CSV,  
+**entonces** solo se incluyen datos cuyo `ruc` coincide con el del administrador autenticado; ningún dato de otra organización aparece en el archivo, incluso si se manipula el request.
+
+---
+
+### Escenario 5 — Sin datos suficientes
+
+**Dado que** la organización no tiene empleados o resultados registrados,  
+**cuando** el administrador solicita la exportación,  
+**entonces** el sistema muestra un mensaje informativo ("No hay datos para exportar") y no genera un archivo vacío o corrupto.
+
+---
+
+### Escenario 6 — Acceso restringido por rol
+
+**Dado que** un usuario con rol `employee` intenta invocar el endpoint de exportación directamente (URL o request manual),  
+**cuando** el backend valida el rol,  
+**entonces** responde `403` y no se genera ni entrega ningún archivo.
+
+---
+
+## Restricciones
+
+- Los botones de exportación **solo son visibles en `/org-dashboard`** y solo para rol `admin`.
+- El CSV **no debe incluir empleados de otra organización**; el filtrado por `ruc` se valida en backend, nunca solo en frontend.
+- El CSV por empleado puede incluir datos identificables (nombre, correo) ya que es un reporte interno de la propia organización — a diferencia del resumen IA (HU17), que sí anonimiza.
+- La generación del CSV se hace en el servidor (API route), no se arma en el cliente a partir de datos ya cargados sin re-validar sesión/rol.
+- Codificación `UTF-8` con BOM para compatibilidad con Excel en caracteres especiales (tildes, ñ).
+
+---
+
+## Notas Técnicas
+
+- Nuevos endpoints sugeridos: `/api/org-dashboard/export` (resumen agregado) y `/api/org-dashboard/export-employees` (detalle por empleado), ambos `GET`, validando `supabaseServer().auth.getUser()` + `role === "admin"` + `ruc` como en `route.ts` (`app/api/org-dashboard/route.ts`).
+- Reutilizar `computeOrgMetrics(adminRuc)` de `lib/orgMetrics.ts` para el CSV agregado; para el detalle por empleado, reutilizar la misma query de empleados scopeada por `ruc` ya presente ahí.
+- Respuesta con headers `Content-Type: text/csv; charset=utf-8` y `Content-Disposition: attachment; filename="..."`.
+- Botones en `org-dashboard/page.tsx` disparan `fetch` + blob download, sin exponer lógica de agregación en cliente.
+
+---
+
+## Definición de Terminado (Definition of Done)
+
+- [ ] Botón(es) de exportación visibles solo en `/org-dashboard` para rol `admin`.
+- [ ] CSV organizacional agregado se descarga correctamente con datos scopeados por RUC.
+- [ ] CSV por empleado se descarga correctamente, un empleado por fila, scopeado por RUC.
+- [ ] Intento de acceso con rol `employee` responde `403` sin generar archivo.
+- [ ] Caso sin datos muestra mensaje informativo, sin archivo vacío.
+- [ ] Validado que no hay fuga de datos entre organizaciones (prueba con 2 RUCs distintos).
+- [ ] Pruebas de integración para ambos endpoints.
+- [ ] QA validó escenarios en staging.
+
+---
+
+# Historia de Usuario — HU19
+
+---
+
+## Información General
+
+| Campo                    | Detalle                                                                 |
+|--------------------------|--------------------------------------------------------------------------|
+| **Código**               | HU19                                                                      |
+| **Nombre**               | Banco de preguntas fijo para el POST TEST + historial de notas evolutivo |
+| **Usuario involucrado**  | Empleado (rinde el post-test) / Administrador (consulta evolución)       |
+| **Prioridad**            | Alta                                                                      |
+| **Riesgo de desarrollo** | Medio                                                                     |
+| **Puntos estimados**     | 8                                                                         |
+| **Puntos reales**        | —                                                                         |
+| **Recurso responsable**  | Development Team                                                         |
+| **Iteración asignada**   | Sprint 6                                                                  |
+
+---
+
+## Descripción
+
+**Como** empleado que ya completó el diagnóstico inicial y usó el chatbot,
+**quiero** rendir un post-test con la misma cantidad de preguntas que el diagnóstico inicial, extraídas de un banco fijo de preguntas (no generadas en vivo por IA en cada intento), y conservar un historial de mis notas a lo largo del tiempo,
+**para** que el post-test mida de forma consistente y comparable mi evolución respecto al diagnóstico inicial, y pueda ver cómo mejoro en cada tema tras usar el chatbot.
+
+---
+
+## Contexto / Problema actual
+
+- El diagnóstico inicial (`lib/diagnosticQuestions.ts`) es un banco **fijo y hardcodeado** de 8 temas × 2 preguntas = **16 preguntas totales**.
+- El post-test (`app/api/posttest/route.ts`) **genera 10 preguntas nuevas en cada intento** vía Groq (`llama-3.1-8b-instant`), en tiempo real, sin persistir el banco. Esto rompe la comparabilidad: cantidad distinta (10 vs 16), preguntas distintas cada vez, y sin garantía de que cubran los mismos temas del diagnóstico.
+- `quiz_results` guarda `score` y `total` por intento (sí permite ver histórico de notas en el tiempo), pero no guarda el detalle por pregunta/tema, por lo que no se puede comparar avance tema por tema contra el diagnóstico inicial.
+
+---
+
+## Criterios de Aceptación
+
+### Escenario 1 — Banco de 200 preguntas cargado en base de datos
+
+**Dado que** se ejecuta la migración de la tabla `posttest_questions`,
+**cuando** se inyectan las preguntas generadas,
+**entonces** existen exactamente **200 preguntas** activas en la tabla, distribuidas equitativamente entre los **8 temas del diagnóstico inicial** (`phishing`, `ia_amenazas`, `canales_venta`, `contrasenas`, `accesos`, `ley_29733`, `datos_sensibles`, `resiliencia`), es decir **25 preguntas por tema**.
+
+---
+
+### Escenario 2 — El post-test extrae la misma cantidad de preguntas que el pre-test
+
+**Dado que** un empleado con `diagnostic_done = true` solicita el post-test (`GET /api/posttest`),
+**cuando** el backend arma el cuestionario,
+**entonces** selecciona aleatoriamente **2 preguntas por cada uno de los 8 temas** desde `posttest_questions` (16 preguntas totales, igual a `totalQuestions` del diagnóstico), en vez de generarlas con Groq en vivo.
+
+---
+
+### Escenario 3 — Variedad entre intentos sin generación en vivo
+
+**Dado que** un empleado rinde el post-test más de una vez,
+**cuando** el sistema arma cada intento,
+**entonces** las preguntas se seleccionan al azar dentro del pool de 25 por tema (evitando repetir el mismo set exacto en intentos consecutivos cuando sea posible), sin llamar a Groq para generar contenido nuevo.
+
+---
+
+### Escenario 4 — Historial de notas por intento
+
+**Dado que** un empleado completa un post-test,
+**cuando** el resultado se guarda (`POST /api/quiz`),
+**entonces** se registra una nueva fila en `quiz_results` (no se sobrescribe la anterior) con `score`, `total` y `taken_at`, de modo que el histórico completo de intentos queda disponible para ese usuario.
+
+---
+
+### Escenario 5 — Visualización de evolución en el dashboard
+
+**Dado que** un empleado tiene 2 o más resultados de post-test guardados,
+**cuando** visita `/dashboard`,
+**entonces** puede ver su evolución de notas en el tiempo (lista u ordenado cronológicamente), no solo el último resultado.
+
+---
+
+### Escenario 6 — Post-test sin banco disponible
+
+**Dado que** la tabla `posttest_questions` no tiene preguntas activas para algún tema (caso de error de datos),
+**cuando** el empleado solicita el post-test,
+**entonces** el sistema responde con error controlado (no genera preguntas improvisadas con IA como fallback silencioso) y registra el problema para revisión del administrador técnico.
+
+---
+
+## Restricciones
+
+- El post-test **deja de generar preguntas en vivo con Groq**; pasa a ser un banco fijo persistido en Supabase, igual que el diagnóstico.
+- La cantidad de preguntas por intento de post-test **debe ser idéntica** a `totalQuestions` del diagnóstico inicial (16), no un número fijo distinto.
+- Los temas del banco de post-test deben ser **exactamente los mismos 8 `topic_key`** usados en `diagnosticTopics`, para permitir comparación de aprendizaje evolutivo tema por tema.
+- `quiz_results` se mantiene **append-only** (nunca update/delete de intentos previos) para preservar el historial real de notas.
+- Las 200 preguntas se redactan con el mismo estilo y nivel práctico que el diagnóstico (contexto MYPE peruana), evitando duplicados o near-duplicados dentro de un mismo tema.
+
+---
+
+## Notas Técnicas
+
+- Nueva tabla `posttest_questions`: `id uuid`, `topic_key text` (FK lógica a los keys de `diagnosticTopics`), `question text`, `options jsonb` (4 opciones), `correct_index int`, `explanation text`, `active boolean default true`, `created_at timestamptz default now()`. SQL en `docs/sql/posttest_questions.sql`.
+- `app/api/posttest/route.ts` se reescribe para: 1) leer `topic_key` válidos, 2) por cada uno, `SELECT ... WHERE topic_key = X AND active ORDER BY random() LIMIT 2`, 3) devolver 16 preguntas mezcladas (sin exponer `correct_index` al cliente si se quiere evitar trampa, evaluando en backend — a definir con `/api/quiz`).
+- Las 200 preguntas se generan una única vez (offline, por este mismo asistente) y se inyectan vía migración/seed SQL — no en runtime.
+- Dashboard (`app/dashboard/page.tsx`, `app/api/dashboard/route.ts`) se ajusta para leer todas las filas de `quiz_results` del usuario (no solo la última) y mostrar evolución.
+
+---
+
+# Historia de Usuario — HU20
+
+---
+
+## Información General
+
+| Campo                    | Detalle                                                                      |
+|--------------------------|-------------------------------------------------------------------------------|
+| **Código**               | HU20                                                                           |
+| **Nombre**               | Evaluación recurrente cada 5 días con preguntas no repetidas y seguimiento de áreas críticas |
+| **Usuario involucrado**  | Empleado (rinde la evaluación) / Administrador (monitorea evolución organizacional) |
+| **Prioridad**            | Alta                                                                           |
+| **Riesgo de desarrollo** | Medio-Alto                                                                     |
+| **Puntos estimados**     | 13                                                                             |
+| **Puntos reales**        | —                                                                              |
+| **Recurso responsable**  | Development Team                                                              |
+| **Iteración asignada**   | Sprint 6                                                                       |
+
+---
+
+## Descripción
+
+**Como** empleado que ya completó el diagnóstico inicial y el post-test,
+**quiero** que la plataforma me presente automáticamente una nueva evaluación cada 5 días de acceso, compuesta por preguntas del banco que aún no he respondido en evaluaciones anteriores,
+**para** mantener una medición continua de mi nivel de concientización, identificar mis áreas críticas y evidenciar mi mejora a lo largo del tiempo, tanto en mi dashboard personal como en el dashboard organizacional de mi empresa.
+
+---
+
+## Contexto / Problema actual
+
+- El ciclo de evaluación actual termina en el post-test (HU19): diagnóstico inicial → uso del chatbot → post-test. Después de eso, no existe ningún mecanismo que vuelva a medir al empleado, por lo que la concientización no se refuerza ni se monitorea en el tiempo.
+- El banco de 200 preguntas (`posttest_questions`, 25 por tema × 8 temas) ya existe y soporta esta funcionalidad: cada evaluación de 16 preguntas consume solo el 8% del banco, permitiendo ~12 evaluaciones sin repetir preguntas por usuario.
+- `quiz_results` guarda score/total/fecha pero no distingue tipo de evaluación ni desempeño por tema, por lo que hoy no se pueden identificar "áreas críticas" en evaluaciones posteriores al diagnóstico.
+
+---
+
+## Criterios de Aceptación
+
+### Escenario 1 — Activación de la evaluación recurrente al ingresar
+
+**Dado que** un empleado con post-test completado inicia sesión en la plataforma,
+**cuando** han transcurrido **5 días o más** desde su última evaluación completada (post-test o evaluación recurrente anterior),
+**entonces** el sistema le presenta una nueva evaluación recurrente obligatoria de **16 preguntas** (2 por cada uno de los 8 temas) antes de continuar usando el chat con normalidad.
+
+---
+
+### Escenario 2 — Preguntas no repetidas entre evaluaciones
+
+**Dado que** el sistema arma una evaluación recurrente para un empleado,
+**cuando** selecciona las preguntas del banco,
+**entonces** excluye las preguntas que ese empleado ya respondió en evaluaciones anteriores (post-test y recurrentes), seleccionando al azar 2 preguntas nuevas por tema. El registro de preguntas vistas se persiste por usuario.
+
+---
+
+### Escenario 3 — Agotamiento del banco por tema
+
+**Dado que** un empleado ya respondió tantas evaluaciones que algún tema tiene menos de 2 preguntas sin usar,
+**cuando** el sistema arma la siguiente evaluación,
+**entonces** reinicia el ciclo de preguntas vistas **solo para ese tema** (las preguntas más antiguas vuelven a estar disponibles), garantizando que la evaluación siempre pueda armarse con 16 preguntas.
+
+---
+
+### Escenario 4 — Registro de resultados con desempeño por tema
+
+**Dado que** un empleado completa una evaluación recurrente,
+**cuando** el resultado se guarda,
+**entonces** se registra en una nueva fila (append-only) con: score, total, fecha, tipo de evaluación (`recurrente`) y **desempeño por tema** (correctas/total por cada `topic_key`), permitiendo identificar áreas críticas específicas en cada intento.
+
+---
+
+### Escenario 5 — Evolución visible en el dashboard personal
+
+**Dado que** un empleado tiene una o más evaluaciones recurrentes completadas,
+**cuando** visita `/dashboard`,
+**entonces** ve: (a) la línea de tiempo completa de sus notas (diagnóstico → post-test → recurrentes), (b) sus áreas críticas actuales calculadas a partir de la evaluación más reciente, y (c) la fecha estimada de su próxima evaluación.
+
+---
+
+### Escenario 6 — Evolución visible en el dashboard organizacional
+
+**Dado que** un administrador accede a `/org-dashboard`,
+**cuando** la vista carga las métricas de su organización (filtradas por RUC),
+**entonces** ve: (a) el promedio de la evaluación recurrente más reciente por empleado, (b) la tendencia organizacional de notas en el tiempo, (c) las áreas críticas agregadas de la organización (temas con peor desempeño promedio), y (d) el estado de cumplimiento (empleados al día vs. con evaluación pendiente/vencida).
+
+---
+
+### Escenario 7 — Empleado sin post-test previo
+
+**Dado que** un empleado aún no completa el post-test inicial,
+**cuando** inicia sesión,
+**entonces** el ciclo de evaluación recurrente **no se activa** — el flujo original (diagnóstico → chatbot → post-test) se mantiene intacto. La recurrencia empieza a contar desde la fecha del post-test completado.
+
+---
+
+### Escenario 8 — Evaluación pendiente no completada
+
+**Dado que** a un empleado se le presentó la evaluación recurrente pero cerró sesión sin completarla,
+**cuando** vuelve a iniciar sesión,
+**entonces** la evaluación se le vuelve a presentar (con un nuevo set de preguntas no vistas), y su estado figura como "evaluación vencida" en el dashboard organizacional hasta que la complete.
+
+---
+
+### Escenario 9 — Evaluación recurrente para administradores (recordatorio omitible)
+
+**Dado que** un usuario con rol `admin` inicia sesión y le corresponde una evaluación recurrente (5 días o más desde su última evaluación completada),
+**cuando** la plataforma carga,
+**entonces** se le muestra un **recordatorio no bloqueante** con la opción de rendir la evaluación en ese momento o de **omitirla** y continuar usando la plataforma con normalidad. Si la omite, el recordatorio vuelve a aparecer en su siguiente inicio de sesión hasta que la complete.
+
+---
+
+## Restricciones
+
+- El intervalo de recurrencia es de **5 días calendario** desde la última evaluación completada (no desde el último login).
+- Las evaluaciones recurrentes usan el **mismo banco `posttest_questions`** (200 preguntas) y la **misma estructura** que el post-test: 16 preguntas, 2 por tema, mismos 8 `topic_key` del diagnóstico — para que todas las mediciones sean comparables entre sí.
+- El control de "preguntas ya vistas" es **por usuario** y se valida en backend (nunca en cliente).
+- Los resultados son **append-only**: nunca se sobrescriben intentos anteriores.
+- El desempeño por tema se guarda en **cada** intento recurrente (no solo el score global), porque las "áreas críticas" deben ser medibles y comparables en el tiempo.
+- El dashboard organizacional solo muestra datos agregados de empleados con `ruc` igual al del administrador autenticado (mismo aislamiento que HU17/HU18).
+- La evaluación recurrente aplica a **ambos roles**, con distinta obligatoriedad: para `employee` es **bloqueante** (debe completarla para usar el chat con normalidad); para `admin` es un **recordatorio omitible** que reaparece en cada inicio de sesión hasta ser atendido.
+
+---
+
+## Notas Técnicas
+
+- Nueva tabla `evaluation_attempts`: `id uuid`, `user_id uuid FK`, `test_type text` (`posttest` | `recurrente`), `score int`, `total int`, `topics_performance jsonb` (por topic_key: `{correct, total}`), `taken_at timestamptz`. Reemplaza funcionalmente a `quiz_results` para nuevos intentos (se evalúa migrar los registros existentes o mantener ambas tablas con lectura combinada). SQL en `docs/sql/evaluation_attempts.sql`.
+- Nueva tabla `seen_questions`: `user_id uuid`, `question_id uuid FK → posttest_questions`, `seen_at timestamptz`, PK compuesta (`user_id`, `question_id`). Alimentada al completar cada evaluación.
+- Nuevo endpoint `GET /api/recurring-test/status` — devuelve si el usuario tiene evaluación recurrente pendiente (días transcurridos, fecha de próxima evaluación).
+- `GET /api/posttest` se extiende (o se crea `GET /api/recurring-test`) con la lógica de exclusión de `seen_questions` + reinicio de ciclo por tema.
+- `POST /api/quiz` se extiende para aceptar `test_type` y `topics_performance`, e insertar en `evaluation_attempts` + marcar preguntas como vistas.
+- `/chat` (client): al cargar, consulta el status; si hay evaluación pendiente, presenta el módulo de evaluación en modo obligatorio.
+- `lib/orgMetrics.ts` + `GET /api/org-dashboard`: agregar métricas de recurrencia (promedio último intento, tendencia, áreas críticas agregadas, % cumplimiento).
+- `app/dashboard/page.tsx` + `GET /api/dashboard`: línea de tiempo unificada, áreas críticas del último intento, countdown de próxima evaluación.

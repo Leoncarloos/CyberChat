@@ -24,6 +24,17 @@ type QuizRow = {
 
 type ConvRow = { id: string; user_id: string };
 
+type AttemptRow = {
+  user_id: string;
+  test_type: "posttest" | "recurrente";
+  score: number;
+  total: number;
+  topics_performance: TopicPerformance;
+  taken_at: string;
+};
+
+const RECURRENCE_DAYS = 5;
+
 export type TopicAvg = { key: string; label: string; avgPct: number; count: number };
 
 export type PriorityEmployee = {
@@ -37,6 +48,32 @@ export type PriorityEmployee = {
   worstTopicKey: string;
   worstTopicLabel: string;
   lastEvaluationDate: string | null;
+};
+
+export type EmployeeExportRow = {
+  fullName: string;
+  email: string;
+  status: "active" | "pending" | "rejected";
+  diagnosticPct: number | null;
+  postTestPct: number | null;
+  riskLevel: RiskLevel | null;
+  worstTopicLabel: string;
+  lastEvaluationDate: string | null;
+  topicsPct: Record<string, number | null>;
+};
+
+export type RecurringMetrics = {
+  // Promedio de la evaluación recurrente más reciente por empleado.
+  avgLatestPct: number | null;
+  // Delta vs. el intento recurrente anterior de cada empleado (promedio de deltas).
+  avgDeltaPP: number | null;
+  employeesUpToDate: number;
+  employeesOverdue: number;
+  employeesNotStarted: number;
+  // % de empleados al día entre los que ya iniciaron el ciclo de evaluación.
+  upToDateRate: number | null;
+  // Áreas críticas agregadas del último intento con detalle por tema de cada empleado.
+  criticalTopics: TopicAvg[];
 };
 
 export type OrgMetrics = {
@@ -71,6 +108,8 @@ export type OrgMetrics = {
   riskDistribution: Record<RiskLevel, number>;
   chatbotUsage: { totalQueries: number };
   priorityEmployees: PriorityEmployee[];
+  allEmployees: EmployeeExportRow[];
+  recurring: RecurringMetrics;
 };
 
 const TOPIC_LABELS: Record<string, string> = Object.fromEntries(
@@ -125,6 +164,16 @@ export function emptyMetrics(ruc: string): OrgMetrics {
     riskDistribution: { low: 0, medium: 0, high: 0 },
     chatbotUsage: { totalQueries: 0 },
     priorityEmployees: [],
+    allEmployees: [],
+    recurring: {
+      avgLatestPct: null,
+      avgDeltaPP: null,
+      employeesUpToDate: 0,
+      employeesOverdue: 0,
+      employeesNotStarted: 0,
+      upToDateRate: null,
+      criticalTopics: [],
+    },
   };
 }
 
@@ -185,7 +234,7 @@ export async function computeOrgMetrics(
   const employeeIds = employees.map((e) => e.id);
   if (employeeIds.length === 0) return emptyMetrics(adminRuc);
 
-  const [diagRes, quizRes, convsRes] = await Promise.all([
+  const [diagRes, quizRes, attemptsRes, convsRes] = await Promise.all([
     admin
       .from("diagnostic_results")
       .select("user_id, score, total, topics_performance, completed_at")
@@ -195,6 +244,10 @@ export async function computeOrgMetrics(
       .select("user_id, score, total, taken_at")
       .in("user_id", employeeIds),
     admin
+      .from("evaluation_attempts")
+      .select("user_id, test_type, score, total, topics_performance, taken_at")
+      .in("user_id", employeeIds),
+    admin
       .from("conversations")
       .select("id, user_id")
       .in("user_id", employeeIds),
@@ -202,6 +255,7 @@ export async function computeOrgMetrics(
 
   const diagnostics = (diagRes.data ?? []) as DiagRow[];
   const quizzes = (quizRes.data ?? []) as QuizRow[];
+  const attempts = (attemptsRes.data ?? []) as AttemptRow[];
   const conversations = (convsRes.data ?? []) as ConvRow[];
 
   const convIds = conversations.map((c) => c.id);
@@ -286,6 +340,87 @@ export async function computeOrgMetrics(
     if (ev) riskDist[riskLevel(ev.pct)]++;
   }
 
+  // HU20 — métricas de evaluación recurrente.
+  const attemptsByUser = new Map<string, AttemptRow[]>();
+  for (const a of attempts) {
+    const list = attemptsByUser.get(a.user_id) ?? [];
+    list.push(a);
+    attemptsByUser.set(a.user_id, list);
+  }
+  for (const list of attemptsByUser.values()) {
+    list.sort((a, b) => (a.taken_at > b.taken_at ? -1 : 1));
+  }
+
+  let upToDate = 0;
+  let overdue = 0;
+  let notStarted = 0;
+  const latestRecurrentePcts: number[] = [];
+  const deltas: number[] = [];
+  const criticalSum: Record<string, { correctSum: number; totalSum: number; count: number }> = {};
+
+  for (const emp of employees) {
+    if (emp.status !== "active") continue;
+    const userAttempts = attemptsByUser.get(emp.id) ?? [];
+    const lastQuiz = latestQuiz.get(emp.id);
+    const lastDate = userAttempts[0]?.taken_at ?? lastQuiz?.taken_at ?? null;
+
+    if (!lastDate) {
+      notStarted++;
+      continue;
+    }
+    const days = (Date.now() - new Date(lastDate).getTime()) / 86400000;
+    if (days >= RECURRENCE_DAYS) overdue++;
+    else upToDate++;
+
+    const recurrentes = userAttempts.filter((a) => a.test_type === "recurrente");
+    if (recurrentes.length > 0) {
+      latestRecurrentePcts.push(pct(recurrentes[0].score, recurrentes[0].total));
+      if (recurrentes.length > 1) {
+        deltas.push(
+          pct(recurrentes[0].score, recurrentes[0].total) -
+            pct(recurrentes[1].score, recurrentes[1].total)
+        );
+      }
+    }
+
+    const latestWithTopics = userAttempts.find(
+      (a) => Object.keys(a.topics_performance ?? {}).length > 0
+    );
+    if (latestWithTopics) {
+      for (const [k, v] of Object.entries(latestWithTopics.topics_performance)) {
+        if (!criticalSum[k]) criticalSum[k] = { correctSum: 0, totalSum: 0, count: 0 };
+        criticalSum[k].correctSum += v.correct;
+        criticalSum[k].totalSum += v.total;
+        criticalSum[k].count++;
+      }
+    }
+  }
+
+  const criticalTopics: TopicAvg[] = diagnosticTopics
+    .map((t) => {
+      const s = criticalSum[t.key];
+      return {
+        key: t.key,
+        label: t.label,
+        avgPct: s && s.totalSum > 0 ? Math.round((s.correctSum / s.totalSum) * 100) : -1,
+        count: s?.count ?? 0,
+      };
+    })
+    .filter((t) => t.count > 0 && t.avgPct >= 0)
+    .sort((a, b) => a.avgPct - b.avgPct)
+    .slice(0, 3);
+
+  const started = upToDate + overdue;
+  const recurring: RecurringMetrics = {
+    avgLatestPct: avg(latestRecurrentePcts),
+    avgDeltaPP: deltas.length > 0 ? Math.round(deltas.reduce((a, b) => a + b, 0) / deltas.length) : null,
+    employeesUpToDate: upToDate,
+    employeesOverdue: overdue,
+    employeesNotStarted: notStarted,
+    upToDateRate: started > 0 ? Math.round((upToDate / started) * 100) : null,
+    criticalTopics,
+  };
+
   const priorityEmployees: PriorityEmployee[] = employees
     .filter((e) => latestDiag.has(e.id))
     .map((e) => {
@@ -314,6 +449,33 @@ export async function computeOrgMetrics(
     })
     .slice(0, 15);
 
+  const allEmployees: EmployeeExportRow[] = employees
+    .map((e) => {
+      const diag = latestDiag.get(e.id);
+      const quiz = latestQuiz.get(e.id);
+      const diagnosticPct = diag ? pct(diag.score, diag.total) : null;
+      const postTestPct = quiz ? pct(quiz.score, quiz.total) : null;
+      const currentPct = postTestPct ?? diagnosticPct;
+      const topicKey = diag ? worstTopic(diag.topics_performance ?? {}) : "";
+      const topicsPct: Record<string, number | null> = {};
+      for (const t of diagnosticTopics) {
+        const perf = diag?.topics_performance?.[t.key];
+        topicsPct[t.key] = perf ? pct(perf.correct, perf.total) : null;
+      }
+      return {
+        fullName: e.fullName,
+        email: e.email,
+        status: e.status,
+        diagnosticPct,
+        postTestPct,
+        riskLevel: currentPct !== null ? riskLevel(currentPct) : null,
+        worstTopicLabel: topicKey ? TOPIC_LABELS[topicKey] ?? topicKey : "--",
+        lastEvaluationDate: quiz ? quiz.taken_at : diag ? diag.completed_at : null,
+        topicsPct,
+      };
+    })
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
+
   return {
     empty: false,
     ruc: adminRuc,
@@ -334,5 +496,7 @@ export async function computeOrgMetrics(
     riskDistribution: riskDist,
     chatbotUsage: { totalQueries },
     priorityEmployees,
+    allEmployees,
+    recurring,
   };
 }
