@@ -64,7 +64,7 @@ async function generateRecommendations(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: "qwen/qwen3.8-27b",
         temperature: 0.4,
         max_tokens: 300,
         messages: [{ role: "user", content: prompt }],

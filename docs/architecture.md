@@ -11,7 +11,7 @@ Browser
         │
         ├── supabaseServer()          → Supabase (Auth + Postgres + Storage)
         ├── HuggingFace Inference API → Embeddings all-MiniLM-L6-v2 (384-dim)
-        └── Groq API                  → llama-3.1-8b-instant (LLM)
+        └── Groq API                  → qwen/qwen3.8-27b (LLM)
 ```
 
 ## Stack tecnológico
@@ -24,7 +24,7 @@ Browser
 | Auth | Supabase Auth (JWT + cookies SSR) |
 | Storage | Supabase Storage (bucket `documents`) |
 | Embeddings | HuggingFace Inference API — `all-MiniLM-L6-v2` |
-| LLM | Groq — `llama-3.1-8b-instant` |
+| LLM | Groq — `qwen/qwen3.8-27b` |
 | Deploy | Vercel (inferido) |
 
 ## Flujo RAG detallado
@@ -50,14 +50,14 @@ POST { messages, document_id? }
   → RPC match_document_chunks_scoped(query_embedding, match_count=6, filter_user_id, filter_document_id)
   → Filtrar por umbral similaridad 0.25 → top-5 chunks
   → Construir system prompt con contexto
-  → Groq chat/completions (llama-3.1-8b-instant, temp=0.2, max 18 turnos)
+  → Groq chat/completions (qwen/qwen3.8-27b, temp=0.2, max 18 turnos)
   → Devolver { answer, matchesCount, bestSimilarity, usedContext, sources }
 ```
 
 ## Decisiones técnicas
 
-### Por qué Groq + llama-3.1-8b-instant
-Latencia ultra-baja (Groq hardware especializado). El modelo 8B es suficiente para Q&A de ciberseguridad en español con RAG bien construido.
+### Por qué Groq + qwen/qwen3.8-27b
+Latencia ultra-baja (Groq hardware especializado). `qwen3.8-27b` da buena calidad en español para Q&A de ciberseguridad con RAG bien construido, sin comportamiento de "reasoning" que consuma el presupuesto de tokens de la respuesta final (a diferencia de otros modelos del catálogo de Groq, como `openai/gpt-oss-20b`, que sí razonan antes de responder). `llama-3.1-8b-instant` fue retirado del catálogo de Groq — swap realizado el 2026-09-11.
 
 ### Por qué HuggingFace para embeddings
 `all-MiniLM-L6-v2` es el estándar de facto para embeddings semánticos en 384 dimensiones. Gratuito con HF_TOKEN. Alternativa viable: OpenAI `text-embedding-3-small`.
