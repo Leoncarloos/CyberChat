@@ -48,13 +48,13 @@ NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 HF_TOKEN          # HuggingFace — embeddings all-MiniLM-L6-v2
-GROQ_API_KEY      # Groq — llama-3.1-8b-instant
+GROQ_API_KEY      # Groq — qwen/qwen3.8-27b
 ```
 
 ## Pipeline RAG
 1. Texto usuario → embedding 384-dim (HF `all-MiniLM-L6-v2`)
 2. Supabase RPC `match_document_chunks_scoped` → top-5 chunks (umbral 0.25)
-3. Contexto + historial (max 18 turnos) → Groq `llama-3.1-8b-instant`
+3. Contexto + historial (max 18 turnos) → Groq `qwen/qwen3.8-27b`
 4. Respuesta + metadata de fuentes devuelta al cliente
 
 ## Supabase

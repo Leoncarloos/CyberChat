@@ -142,7 +142,7 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: "qwen/qwen3.8-27b",
         temperature: 0.15,
         max_tokens: 1024,
         messages: [system, ...messages],

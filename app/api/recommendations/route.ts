@@ -142,7 +142,7 @@ Los temas ya están ordenados del más débil al más fuerte. Genera una recomen
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqKey}` },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: "qwen/qwen3.8-27b",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.25,
         max_tokens: 1400,

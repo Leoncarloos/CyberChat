@@ -115,7 +115,7 @@ async function generateSummaryText(metrics: OrgMetrics, period: Period): Promise
     method: "POST",
     headers: { Authorization: `Bearer ${groqKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
+      model: "qwen/qwen3.8-27b",
       temperature: 0.3,
       max_tokens: 900,
       messages: [
