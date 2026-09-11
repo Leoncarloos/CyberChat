@@ -4,6 +4,8 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { employeePatchSchema } from "@/lib/validators/employees";
+import { flattenFieldErrors } from "@/lib/validators/shared";
 
 type UserMetadata = {
   role?: string;
@@ -107,17 +109,17 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: context.error }, { status: context.status });
     }
 
-    const body = (await req.json()) as {
-      userId?: string;
-      action?: "approve" | "reject" | "edit";
-      firstName?: string;
-      lastName?: string;
-    };
+    const rawBody = await req.json();
+    const parsed = employeePatchSchema.safeParse(rawBody);
 
-    if (!body.userId || !body.action) {
-      return NextResponse.json({ error: "userId y action requeridos" }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Payload inválido", fieldErrors: flattenFieldErrors(parsed.error) },
+        { status: 400 }
+      );
     }
 
+    const body = parsed.data;
     const admin = supabaseAdmin();
     const userRes = await admin.auth.admin.getUserById(body.userId);
     const user = userRes.data.user;

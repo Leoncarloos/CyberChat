@@ -4,16 +4,8 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
-type TopicPerf = { correct: number; total: number };
-
-type QuizBody = {
-  score: number;
-  total: number;
-  testType?: "posttest" | "recurrente";
-  topicsPerformance?: Record<string, TopicPerf>;
-  questionIds?: string[];
-};
+import { quizBodySchema } from "@/lib/validators/evaluation";
+import { flattenFieldErrors } from "@/lib/validators/shared";
 
 export async function POST(req: Request) {
   const supabase = await supabaseServer();
@@ -23,12 +15,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No auth" }, { status: 401 });
   }
 
-  const body = (await req.json()) as QuizBody;
+  const rawBody = await req.json();
+  const parsed = quizBodySchema.safeParse(rawBody);
 
-  if (typeof body.score !== "number" || typeof body.total !== "number" || body.total === 0) {
-    return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Payload inválido", fieldErrors: flattenFieldErrors(parsed.error) },
+      { status: 400 }
+    );
   }
 
+  const body = parsed.data;
   const admin = supabaseAdmin();
   const takenAt = new Date().toISOString();
   const testType = body.testType === "recurrente" ? "recurrente" : "posttest";
