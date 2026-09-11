@@ -935,7 +935,7 @@ function ChatPageInner() {
                     Haz una pregunta directa o elige uno de los temas sugeridos para empezar.
                   </p>
 
-                  {/* HU11 — Ruta de aprendizaje guiada */}
+                  {/* HU16 — Ruta de aprendizaje guiada */}
                   <section
                     className="mt-10 w-full max-w-[720px] rounded-2xl border border-[rgba(10,126,126,0.2)] bg-[rgba(10,126,126,0.06)] px-6 py-5 text-left"
                     aria-label="Tu ruta de aprendizaje"

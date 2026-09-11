@@ -340,7 +340,7 @@ export async function computeOrgMetrics(
     if (ev) riskDist[riskLevel(ev.pct)]++;
   }
 
-  // HU20 — métricas de evaluación recurrente.
+  // HU22 — métricas de evaluación recurrente.
   const attemptsByUser = new Map<string, AttemptRow[]>();
   for (const a of attempts) {
     const list = attemptsByUser.get(a.user_id) ?? [];

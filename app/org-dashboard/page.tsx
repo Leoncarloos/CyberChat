@@ -610,7 +610,7 @@ export default function OrgDashboardPage() {
               </div>
             </div>
 
-            {/* HU20 — Evaluación recurrente */}
+            {/* HU22 — Evaluación recurrente */}
             {data.recurring && (
               <div className="rounded-[1.4rem] border border-[var(--border)] bg-white/80 px-6 py-6 shadow-[0_10px_24px_rgba(26,21,16,0.06)]">
                 <p className="eyebrow">Evaluación recurrente (cada 5 días)</p>

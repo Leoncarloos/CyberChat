@@ -171,7 +171,7 @@ export async function GET() {
 
     const topicsPerformance = (diagnostic?.topics_performance ?? {}) as TopicPerformance;
 
-    // Áreas críticas: evaluación más reciente con detalle por tema (HU20),
+    // Áreas críticas: evaluación más reciente con detalle por tema (HU22),
     // con fallback al diagnóstico inicial.
     const latestWithTopics = attempts.find(
       (a) => Object.keys(a.topics_performance ?? {}).length > 0

@@ -5,7 +5,7 @@ export type ProgressStatus = "pendiente" | "en_progreso" | "completado";
 
 // Catálogo controlado: solo temas aprobados del diagnóstico. Cada tema lleva un
 // ícono y un prompt de arranque para iniciar una conversación dirigida sin que
-// el empleado escriba nada manualmente (HU11 - escenario 3).
+// el empleado escriba nada manualmente (HU16 - escenario 3).
 export type LearningTopicMeta = {
   key: string;
   label: string;
