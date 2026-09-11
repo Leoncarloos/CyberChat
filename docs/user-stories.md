@@ -1,6 +1,137 @@
 # Historias de usuario
 
-# Historia de Usuario — HU11
+> **Numeración**: este archivo usa la numeración **oficial del Product Backlog académico**
+> (`Historias_de_Usuario_Ciberseguridad_MYPEs_CORREGIDO.xlsx`, HU01–HU23, v2.0 septiembre 2026),
+> no la numeración interna que este repo usó antes de reconciliarla (ver tabla de equivalencia).
+> El Excel completo (con las HU01–HU07, HU09–HU10, HU12–HU15 de funcionalidad base: login,
+> registro, chat, diagnóstico inicial, administración de documentos y de empleados) vive en
+> `Historias_de_Usuario_Ciberseguridad_MYPEs_CORREGIDO.xlsx` — **no está commiteado al repo**
+> por ser un entregable de tesis, no código. Este archivo solo detalla en formato BDD las
+> historias que se documentaron durante el desarrollo iterativo del repo (Sprints 4–7).
+>
+> **Tabla de equivalencia** (numeración vieja del repo → numeración oficial):
+>
+> | Numeración vieja del repo | Numeración oficial | Nombre |
+> |---|---|---|
+> | HU21 | **HU08** | Recuperación de contraseña vía correo |
+> | HU11 | **HU16** | Ruta de aprendizaje guiada en el chatbot |
+> | HU17 | **HU17** | Resumen inteligente organizacional mediante IA (sin cambio) |
+> | *(sin código previo, sin BDD)* | **HU18** | Resumen personalizado con IA (recomendaciones por empleado) — ya implementado, recién documentado aquí |
+> | HU18 | **HU20** | Exportación CSV de resultados organizacionales y por empleado |
+> | HU19 | **HU21** | Banco de preguntas fijo para el post-test + historial de notas |
+> | HU20 | **HU22** | Evaluación recurrente cada 5 días |
+> | — | **HU23** | Gestión de documentos de contexto para la IA (nueva, pedida en las Observaciones del backlog oficial — aún no tiene HU detallada en este archivo) |
+>
+> Nota: la **HU19 oficial** (gestión de roles, Escenario 3 = rol `platform_admin`) está
+> pendiente de implementación, diferida a propósito por el usuario.
+
+---
+
+# Historia de Usuario — HU08
+
+---
+
+## Información General
+
+| Campo                    | Detalle                                                        |
+|--------------------------|-----------------------------------------------------------------|
+| **Código**               | HU08                                                             |
+| **Nombre**               | Recuperación de contraseña vía correo (Supabase Auth)           |
+| **Usuario involucrado**  | Empleado / Administrador (cualquier usuario autenticable)       |
+| **Prioridad**            | Alta                                                             |
+| **Riesgo de desarrollo** | Bajo                                                             |
+| **Puntos estimados**     | 3                                                                |
+| **Puntos reales**        | —                                                                |
+| **Recurso responsable**  | Development Team                                                 |
+| **Iteración asignada**   | Sprint 7                                                          |
+
+---
+
+## Descripción
+
+**Como** usuario que olvidó su contraseña de acceso a CyberChat,
+**quiero** poder solicitar un enlace de recuperación a mi correo registrado y establecer una nueva contraseña desde ahí,
+**para** recuperar el acceso a mi cuenta sin depender de que un administrador o soporte técnico intervenga manualmente.
+
+---
+
+## Contexto / Problema actual
+
+- Hoy no existe ningún mecanismo de recuperación: si un usuario olvida su contraseña, no tiene forma de recuperarla desde la plataforma.
+- Supabase Auth ya provee el flujo completo de recuperación por correo de forma nativa (`resetPasswordForEmail` + `updateUser`) — no requiere backend propio ni nueva tabla. Solo requiere 2 páginas nuevas en el frontend, un enlace en el login, y configuración de SMTP/plantilla de correo en el Dashboard de Supabase.
+- Ya existe `lib/validators/auth.ts` con `passwordSchema` (política de contraseña) y `PasswordStrengthHint` (medidor visual) de HU de validación de login/register — se reutilizan aquí, no se duplican.
+
+---
+
+## Criterios de Aceptación
+
+### Escenario 1 — Solicitud de recuperación desde el login
+
+**Dado que** un usuario está en `/login` y no recuerda su contraseña,
+**cuando** hace clic en "¿Olvidaste tu contraseña?",
+**entonces** el sistema lo lleva a `/forgot-password`, donde puede ingresar su correo y solicitar el enlace de recuperación.
+
+---
+
+### Escenario 2 — Envío del correo sin revelar si la cuenta existe
+
+**Dado que** un usuario ingresa un correo en `/forgot-password` y solicita el enlace,
+**cuando** el sistema procesa la solicitud,
+**entonces** siempre muestra el mismo mensaje de confirmación ("Si el correo existe, te enviamos un enlace de recuperación"), sin importar si ese correo tiene o no una cuenta registrada — para no permitir que alguien deduzca qué correos están registrados en la plataforma (mismo criterio de no revelar información aplicado en el login, HU de validación).
+
+---
+
+### Escenario 3 — Enlace de recuperación válido
+
+**Dado que** el usuario recibió el correo y hace clic en el enlace dentro de su periodo de validez,
+**cuando** el enlace lo redirige a `/reset-password`,
+**entonces** el sistema le permite ingresar una nueva contraseña y su confirmación, aplicando la misma política de contraseña ya usada en registro (`passwordSchema`: 8+ caracteres, mayúscula, minúscula, número, carácter especial) con el mismo medidor visual (`PasswordStrengthHint`).
+
+---
+
+### Escenario 4 — Actualización exitosa
+
+**Dado que** el usuario ingresó una nueva contraseña válida y coincidente en `/reset-password`,
+**cuando** confirma el formulario,
+**entonces** el sistema actualiza la contraseña vía `supabase.auth.updateUser()`, cierra la sesión de recuperación, y lo redirige a `/login` con un mensaje de éxito para iniciar sesión con la nueva clave.
+
+---
+
+### Escenario 5 — Enlace expirado o inválido
+
+**Dado que** el usuario hace clic en un enlace de recuperación ya expirado o ya usado,
+**cuando** `/reset-password` intenta procesar la sesión de recuperación,
+**entonces** el sistema muestra un mensaje claro ("Este enlace ya no es válido") y un botón para volver a `/forgot-password` y solicitar uno nuevo, sin exponer detalles técnicos del error de Supabase.
+
+---
+
+### Escenario 6 — Recuperación no otorga acceso indebido
+
+**Dado que** un empleado con `approval_status: "pending"` o `"rejected"` recupera su contraseña exitosamente,
+**cuando** intenta iniciar sesión con la nueva contraseña,
+**entonces** el sistema sigue aplicando la misma verificación de aprobación ya existente en `LoginClient.tsx` — recuperar la contraseña nunca otorga acceso por sí sola si la cuenta no está aprobada.
+
+---
+
+## Restricciones
+
+- No se crea ninguna API route propia para enviar el correo — se usa `supabase.auth.resetPasswordForEmail()` directo desde el cliente, tal como ya se hace con `signInWithPassword()` en el login.
+- La política de contraseña, la validación con Zod y el medidor de fuerza deben ser los mismos ya existentes en `lib/validators/auth.ts` y `components/PasswordStrengthHint.tsx` — no se duplican reglas.
+- Requiere configuración manual (fuera del código) en el Dashboard de Supabase: `Authentication → URL Configuration` (agregar `/reset-password` a la allowlist de Redirect URLs) y, para producción, `Authentication → Emails → SMTP Settings` (el servicio de correo por defecto de Supabase es solo para pruebas, con límite muy bajo de envíos por hora).
+- El mensaje de confirmación tras solicitar el enlace es siempre el mismo, exista o no la cuenta (anti user-enumeration).
+
+---
+
+## Notas Técnicas
+
+- `app/(auth)/forgot-password/page.tsx` (nuevo): formulario con email, valida formato con `emailSchema`, llama a `supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` })`.
+- `app/(auth)/reset-password/page.tsx` (nuevo): al montar, Supabase-js detecta automáticamente el token de recuperación en la URL y establece una sesión temporal; el formulario pide nueva contraseña + confirmación (reusa `passwordSchema` + `PasswordStrengthHint`), llama a `supabase.auth.updateUser({ password })`.
+- `app/(auth)/login/LoginClient.tsx`: agregar enlace "¿Olvidaste tu contraseña?" apuntando a `/forgot-password`.
+- Configuración de Supabase (Dashboard, no código): plantilla de correo "Reset Password" traducida a español; SMTP propio para producción; Redirect URLs actualizado.
+
+---
+
+# Historia de Usuario — HU16
 
 ---
 
@@ -8,7 +139,7 @@
 
 | Campo                | Detalle                                      |
 |----------------------|----------------------------------------------|
-| **Código**           | HU11                                         |
+| **Código**           | HU16                                         |
 | **Nombre**           | Ruta de aprendizaje guiada en el chatbot     |
 | **Usuario involucrado** | Empleado (usuario autenticado del sistema) |
 | **Prioridad**        | Media                                        |
@@ -230,6 +361,175 @@
 | Campo                    | Detalle                                                        |
 |--------------------------|-----------------------------------------------------------------|
 | **Código**               | HU18                                                             |
+| **Nombre**               | Resumen personalizado con IA en el dashboard del empleado        |
+| **Usuario involucrado**  | Empleado (usuario autenticado del sistema)                      |
+| **Prioridad**            | Media                                                            |
+| **Riesgo de desarrollo** | Medio                                                            |
+| **Puntos estimados**     | 5                                                                |
+| **Puntos reales**        | —                                                                |
+| **Recurso responsable**  | Development Team                                                 |
+| **Iteración asignada**   | Sprint 5                                                          |
+
+---
+
+## Descripción
+
+**Como** empleado que ya completó el diagnóstico inicial,
+**quiero** que la plataforma me muestre en mi dashboard recomendaciones de aprendizaje generadas por IA y personalizadas según mis temas más débiles —incluyendo, cuando existan, contenido extraído de los documentos internos de mi propia empresa—,
+**para** saber exactamente en qué reforzarme y poder continuar la conversación con el chatbot sobre ese tema específico sin tener que adivinar qué preguntar.
+
+---
+
+## Contexto / Problema actual (implementación existente en el repo)
+
+Esta historia ya está implementada en código bajo dos mecanismos complementarios, sin que
+existiera hasta ahora una HU documentada para ninguno de los dos:
+
+- `GET /api/dashboard` calcula `strongTopics`/`weakTopics` a partir del intento de evaluación
+  más reciente con detalle por tema (o el diagnóstico inicial como fallback) y genera, vía
+  Groq, **3 recomendaciones de texto libre** (campo `recommendations: string[]`) basadas
+  únicamente en esos temas — sin RAG, sin estructura de tarjeta. Se muestran en la sección
+  "Recomendaciones personalizadas" del dashboard.
+- `GET /api/recommendations` toma los **4 temas más débiles** del diagnóstico más reciente
+  del empleado y, por cada uno, busca contexto real vía RAG (`match_document_chunks_scoped`)
+  en los documentos subidos por el administrador de la **misma organización** (`ruc`
+  coincidente); con ese contexto (o conocimiento general si la empresa no subió documentos
+  sobre ese tema) arma un prompt a Groq que devuelve tarjetas estructuradas
+  (`RecommendationCard`: `topicKey`, `topicLabel`, `title`, `summary`, `priority`,
+  `suggestedPrompt`). Se muestran en la sección "Recomendado para ti · IA · RAG", con un
+  botón que abre `/chat?q=<suggestedPrompt>` para continuar la conversación dirigida.
+
+---
+
+## Criterios de Aceptación
+
+### Escenario 1 — Generación automática al cargar el dashboard
+
+**Dado que** un empleado con diagnóstico inicial completado visita `/dashboard`,
+**cuando** la página termina de cargar los datos base (`GET /api/dashboard`),
+**entonces** el sistema dispara automáticamente `GET /api/recommendations` y muestra, sin
+acción adicional del usuario, tanto el bloque de "Recomendaciones personalizadas" (texto)
+como el de "Recomendado para ti" (tarjetas por tema).
+
+---
+
+### Escenario 2 — Recomendaciones enriquecidas con documentos de la empresa (RAG)
+
+**Dado que** el administrador de la organización del empleado (mismo `ruc`) subió documentos
+relacionados con alguno de los temas más débiles del empleado,
+**cuando** `/api/recommendations` arma la tarjeta de ese tema,
+**entonces** el contexto usado en el prompt a la IA incluye fragmentos reales de esos
+documentos (top-3 chunks vía `match_document_chunks_scoped`, aislados por el `user_id` del
+administrador), y el `summary` generado refleja ese contenido específico de la empresa.
+
+---
+
+### Escenario 3 — Sin documentos de la empresa para un tema
+
+**Dado que** la organización del empleado no tiene documentos relevantes para alguno de sus
+temas débiles (o no tiene ningún documento subido),
+**cuando** `/api/recommendations` arma la tarjeta de ese tema,
+**entonces** el sistema genera la recomendación usando conocimiento general de ciberseguridad
+para MYPES peruanas (sin fallar ni mostrar un hueco vacío), sin exponer al usuario que faltó
+contexto documental.
+
+---
+
+### Escenario 4 — Priorización visual por nivel de dominio
+
+**Dado que** las tarjetas de recomendación se generan para los 4 temas más débiles del
+empleado,
+**cuando** se muestran en el dashboard,
+**entonces** cada tarjeta indica una prioridad (`Alto` si el dominio del tema es menor a 50%,
+`Medio` entre 50% y 74%, `Bajo` desde 75%), con color e indicador visual distintos por nivel,
+y ordenadas de la más débil a la más fuerte.
+
+---
+
+### Escenario 5 — Indicador de carga mientras se generan las tarjetas
+
+**Dado que** el empleado tiene diagnóstico completado y el dashboard ya cargó sus datos base,
+**cuando** `/api/recommendations` todavía está procesando la respuesta de la IA,
+**entonces** el sistema muestra un indicador de carga ("Generando recomendaciones
+personalizadas...") en el bloque "Recomendado para ti", sin bloquear el resto del dashboard.
+
+---
+
+### Escenario 6 — Continuar la conversación desde una recomendación
+
+**Dado que** el empleado ve una tarjeta de recomendación con su `suggestedPrompt`,
+**cuando** hace clic en "Consultar con el chatbot",
+**entonces** el sistema lo navega a `/chat` con la pregunta sugerida precargada
+(`/chat?q=<suggestedPrompt>`), iniciando la conversación dirigida sobre ese tema sin que el
+usuario tenga que redactarla manualmente.
+
+---
+
+### Escenario 7 — Sin diagnóstico previo
+
+**Dado que** un empleado aún no completó el diagnóstico inicial,
+**cuando** visita `/dashboard`,
+**entonces** el sistema **no** llama a `/api/recommendations` ni muestra el bloque
+"Recomendado para ti"; `/api/recommendations` devuelve `{ recommendations: [], reason:
+"no_diagnostic" }` si se invoca directamente.
+
+---
+
+### Escenario 8 — Error o respuesta inválida de la IA
+
+**Dado que** el servicio de IA devuelve una respuesta que no se puede interpretar como JSON
+válido, o la llamada falla,
+**cuando** `/api/recommendations` procesa la respuesta,
+**entonces** el sistema devuelve una lista vacía de recomendaciones (`reason: "parse_error"`
+o error controlado) y el dashboard muestra el mensaje "No se pudieron generar
+recomendaciones. Intenta más tarde." en vez de romper la página o mostrar una tarjeta
+corrupta.
+
+---
+
+## Restricciones
+
+- Las recomendaciones RAG **solo usan documentos de la organización del propio empleado**
+  (aislamiento por `ruc`, resolviendo primero el `user_id` del administrador con ese `ruc` y
+  filtrando `match_document_chunks_scoped` por ese `user_id`); nunca cruzan datos entre
+  organizaciones.
+- El contenido generado debe mantenerse **dentro del dominio de ciberseguridad y
+  concientización empresarial** (restricción impuesta en el prompt, igual que en HU17).
+- Solo se generan tarjetas para los **4 temas de menor desempeño**; no se generan
+  recomendaciones para temas ya dominados.
+- El bloque de texto simple (`/api/dashboard` → `recommendations: string[]`) y el bloque de
+  tarjetas RAG (`/api/recommendations`) son **independientes entre sí**: un fallo en uno no
+  debe impedir que el otro se muestre.
+- Ninguno de los dos mecanismos expone datos personales de otros empleados ni de otras
+  organizaciones.
+
+---
+
+## Notas Técnicas
+
+- Endpoints involucrados: `GET /api/dashboard` (campo `recommendations: string[]`, 3 líneas
+  de texto sin estructura) y `GET /api/recommendations` (`RecommendationCard[]`, con RAG).
+  Ambos usan el modelo Groq `qwen/qwen3.8-27b`.
+- `app/api/recommendations/route.ts`: obtiene el último `diagnostic_results` del usuario,
+  ordena `diagnosticTopics` por `%` ascendente y toma los 4 más débiles, resuelve el admin de
+  la misma `ruc` vía `auth.admin.listUsers`, y por tema hace `embedHF` + RPC
+  `match_document_chunks_scoped` (top-3, `match_count: 3`) antes de armar el prompt.
+- `app/dashboard/page.tsx`: dispara `fetch("/api/recommendations")` en el mismo `useEffect`
+  que carga `/api/dashboard`, mostrando el estado de carga (`recsLoading`) por separado.
+- No hay caché para `/api/recommendations` (a diferencia de `org_summaries` en HU17); se
+  regenera en cada carga del dashboard.
+
+---
+
+# Historia de Usuario — HU20
+
+---
+
+## Información General
+
+| Campo                    | Detalle                                                        |
+|--------------------------|-----------------------------------------------------------------|
+| **Código**               | HU20                                                             |
 | **Nombre**               | Exportación CSV de resultados organizacionales y por empleado   |
 | **Usuario involucrado**  | Administrador del sistema                                       |
 | **Prioridad**            | Media                                                            |
@@ -331,15 +631,15 @@
 
 ---
 
-# Historia de Usuario — HU19
+# Historia de Usuario — HU21
 
 ---
 
 ## Información General
 
 | Campo                    | Detalle                                                                 |
-|--------------------------|--------------------------------------------------------------------------|
-| **Código**               | HU19                                                                      |
+|--------------------------|----------------------------------------------------------------------------|
+| **Código**               | HU21                                                                      |
 | **Nombre**               | Banco de preguntas fijo para el POST TEST + historial de notas evolutivo |
 | **Usuario involucrado**  | Empleado (rinde el post-test) / Administrador (consulta evolución)       |
 | **Prioridad**            | Alta                                                                      |
@@ -436,7 +736,7 @@
 
 ---
 
-# Historia de Usuario — HU20
+# Historia de Usuario — HU22
 
 ---
 
@@ -444,7 +744,7 @@
 
 | Campo                    | Detalle                                                                      |
 |--------------------------|-------------------------------------------------------------------------------|
-| **Código**               | HU20                                                                           |
+| **Código**               | HU22                                                                           |
 | **Nombre**               | Evaluación recurrente cada 5 días con preguntas no repetidas y seguimiento de áreas críticas |
 | **Usuario involucrado**  | Empleado (rinde la evaluación) / Administrador (monitorea evolución organizacional) |
 | **Prioridad**            | Alta                                                                           |
@@ -466,7 +766,7 @@
 
 ## Contexto / Problema actual
 
-- El ciclo de evaluación actual termina en el post-test (HU19): diagnóstico inicial → uso del chatbot → post-test. Después de eso, no existe ningún mecanismo que vuelva a medir al empleado, por lo que la concientización no se refuerza ni se monitorea en el tiempo.
+- El ciclo de evaluación actual termina en el post-test (HU21), diagnóstico inicial → uso del chatbot → post-test. Después de eso, no existe ningún mecanismo que vuelva a medir al empleado, por lo que la concientización no se refuerza ni se monitorea en el tiempo.
 - El banco de 200 preguntas (`posttest_questions`, 25 por tema × 8 temas) ya existe y soporta esta funcionalidad: cada evaluación de 16 preguntas consume solo el 8% del banco, permitiendo ~12 evaluaciones sin repetir preguntas por usuario.
 - `quiz_results` guarda score/total/fecha pero no distingue tipo de evaluación ni desempeño por tema, por lo que hoy no se pueden identificar "áreas críticas" en evaluaciones posteriores al diagnóstico.
 
@@ -553,7 +853,7 @@
 - El control de "preguntas ya vistas" es **por usuario** y se valida en backend (nunca en cliente).
 - Los resultados son **append-only**: nunca se sobrescriben intentos anteriores.
 - El desempeño por tema se guarda en **cada** intento recurrente (no solo el score global), porque las "áreas críticas" deben ser medibles y comparables en el tiempo.
-- El dashboard organizacional solo muestra datos agregados de empleados con `ruc` igual al del administrador autenticado (mismo aislamiento que HU17/HU18).
+- El dashboard organizacional solo muestra datos agregados de empleados con `ruc` igual al del administrador autenticado (mismo aislamiento que HU17/HU20).
 - La evaluación recurrente aplica a **ambos roles**, con distinta obligatoriedad: para `employee` es **bloqueante** (debe completarla para usar el chat con normalidad); para `admin` es un **recordatorio omitible** que reaparece en cada inicio de sesión hasta ser atendido.
 
 ---
@@ -568,107 +868,3 @@
 - `/chat` (client): al cargar, consulta el status; si hay evaluación pendiente, presenta el módulo de evaluación en modo obligatorio.
 - `lib/orgMetrics.ts` + `GET /api/org-dashboard`: agregar métricas de recurrencia (promedio último intento, tendencia, áreas críticas agregadas, % cumplimiento).
 - `app/dashboard/page.tsx` + `GET /api/dashboard`: línea de tiempo unificada, áreas críticas del último intento, countdown de próxima evaluación.
-
----
-
-# Historia de Usuario — HU21
-
----
-
-## Información General
-
-| Campo                    | Detalle                                                        |
-|--------------------------|-----------------------------------------------------------------|
-| **Código**               | HU21                                                             |
-| **Nombre**               | Recuperación de contraseña vía correo (Supabase Auth)           |
-| **Usuario involucrado**  | Empleado / Administrador (cualquier usuario autenticable)       |
-| **Prioridad**            | Alta                                                             |
-| **Riesgo de desarrollo** | Bajo                                                             |
-| **Puntos estimados**     | 3                                                                |
-| **Puntos reales**        | —                                                                |
-| **Recurso responsable**  | Development Team                                                 |
-| **Iteración asignada**   | Sprint 7                                                          |
-
----
-
-## Descripción
-
-**Como** usuario que olvidó su contraseña de acceso a CyberChat,
-**quiero** poder solicitar un enlace de recuperación a mi correo registrado y establecer una nueva contraseña desde ahí,
-**para** recuperar el acceso a mi cuenta sin depender de que un administrador o soporte técnico intervenga manualmente.
-
----
-
-## Contexto / Problema actual
-
-- Hoy no existe ningún mecanismo de recuperación: si un usuario olvida su contraseña, no tiene forma de recuperarla desde la plataforma.
-- Supabase Auth ya provee el flujo completo de recuperación por correo de forma nativa (`resetPasswordForEmail` + `updateUser`) — no requiere backend propio ni nueva tabla. Solo requiere 2 páginas nuevas en el frontend, un enlace en el login, y configuración de SMTP/plantilla de correo en el Dashboard de Supabase.
-- Ya existe `lib/validators/auth.ts` con `passwordSchema` (política de contraseña) y `PasswordStrengthHint` (medidor visual) de HU de validación de login/register — se reutilizan aquí, no se duplican.
-
----
-
-## Criterios de Aceptación
-
-### Escenario 1 — Solicitud de recuperación desde el login
-
-**Dado que** un usuario está en `/login` y no recuerda su contraseña,
-**cuando** hace clic en "¿Olvidaste tu contraseña?",
-**entonces** el sistema lo lleva a `/forgot-password`, donde puede ingresar su correo y solicitar el enlace de recuperación.
-
----
-
-### Escenario 2 — Envío del correo sin revelar si la cuenta existe
-
-**Dado que** un usuario ingresa un correo en `/forgot-password` y solicita el enlace,
-**cuando** el sistema procesa la solicitud,
-**entonces** siempre muestra el mismo mensaje de confirmación ("Si el correo existe, te enviamos un enlace de recuperación"), sin importar si ese correo tiene o no una cuenta registrada — para no permitir que alguien deduzca qué correos están registrados en la plataforma (mismo criterio de no revelar información aplicado en el login, HU de validación).
-
----
-
-### Escenario 3 — Enlace de recuperación válido
-
-**Dado que** el usuario recibió el correo y hace clic en el enlace dentro de su periodo de validez,
-**cuando** el enlace lo redirige a `/reset-password`,
-**entonces** el sistema le permite ingresar una nueva contraseña y su confirmación, aplicando la misma política de contraseña ya usada en registro (`passwordSchema`: 8+ caracteres, mayúscula, minúscula, número, carácter especial) con el mismo medidor visual (`PasswordStrengthHint`).
-
----
-
-### Escenario 4 — Actualización exitosa
-
-**Dado que** el usuario ingresó una nueva contraseña válida y coincidente en `/reset-password`,
-**cuando** confirma el formulario,
-**entonces** el sistema actualiza la contraseña vía `supabase.auth.updateUser()`, cierra la sesión de recuperación, y lo redirige a `/login` con un mensaje de éxito para iniciar sesión con la nueva clave.
-
----
-
-### Escenario 5 — Enlace expirado o inválido
-
-**Dado que** el usuario hace clic en un enlace de recuperación ya expirado o ya usado,
-**cuando** `/reset-password` intenta procesar la sesión de recuperación,
-**entonces** el sistema muestra un mensaje claro ("Este enlace ya no es válido") y un botón para volver a `/forgot-password` y solicitar uno nuevo, sin exponer detalles técnicos del error de Supabase.
-
----
-
-### Escenario 6 — Recuperación no otorga acceso indebido
-
-**Dado que** un empleado con `approval_status: "pending"` o `"rejected"` recupera su contraseña exitosamente,
-**cuando** intenta iniciar sesión con la nueva contraseña,
-**entonces** el sistema sigue aplicando la misma verificación de aprobación ya existente en `LoginClient.tsx` — recuperar la contraseña nunca otorga acceso por sí sola si la cuenta no está aprobada.
-
----
-
-## Restricciones
-
-- No se crea ninguna API route propia para enviar el correo — se usa `supabase.auth.resetPasswordForEmail()` directo desde el cliente, tal como ya se hace con `signInWithPassword()` en el login.
-- La política de contraseña, la validación con Zod y el medidor de fuerza deben ser los mismos ya existentes en `lib/validators/auth.ts` y `components/PasswordStrengthHint.tsx` — no se duplican reglas.
-- Requiere configuración manual (fuera del código) en el Dashboard de Supabase: `Authentication → URL Configuration` (agregar `/reset-password` a la allowlist de Redirect URLs) y, para producción, `Authentication → Emails → SMTP Settings` (el servicio de correo por defecto de Supabase es solo para pruebas, con límite muy bajo de envíos por hora).
-- El mensaje de confirmación tras solicitar el enlace es siempre el mismo, exista o no la cuenta (anti user-enumeration).
-
----
-
-## Notas Técnicas
-
-- `app/(auth)/forgot-password/page.tsx` (nuevo): formulario con email, valida formato con `emailSchema`, llama a `supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` })`.
-- `app/(auth)/reset-password/page.tsx` (nuevo): al montar, Supabase-js detecta automáticamente el token de recuperación en la URL y establece una sesión temporal; el formulario pide nueva contraseña + confirmación (reusa `passwordSchema` + `PasswordStrengthHint`), llama a `supabase.auth.updateUser({ password })`.
-- `app/(auth)/login/LoginClient.tsx`: agregar enlace "¿Olvidaste tu contraseña?" apuntando a `/forgot-password`.
-- Configuración de Supabase (Dashboard, no código): plantilla de correo "Reset Password" traducida a español; SMTP propio para producción; Redirect URLs actualizado.
