@@ -97,7 +97,20 @@ export const registerEmployeeSchema = z
   })
   .refine(passwordsMatch, { message: "Las contraseñas no coinciden", path: ["confirmPassword"] });
 
+export const forgotPasswordSchema = z.object({
+  email: emailSchema,
+});
+
+export const resetPasswordSchema = z
+  .object({
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine(passwordsMatch, { message: "Las contraseñas no coinciden", path: ["confirmPassword"] });
+
 export type RegisterAdminInput = z.infer<typeof registerAdminSchema>;
 export type RegisterEmployeeInput = z.infer<typeof registerEmployeeSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export { flattenFieldErrors } from "@/lib/validators/shared";

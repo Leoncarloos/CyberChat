@@ -4,10 +4,14 @@ type LoginPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
+function firstValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const rawRegistered = resolvedSearchParams.registered;
-  const registered = Array.isArray(rawRegistered) ? rawRegistered[0] : rawRegistered;
+  const registered = firstValue(resolvedSearchParams.registered);
+  const reset = firstValue(resolvedSearchParams.reset);
 
-  return <LoginClient registered={registered} />;
+  return <LoginClient registered={registered} reset={reset} />;
 }

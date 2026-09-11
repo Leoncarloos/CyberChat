@@ -25,9 +25,10 @@ const features = [
 
 type LoginClientProps = {
   registered?: string;
+  reset?: string;
 };
 
-export default function LoginClient({ registered }: LoginClientProps) {
+export default function LoginClient({ registered, reset }: LoginClientProps) {
   const router = useRouter();
   const supabase = supabaseBrowser();
   const [email, setEmail] = useState("");
@@ -44,8 +45,12 @@ export default function LoginClient({ registered }: LoginClientProps) {
       return "Solicitud de empleado registrada. Ahora inicia sesión con tus credenciales.";
     }
 
+    if (reset === "success") {
+      return "Contraseña actualizada. Ya puedes iniciar sesión con tu nueva clave.";
+    }
+
     return null;
-  }, [registered]);
+  }, [registered, reset]);
 
   async function onLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -154,9 +159,14 @@ export default function LoginClient({ registered }: LoginClientProps) {
             </div>
 
             <div>
-              <label className="field-label" htmlFor="password">
-                Contraseña
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="field-label" htmlFor="password">
+                  Contraseña
+                </label>
+                <a href="/forgot-password" className="text-xs font-semibold text-[var(--amber-dim)] hover:underline">
+                  ¿Olvidaste tu contraseña?
+                </a>
+              </div>
               <input
                 id="password"
                 className="field-input"

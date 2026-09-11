@@ -568,3 +568,107 @@
 - `/chat` (client): al cargar, consulta el status; si hay evaluación pendiente, presenta el módulo de evaluación en modo obligatorio.
 - `lib/orgMetrics.ts` + `GET /api/org-dashboard`: agregar métricas de recurrencia (promedio último intento, tendencia, áreas críticas agregadas, % cumplimiento).
 - `app/dashboard/page.tsx` + `GET /api/dashboard`: línea de tiempo unificada, áreas críticas del último intento, countdown de próxima evaluación.
+
+---
+
+# Historia de Usuario — HU21
+
+---
+
+## Información General
+
+| Campo                    | Detalle                                                        |
+|--------------------------|-----------------------------------------------------------------|
+| **Código**               | HU21                                                             |
+| **Nombre**               | Recuperación de contraseña vía correo (Supabase Auth)           |
+| **Usuario involucrado**  | Empleado / Administrador (cualquier usuario autenticable)       |
+| **Prioridad**            | Alta                                                             |
+| **Riesgo de desarrollo** | Bajo                                                             |
+| **Puntos estimados**     | 3                                                                |
+| **Puntos reales**        | —                                                                |
+| **Recurso responsable**  | Development Team                                                 |
+| **Iteración asignada**   | Sprint 7                                                          |
+
+---
+
+## Descripción
+
+**Como** usuario que olvidó su contraseña de acceso a CyberChat,
+**quiero** poder solicitar un enlace de recuperación a mi correo registrado y establecer una nueva contraseña desde ahí,
+**para** recuperar el acceso a mi cuenta sin depender de que un administrador o soporte técnico intervenga manualmente.
+
+---
+
+## Contexto / Problema actual
+
+- Hoy no existe ningún mecanismo de recuperación: si un usuario olvida su contraseña, no tiene forma de recuperarla desde la plataforma.
+- Supabase Auth ya provee el flujo completo de recuperación por correo de forma nativa (`resetPasswordForEmail` + `updateUser`) — no requiere backend propio ni nueva tabla. Solo requiere 2 páginas nuevas en el frontend, un enlace en el login, y configuración de SMTP/plantilla de correo en el Dashboard de Supabase.
+- Ya existe `lib/validators/auth.ts` con `passwordSchema` (política de contraseña) y `PasswordStrengthHint` (medidor visual) de HU de validación de login/register — se reutilizan aquí, no se duplican.
+
+---
+
+## Criterios de Aceptación
+
+### Escenario 1 — Solicitud de recuperación desde el login
+
+**Dado que** un usuario está en `/login` y no recuerda su contraseña,
+**cuando** hace clic en "¿Olvidaste tu contraseña?",
+**entonces** el sistema lo lleva a `/forgot-password`, donde puede ingresar su correo y solicitar el enlace de recuperación.
+
+---
+
+### Escenario 2 — Envío del correo sin revelar si la cuenta existe
+
+**Dado que** un usuario ingresa un correo en `/forgot-password` y solicita el enlace,
+**cuando** el sistema procesa la solicitud,
+**entonces** siempre muestra el mismo mensaje de confirmación ("Si el correo existe, te enviamos un enlace de recuperación"), sin importar si ese correo tiene o no una cuenta registrada — para no permitir que alguien deduzca qué correos están registrados en la plataforma (mismo criterio de no revelar información aplicado en el login, HU de validación).
+
+---
+
+### Escenario 3 — Enlace de recuperación válido
+
+**Dado que** el usuario recibió el correo y hace clic en el enlace dentro de su periodo de validez,
+**cuando** el enlace lo redirige a `/reset-password`,
+**entonces** el sistema le permite ingresar una nueva contraseña y su confirmación, aplicando la misma política de contraseña ya usada en registro (`passwordSchema`: 8+ caracteres, mayúscula, minúscula, número, carácter especial) con el mismo medidor visual (`PasswordStrengthHint`).
+
+---
+
+### Escenario 4 — Actualización exitosa
+
+**Dado que** el usuario ingresó una nueva contraseña válida y coincidente en `/reset-password`,
+**cuando** confirma el formulario,
+**entonces** el sistema actualiza la contraseña vía `supabase.auth.updateUser()`, cierra la sesión de recuperación, y lo redirige a `/login` con un mensaje de éxito para iniciar sesión con la nueva clave.
+
+---
+
+### Escenario 5 — Enlace expirado o inválido
+
+**Dado que** el usuario hace clic en un enlace de recuperación ya expirado o ya usado,
+**cuando** `/reset-password` intenta procesar la sesión de recuperación,
+**entonces** el sistema muestra un mensaje claro ("Este enlace ya no es válido") y un botón para volver a `/forgot-password` y solicitar uno nuevo, sin exponer detalles técnicos del error de Supabase.
+
+---
+
+### Escenario 6 — Recuperación no otorga acceso indebido
+
+**Dado que** un empleado con `approval_status: "pending"` o `"rejected"` recupera su contraseña exitosamente,
+**cuando** intenta iniciar sesión con la nueva contraseña,
+**entonces** el sistema sigue aplicando la misma verificación de aprobación ya existente en `LoginClient.tsx` — recuperar la contraseña nunca otorga acceso por sí sola si la cuenta no está aprobada.
+
+---
+
+## Restricciones
+
+- No se crea ninguna API route propia para enviar el correo — se usa `supabase.auth.resetPasswordForEmail()` directo desde el cliente, tal como ya se hace con `signInWithPassword()` en el login.
+- La política de contraseña, la validación con Zod y el medidor de fuerza deben ser los mismos ya existentes en `lib/validators/auth.ts` y `components/PasswordStrengthHint.tsx` — no se duplican reglas.
+- Requiere configuración manual (fuera del código) en el Dashboard de Supabase: `Authentication → URL Configuration` (agregar `/reset-password` a la allowlist de Redirect URLs) y, para producción, `Authentication → Emails → SMTP Settings` (el servicio de correo por defecto de Supabase es solo para pruebas, con límite muy bajo de envíos por hora).
+- El mensaje de confirmación tras solicitar el enlace es siempre el mismo, exista o no la cuenta (anti user-enumeration).
+
+---
+
+## Notas Técnicas
+
+- `app/(auth)/forgot-password/page.tsx` (nuevo): formulario con email, valida formato con `emailSchema`, llama a `supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` })`.
+- `app/(auth)/reset-password/page.tsx` (nuevo): al montar, Supabase-js detecta automáticamente el token de recuperación en la URL y establece una sesión temporal; el formulario pide nueva contraseña + confirmación (reusa `passwordSchema` + `PasswordStrengthHint`), llama a `supabase.auth.updateUser({ password })`.
+- `app/(auth)/login/LoginClient.tsx`: agregar enlace "¿Olvidaste tu contraseña?" apuntando a `/forgot-password`.
+- Configuración de Supabase (Dashboard, no código): plantilla de correo "Reset Password" traducida a español; SMTP propio para producción; Redirect URLs actualizado.
