@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { registerEmployeeSchema, flattenFieldErrors } from "@/lib/validators/auth";
+import PasswordStrengthHint from "@/components/PasswordStrengthHint";
 
 type EmployeeRegisterForm = {
   ruc: string;
@@ -9,6 +11,7 @@ type EmployeeRegisterForm = {
   lastName: string;
   email: string;
   password: string;
+  confirmPassword: string;
 };
 
 const initialForm: EmployeeRegisterForm = {
@@ -17,13 +20,18 @@ const initialForm: EmployeeRegisterForm = {
   lastName: "",
   email: "",
   password: "",
+  confirmPassword: "",
 };
 
 export default function EmployeeRegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState<EmployeeRegisterForm>(initialForm);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [touched, setTouched] = useState<Partial<Record<keyof EmployeeRegisterForm, boolean>>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validation = useMemo(() => registerEmployeeSchema.safeParse(form), [form]);
+  const fieldErrors = validation.success ? {} : flattenFieldErrors(validation.error);
 
   function updateField<K extends keyof EmployeeRegisterForm>(
     key: K,
@@ -32,28 +40,41 @@ export default function EmployeeRegisterPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function markTouched(key: keyof EmployeeRegisterForm) {
+    setTouched((prev) => ({ ...prev, [key]: true }));
+  }
+
+  function errorFor(key: keyof EmployeeRegisterForm) {
+    return touched[key] ? fieldErrors[key] : undefined;
+  }
+
   async function onRegister(e: React.FormEvent) {
     e.preventDefault();
-    setMsg(null);
+    setServerError(null);
+    setTouched({
+      ruc: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      password: true,
+      confirmPassword: true,
+    });
+
+    if (!validation.success) return;
+
     setIsSubmitting(true);
 
     const res = await fetch("/api/auth/register-employee", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ruc: form.ruc,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-        password: form.password,
-      }),
+      body: JSON.stringify(validation.data),
     });
 
     setIsSubmitting(false);
-    const data = (await res.json()) as { error?: string };
+    const data = (await res.json()) as { error?: string; fieldErrors?: Record<string, string> };
 
     if (!res.ok) {
-      setMsg(data.error ?? "No se pudo registrar la solicitud del empleado.");
+      setServerError(data.error ?? "No se pudo registrar la solicitud del empleado.");
       return;
     }
 
@@ -104,7 +125,7 @@ export default function EmployeeRegisterPage() {
             </p>
           </div>
 
-          <form onSubmit={onRegister} className="space-y-5">
+          <form onSubmit={onRegister} className="space-y-5" noValidate>
             <div>
               <label className="field-label" htmlFor="employee-ruc">
                 RUC de la empresa
@@ -115,11 +136,18 @@ export default function EmployeeRegisterPage() {
                 placeholder="Ej. 20123456789"
                 value={form.ruc}
                 onChange={(e) => updateField("ruc", e.target.value)}
+                onBlur={() => markTouched("ruc")}
+                inputMode="numeric"
+                maxLength={11}
                 required
               />
-              <p className="mt-2 text-xs text-[var(--muted)]">
-                Necesario para vincularte con tu organización.
-              </p>
+              {errorFor("ruc") ? (
+                <p className="mt-1 text-xs text-[var(--red)]">{errorFor("ruc")}</p>
+              ) : (
+                <p className="mt-2 text-xs text-[var(--muted)]">
+                  Necesario para vincularte con tu organización. 11 dígitos.
+                </p>
+              )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -133,8 +161,12 @@ export default function EmployeeRegisterPage() {
                   placeholder="Tus nombres"
                   value={form.firstName}
                   onChange={(e) => updateField("firstName", e.target.value)}
+                  onBlur={() => markTouched("firstName")}
                   required
                 />
+                {errorFor("firstName") ? (
+                  <p className="mt-1 text-xs text-[var(--red)]">{errorFor("firstName")}</p>
+                ) : null}
               </div>
 
               <div>
@@ -147,8 +179,12 @@ export default function EmployeeRegisterPage() {
                   placeholder="Tus apellidos"
                   value={form.lastName}
                   onChange={(e) => updateField("lastName", e.target.value)}
+                  onBlur={() => markTouched("lastName")}
                   required
                 />
+                {errorFor("lastName") ? (
+                  <p className="mt-1 text-xs text-[var(--red)]">{errorFor("lastName")}</p>
+                ) : null}
               </div>
             </div>
 
@@ -163,8 +199,13 @@ export default function EmployeeRegisterPage() {
                 type="email"
                 value={form.email}
                 onChange={(e) => updateField("email", e.target.value)}
+                onBlur={() => markTouched("email")}
+                autoComplete="email"
                 required
               />
+              {errorFor("email") ? (
+                <p className="mt-1 text-xs text-[var(--red)]">{errorFor("email")}</p>
+              ) : null}
             </div>
 
             <div>
@@ -178,11 +219,37 @@ export default function EmployeeRegisterPage() {
                 type="password"
                 value={form.password}
                 onChange={(e) => updateField("password", e.target.value)}
+                onBlur={() => markTouched("password")}
+                autoComplete="new-password"
                 required
               />
+              <PasswordStrengthHint password={form.password} />
+              {errorFor("password") ? (
+                <p className="mt-1 text-xs text-[var(--red)]">{errorFor("password")}</p>
+              ) : null}
             </div>
 
-            {msg ? <div className="status-banner error">{msg}</div> : null}
+            <div>
+              <label className="field-label" htmlFor="employee-confirm-password">
+                Confirmar contraseña
+              </label>
+              <input
+                id="employee-confirm-password"
+                className="field-input"
+                placeholder="Repite tu contraseña"
+                type="password"
+                value={form.confirmPassword}
+                onChange={(e) => updateField("confirmPassword", e.target.value)}
+                onBlur={() => markTouched("confirmPassword")}
+                autoComplete="new-password"
+                required
+              />
+              {errorFor("confirmPassword") ? (
+                <p className="mt-1 text-xs text-[var(--red)]">{errorFor("confirmPassword")}</p>
+              ) : null}
+            </div>
+
+            {serverError ? <div className="status-banner error">{serverError}</div> : null}
 
             <button type="submit" className="primary-button w-full" disabled={isSubmitting}>
               {isSubmitting ? "Solicitando acceso..." : "Solicitar Acceso"}

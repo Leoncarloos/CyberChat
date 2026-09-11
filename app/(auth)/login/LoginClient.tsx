@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
+import { loginSchema } from "@/lib/validators/auth";
 
 const features = [
   {
@@ -32,6 +33,7 @@ export default function LoginClient({ registered }: LoginClientProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const helperMessage = useMemo(() => {
     if (registered === "admin") {
@@ -48,8 +50,17 @@ export default function LoginClient({ registered }: LoginClientProps) {
   async function onLogin(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return setMsg(error.message);
+
+    const parsed = loginSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      setMsg(parsed.error.issues[0]?.message ?? "Revisa tus credenciales.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
+    setIsSubmitting(false);
+    if (error) return setMsg("Correo o contraseña incorrectos.");
 
     const role =
       typeof data.user?.user_metadata?.role === "string" ? data.user.user_metadata.role : "";
@@ -161,8 +172,8 @@ export default function LoginClient({ registered }: LoginClientProps) {
             {helperMessage ? <div className="status-banner success">{helperMessage}</div> : null}
             {msg ? <div className="status-banner error">{msg}</div> : null}
 
-            <button type="submit" className="primary-button w-full">
-              Entrar al panel
+            <button type="submit" className="primary-button w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Ingresando..." : "Entrar al panel"}
             </button>
           </form>
 
