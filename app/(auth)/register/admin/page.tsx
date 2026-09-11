@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { registerAdminSchema, flattenFieldErrors } from "@/lib/validators/auth";
+import PasswordStrengthHint from "@/components/PasswordStrengthHint";
 
 type AdminRegisterForm = {
   ruc: string;
@@ -11,6 +13,7 @@ type AdminRegisterForm = {
   email: string;
   phone: string;
   password: string;
+  confirmPassword: string;
   acceptedTerms: boolean;
 };
 
@@ -22,34 +25,22 @@ const initialForm: AdminRegisterForm = {
   email: "",
   phone: "",
   password: "",
+  confirmPassword: "",
   acceptedTerms: false,
 };
+
+type ValidatedField = Exclude<keyof AdminRegisterForm, "acceptedTerms">;
 
 export default function AdminRegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState<AdminRegisterForm>(initialForm);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [touched, setTouched] = useState<Partial<Record<ValidatedField, boolean>>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function updateField<K extends keyof AdminRegisterForm>(key: K, value: AdminRegisterForm[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  async function onRegister(e: React.FormEvent) {
-    e.preventDefault();
-    setMsg(null);
-
-    if (!form.acceptedTerms) {
-      setMsg("Debes aceptar los términos para continuar.");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    const res = await fetch("/api/auth/register-admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  const validation = useMemo(
+    () =>
+      registerAdminSchema.safeParse({
         ruc: form.ruc,
         businessName: form.businessName,
         tradeName: form.tradeName,
@@ -57,14 +48,58 @@ export default function AdminRegisterPage() {
         email: form.email,
         phone: form.phone,
         password: form.password,
+        confirmPassword: form.confirmPassword,
       }),
+    [form]
+  );
+  const fieldErrors = validation.success ? {} : flattenFieldErrors(validation.error);
+
+  function updateField<K extends keyof AdminRegisterForm>(key: K, value: AdminRegisterForm[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function markTouched(key: ValidatedField) {
+    setTouched((prev) => ({ ...prev, [key]: true }));
+  }
+
+  function errorFor(key: ValidatedField) {
+    return touched[key] ? fieldErrors[key] : undefined;
+  }
+
+  async function onRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setServerError(null);
+    setTouched({
+      ruc: true,
+      businessName: true,
+      tradeName: true,
+      ownerName: true,
+      email: true,
+      phone: true,
+      password: true,
+      confirmPassword: true,
+    });
+
+    if (!form.acceptedTerms) {
+      setServerError("Debes aceptar los términos para continuar.");
+      return;
+    }
+
+    if (!validation.success) return;
+
+    setIsSubmitting(true);
+
+    const res = await fetch("/api/auth/register-admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(validation.data),
     });
 
     setIsSubmitting(false);
-    const data = (await res.json()) as { error?: string };
+    const data = (await res.json()) as { error?: string; fieldErrors?: Record<string, string> };
 
     if (!res.ok) {
-      setMsg(data.error ?? "No se pudo crear la cuenta administradora.");
+      setServerError(data.error ?? "No se pudo crear la cuenta administradora.");
       return;
     }
 
@@ -84,7 +119,7 @@ export default function AdminRegisterPage() {
             </p>
           </div>
 
-          <form onSubmit={onRegister} className="space-y-7">
+          <form onSubmit={onRegister} className="space-y-7" noValidate>
             <div className="space-y-4">
               <div className="flex items-center gap-3 border-b border-[var(--border)] pb-3">
                 <span className="feature-icon">EMP</span>
@@ -102,8 +137,14 @@ export default function AdminRegisterPage() {
                     placeholder="Ej. 20123456789"
                     value={form.ruc}
                     onChange={(e) => updateField("ruc", e.target.value)}
+                    onBlur={() => markTouched("ruc")}
+                    inputMode="numeric"
+                    maxLength={11}
                     required
                   />
+                  {errorFor("ruc") ? (
+                    <p className="mt-1 text-xs text-[var(--red)]">{errorFor("ruc")}</p>
+                  ) : null}
                 </div>
 
                 <div>
@@ -116,8 +157,12 @@ export default function AdminRegisterPage() {
                     placeholder="Ej. Mi Empresa SAC"
                     value={form.businessName}
                     onChange={(e) => updateField("businessName", e.target.value)}
+                    onBlur={() => markTouched("businessName")}
                     required
                   />
+                  {errorFor("businessName") ? (
+                    <p className="mt-1 text-xs text-[var(--red)]">{errorFor("businessName")}</p>
+                  ) : null}
                 </div>
               </div>
 
@@ -131,7 +176,11 @@ export default function AdminRegisterPage() {
                   placeholder="¿Cómo conocen a su empresa?"
                   value={form.tradeName}
                   onChange={(e) => updateField("tradeName", e.target.value)}
+                  onBlur={() => markTouched("tradeName")}
                 />
+                {errorFor("tradeName") ? (
+                  <p className="mt-1 text-xs text-[var(--red)]">{errorFor("tradeName")}</p>
+                ) : null}
               </div>
             </div>
 
@@ -153,8 +202,12 @@ export default function AdminRegisterPage() {
                   placeholder="Ingrese sus nombres y apellidos"
                   value={form.ownerName}
                   onChange={(e) => updateField("ownerName", e.target.value)}
+                  onBlur={() => markTouched("ownerName")}
                   required
                 />
+                {errorFor("ownerName") ? (
+                  <p className="mt-1 text-xs text-[var(--red)]">{errorFor("ownerName")}</p>
+                ) : null}
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -169,8 +222,13 @@ export default function AdminRegisterPage() {
                     type="email"
                     value={form.email}
                     onChange={(e) => updateField("email", e.target.value)}
+                    onBlur={() => markTouched("email")}
+                    autoComplete="email"
                     required
                   />
+                  {errorFor("email") ? (
+                    <p className="mt-1 text-xs text-[var(--red)]">{errorFor("email")}</p>
+                  ) : null}
                 </div>
 
                 <div>
@@ -183,8 +241,14 @@ export default function AdminRegisterPage() {
                     placeholder="987 654 321"
                     value={form.phone}
                     onChange={(e) => updateField("phone", e.target.value)}
+                    onBlur={() => markTouched("phone")}
+                    inputMode="numeric"
+                    maxLength={9}
                     required
                   />
+                  {errorFor("phone") ? (
+                    <p className="mt-1 text-xs text-[var(--red)]">{errorFor("phone")}</p>
+                  ) : null}
                 </div>
               </div>
 
@@ -199,8 +263,34 @@ export default function AdminRegisterPage() {
                   type="password"
                   value={form.password}
                   onChange={(e) => updateField("password", e.target.value)}
+                  onBlur={() => markTouched("password")}
+                  autoComplete="new-password"
                   required
                 />
+                <PasswordStrengthHint password={form.password} />
+                {errorFor("password") ? (
+                  <p className="mt-1 text-xs text-[var(--red)]">{errorFor("password")}</p>
+                ) : null}
+              </div>
+
+              <div>
+                <label className="field-label" htmlFor="admin-confirm-password">
+                  Confirmar contraseña
+                </label>
+                <input
+                  id="admin-confirm-password"
+                  className="field-input"
+                  placeholder="Repite tu contraseña"
+                  type="password"
+                  value={form.confirmPassword}
+                  onChange={(e) => updateField("confirmPassword", e.target.value)}
+                  onBlur={() => markTouched("confirmPassword")}
+                  autoComplete="new-password"
+                  required
+                />
+                {errorFor("confirmPassword") ? (
+                  <p className="mt-1 text-xs text-[var(--red)]">{errorFor("confirmPassword")}</p>
+                ) : null}
               </div>
             </div>
 
@@ -217,7 +307,7 @@ export default function AdminRegisterPage() {
               </span>
             </label>
 
-            {msg ? <div className="status-banner error">{msg}</div> : null}
+            {serverError ? <div className="status-banner error">{serverError}</div> : null}
 
             <button type="submit" className="primary-button w-full" disabled={isSubmitting}>
               {isSubmitting ? "Creando cuenta..." : "Crear Cuenta Segura"}

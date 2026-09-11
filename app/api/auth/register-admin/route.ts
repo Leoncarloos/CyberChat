@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { registerAdminSchema, flattenFieldErrors } from "@/lib/validators/auth";
 
 type UserMetadata = {
   role?: string;
@@ -16,26 +17,20 @@ function parseMetadata(value: unknown): UserMetadata {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as {
-      ruc?: string;
-      businessName?: string;
-      tradeName?: string;
-      ownerName?: string;
-      email?: string;
-      phone?: string;
-      password?: string;
-    };
+    const body = await req.json();
+    const parsed = registerAdminSchema.safeParse(body);
 
-    const ruc = body.ruc?.trim() ?? "";
-    const businessName = body.businessName?.trim() ?? "";
-    const ownerName = body.ownerName?.trim() ?? "";
-    const email = body.email?.trim().toLowerCase() ?? "";
-    const phone = body.phone?.trim() ?? "";
-    const password = body.password ?? "";
-
-    if (!ruc || !businessName || !ownerName || !email || !phone || !password) {
-      return NextResponse.json({ error: "Completa todos los campos obligatorios" }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: "Revisa los datos ingresados",
+          fieldErrors: flattenFieldErrors(parsed.error),
+        },
+        { status: 400 }
+      );
     }
+
+    const { ruc, businessName, tradeName, ownerName, email, phone, password } = parsed.data;
 
     const admin = supabaseAdmin();
     const usersResult = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -65,7 +60,7 @@ export async function POST(req: Request) {
         approval_status: "active",
         ruc,
         business_name: businessName,
-        trade_name: body.tradeName?.trim() ?? "",
+        trade_name: tradeName,
         owner_name: ownerName,
         phone,
         registered_at: new Date().toISOString(),
