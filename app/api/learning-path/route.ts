@@ -6,11 +6,12 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   learningTopics,
-  learningTopicByKey,
   levelFromPct,
   type KnowledgeLevel,
   type ProgressStatus,
 } from "@/lib/learningPath";
+import { learningPathBodySchema } from "@/lib/validators/learningPath";
+import { flattenFieldErrors } from "@/lib/validators/shared";
 
 type TopicPerformance = Record<string, { correct: number; total: number }>;
 
@@ -29,7 +30,6 @@ type TopicNode = {
 };
 
 const LEVEL_RANK: Record<KnowledgeLevel, number> = { bajo: 0, medio: 1, alto: 2 };
-const VALID_STATUS: ProgressStatus[] = ["pendiente", "en_progreso", "completado"];
 
 // La tabla learning_progress puede no existir todavía en algunos entornos; el
 // código degrada con elegancia (status "pendiente") en vez de romper el chat.
@@ -108,8 +108,6 @@ export async function GET() {
   }
 }
 
-type ProgressBody = { topicKey?: string; status?: string };
-
 export async function POST(req: Request) {
   try {
     const supabase = await supabaseServer();
@@ -118,16 +116,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No auth" }, { status: 401 });
     }
 
-    const body = (await req.json()) as ProgressBody;
-    const topicKey = body.topicKey;
-    const status = body.status as ProgressStatus | undefined;
+    const rawBody = await req.json();
+    const parsed = learningPathBodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Payload inválido", fieldErrors: flattenFieldErrors(parsed.error) },
+        { status: 400 }
+      );
+    }
 
-    if (!topicKey || !learningTopicByKey[topicKey]) {
-      return NextResponse.json({ error: "Tema inválido" }, { status: 400 });
-    }
-    if (!status || !VALID_STATUS.includes(status)) {
-      return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
-    }
+    const { topicKey, status } = parsed.data;
 
     const { error } = await supabaseAdmin()
       .from("learning_progress")
