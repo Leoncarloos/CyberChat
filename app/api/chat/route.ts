@@ -3,7 +3,9 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { embedHF } from "@/lib/embedHF";
+import { resolveOrgAdminId } from "@/lib/orgAdmin";
 
 type ChatMsg = { role: "system" | "user" | "assistant"; content: string };
 type RpcMatch = { similarity?: number; content?: string };
@@ -102,12 +104,22 @@ export async function POST(req: Request) {
 
     const query_embedding = await embedHF(lastUserMsg);
 
-    const { data: matches, error: rpcErr } = await supabase.rpc(
+    // La base documental pertenece a la empresa, no al usuario: la sube el dueño
+    // (documents.uploaded_by = admin) y la consultan todos sus empleados (HU23).
+    // El RUC sale de la sesión, nunca del body, y el RPC sigue acotando por
+    // uploaded_by, así que un document_id de otra empresa no devuelve nada.
+    const metadata = (auth.user.user_metadata ?? {}) as { ruc?: string };
+    const scopeUserId =
+      (await resolveOrgAdminId(metadata.ruc ?? "")) ?? auth.user.id;
+
+    // supabaseAdmin: el RPC es SECURITY INVOKER y la política documents_select_own
+    // limitaría al empleado a sus propios documentos, anulando el scope de empresa.
+    const { data: matches, error: rpcErr } = await supabaseAdmin().rpc(
       "match_document_chunks_scoped",
       {
         query_embedding,
         match_count: MAX_CHUNKS,
-        filter_user_id: auth.user.id,
+        filter_user_id: scopeUserId,
         filter_document_id: document_id ?? null,
       }
     );

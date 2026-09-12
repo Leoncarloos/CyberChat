@@ -3,8 +3,14 @@
 -- editor SQL de Supabase (nunca tuvo migración versionada) — este archivo documenta
 -- su definición real, extraída con pg_get_functiondef() (issue #18).
 --
--- Aislamiento por usuario: no hay columna user_id en document_chunks; el scope se
--- resuelve vía JOIN a documents.uploaded_by = filter_user_id.
+-- Aislamiento por empresa: no hay columna user_id en document_chunks; el scope se
+-- resuelve vía JOIN a documents.uploaded_by = filter_user_id. El llamador pasa el id
+-- del DUEÑO de la empresa (lib/orgAdmin.ts → resolveOrgAdminId), no el del usuario
+-- que consulta: la base documental la sube el admin y la consultan sus empleados.
+--
+-- La función es SECURITY INVOKER, así que hay que invocarla con supabaseAdmin
+-- (service_role): con el cliente del usuario, la política documents_select_own
+-- limitaría el JOIN a los documentos propios y anularía el scope de empresa.
 --
 -- Ejecutar en el editor SQL de Supabase (o mantener sincronizado si se vuelve a
 -- editar ahí — este archivo debe reflejar siempre la definición real en producción).

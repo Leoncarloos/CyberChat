@@ -76,8 +76,10 @@ RLS: política `documents_select_own`.
 | `embedding` | vector(384) | Embedding HF all-MiniLM-L6-v2 |
 | `created_at` | timestamptz | Timestamp |
 
-**No tiene columna `user_id`.** El aislamiento por usuario se hace en la función RPC
-`match_document_chunks_scoped` vía `JOIN` contra `documents.uploaded_by` (ver abajo).
+**No tiene columna `user_id`.** El aislamiento por **empresa** se hace en la función RPC
+`match_document_chunks_scoped` vía `JOIN` contra `documents.uploaded_by` (ver abajo),
+pasándole el id del dueño de la empresa (`lib/orgAdmin.ts`) y no el del usuario que
+consulta — así los empleados acceden a la base documental que subió su admin.
 
 RLS: política `document_chunks_select_own`.
 

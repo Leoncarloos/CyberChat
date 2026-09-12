@@ -6,6 +6,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { diagnosticTopics } from "@/lib/diagnosticQuestions";
 import { embedHF } from "@/lib/embedHF";
+import { resolveOrgAdminId } from "@/lib/orgAdmin";
 
 type TopicPerf = { correct: number; total: number };
 
@@ -65,19 +66,7 @@ export async function GET() {
       .sort((a, b) => a.pct - b.pct)
       .slice(0, 4);
 
-    // Find admin of same RUC
-    let adminUserId: string | null = null;
-    if (userRuc) {
-      const { data: usersData } = await admin.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
-      });
-      const adminUser = (usersData?.users ?? []).find((u) => {
-        const m = u.user_metadata ?? {};
-        return m.role === "admin" && m.ruc === userRuc;
-      });
-      adminUserId = adminUser?.id ?? null;
-    }
+    const adminUserId = await resolveOrgAdminId(userRuc);
 
     // RAG per topic
     type TopicContext = { key: string; label: string; pct: number; context: string };
