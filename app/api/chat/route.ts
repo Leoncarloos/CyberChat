@@ -34,7 +34,7 @@ function deduplicateChunks(chunks: RpcMatch[]): RpcMatch[] {
 
 function buildSystemPrompt(context: string, chunkCount: number): string {
   const base = [
-    "Eres CyberGuard, especialista en ciberseguridad para MYPES peruanas.",
+    "Eres CyberChat, especialista en ciberseguridad para MYPES peruanas.",
     "Responde en español claro, concreto y accionable.",
     "Usa '###' para secciones cuando haya varias partes.",
     "Usa listas numeradas para pasos y viñetas para recomendaciones.",
