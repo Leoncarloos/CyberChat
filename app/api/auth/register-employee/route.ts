@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { registerEmployeeSchema, flattenFieldErrors } from "@/lib/validators/auth";
+import { translateAuthError } from "@/lib/authErrors";
 
 type UserMetadata = {
   role?: string;
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
     });
 
     if (createResult.error) {
-      return NextResponse.json({ error: createResult.error.message }, { status: 400 });
+      return NextResponse.json({ error: translateAuthError(createResult.error) }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true });
