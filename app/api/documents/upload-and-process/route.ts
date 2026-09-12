@@ -39,6 +39,23 @@ function getExt(filename: string) {
 }
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // HU23-4 — 10 MB
+const SUPPORTED_EXTS = ["pdf", "docx", "txt"] as const;
+
+async function extractText(ext: string, buffer: Buffer): Promise<string> {
+  if (ext === "txt") return new TextDecoder("utf-8").decode(buffer);
+
+  if (ext === "docx") {
+    const mammoth = await import("mammoth");
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value || "";
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mod: any = await import("pdf-extraction");
+  const pdfExtract = mod?.default ?? mod;
+  const parsed = await pdfExtract(buffer);
+  return parsed?.text || "";
+}
 
 export async function POST(req: Request) {
   try {
@@ -46,6 +63,11 @@ export async function POST(req: Request) {
     const { data: auth, error: authErr } = await supabase.auth.getUser();
     if (authErr || !auth?.user) {
       return NextResponse.json({ error: "No auth" }, { status: 401 });
+    }
+    // La base documental es de la empresa y la consultan todos sus empleados
+    // (ver lib/orgAdmin.ts), así que solo el dueño puede alimentarla.
+    if (auth.user.user_metadata?.role !== "admin") {
+      return NextResponse.json({ error: "Solo admins" }, { status: 403 });
     }
     const userId = auth.user.id;
 
@@ -64,54 +86,18 @@ export async function POST(req: Request) {
     }
 
     const ext = getExt(file.name) || "bin";
-    const storagePath = `${userId}/${crypto.randomUUID()}.${ext}`;
-    const bytes = new Uint8Array(await file.arrayBuffer());
-
-    const up = await admin.storage.from("documents").upload(storagePath, bytes, {
-      contentType: file.type || "application/octet-stream",
-      upsert: false,
-    });
-    if (up.error) return NextResponse.json({ error: up.error.message }, { status: 500 });
-
-    const ins = await admin
-      .from("documents")
-      .insert({ name: file.name, storage_path: storagePath, uploaded_by: userId })
-      .select("id")
-      .single();
-    if (ins.error) return NextResponse.json({ error: ins.error.message }, { status: 500 });
-
-    const document_id = ins.data.id as string;
-
-    const { data: dl, error: dlErr } = await admin.storage
-      .from("documents")
-      .download(storagePath);
-    if (dlErr || !dl) {
-      return NextResponse.json({ error: "No se pudo descargar el archivo" }, { status: 500 });
-    }
-
-    const arrayBuffer = await dl.arrayBuffer();
-    let text = "";
-
-    if (ext === "txt") {
-      text = new TextDecoder("utf-8").decode(arrayBuffer);
-    } else if (ext === "docx") {
-      const mammoth = await import("mammoth");
-      const result = await mammoth.extractRawText({ buffer: Buffer.from(arrayBuffer) });
-      text = result.value || "";
-    } else if (ext === "pdf") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mod: any = await import("pdf-extraction");
-      const pdfExtract = mod?.default ?? mod;
-      const parsed = await pdfExtract(Buffer.from(arrayBuffer));
-      text = parsed?.text || "";
-    } else {
+    if (!(SUPPORTED_EXTS as readonly string[]).includes(ext)) {
       return NextResponse.json(
         { error: `Formato no soportado: .${ext}. Usa PDF, DOCX o TXT.` },
         { status: 400 }
       );
     }
 
-    text = String(text || "")
+    // Todo lo que puede fallar ocurre antes de escribir: un rechazo no debe dejar
+    // el archivo en Storage ni una fila en documents con 0 chunks (HU23-2/HU23-3).
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    const text = String(await extractText(ext, buffer))
       .replace(/\r\n/g, "\n")
       .replace(/\n{3,}/g, "\n\n")
       .replace(/[ \t]{2,}/g, " ")
@@ -125,25 +111,58 @@ export async function POST(req: Request) {
     }
 
     const chunks = chunkBySentences(text);
-
-    await admin.from("document_chunks").delete().eq("document_id", document_id);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows: any[] = [];
-    for (let i = 0; i < chunks.length; i++) {
-      const content = chunks[i];
-      const embedding = await embedHF(content);
-      rows.push({ document_id, chunk_index: i, content, embedding });
+    if (chunks.length === 0) {
+      return NextResponse.json(
+        { error: "El documento no tiene suficiente texto aprovechable para indexarlo" },
+        { status: 400 }
+      );
     }
 
-    const { error: chunksErr } = await admin.from("document_chunks").insert(rows);
-    if (chunksErr) return NextResponse.json({ error: chunksErr.message }, { status: 500 });
+    const embeddings: number[][] = [];
+    for (const content of chunks) {
+      embeddings.push(await embedHF(content));
+    }
+
+    const storagePath = `${userId}/${crypto.randomUUID()}.${ext}`;
+    const up = await admin.storage.from("documents").upload(storagePath, buffer, {
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+    if (up.error) return NextResponse.json({ error: up.error.message }, { status: 500 });
+
+    const ins = await admin
+      .from("documents")
+      .insert({ name: file.name, storage_path: storagePath, uploaded_by: userId })
+      .select("id")
+      .single();
+    if (ins.error) {
+      await admin.storage.from("documents").remove([storagePath]);
+      return NextResponse.json({ error: ins.error.message }, { status: 500 });
+    }
+
+    const document_id = ins.data.id as string;
+
+    const { error: chunksErr } = await admin.from("document_chunks").insert(
+      chunks.map((content, i) => ({
+        document_id,
+        chunk_index: i,
+        content,
+        embedding: embeddings[i],
+      }))
+    );
+
+    if (chunksErr) {
+      // Sin chunks el documento no aporta nada al RAG: se revierte entero.
+      await admin.from("documents").delete().eq("id", document_id);
+      await admin.storage.from("documents").remove([storagePath]);
+      return NextResponse.json({ error: chunksErr.message }, { status: 500 });
+    }
 
     return NextResponse.json({
       ok: true,
       document_id,
       storage_path: storagePath,
-      chunks: rows.length,
+      chunks: chunks.length,
       embedded: true,
     });
   } catch (e: unknown) {
