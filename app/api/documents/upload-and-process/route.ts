@@ -38,6 +38,8 @@ function getExt(filename: string) {
   return parts.length > 1 ? parts.pop()! : "";
 }
 
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // HU23-4 — 10 MB
+
 export async function POST(req: Request) {
   try {
     const supabase = await supabaseServer();
@@ -52,6 +54,14 @@ export async function POST(req: Request) {
     const form = await req.formData();
     const file = form.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "file requerido" }, { status: 400 });
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      return NextResponse.json(
+        { error: `Archivo demasiado grande (${sizeMb} MB). El límite es 10 MB.` },
+        { status: 400 }
+      );
+    }
 
     const ext = getExt(file.name) || "bin";
     const storagePath = `${userId}/${crypto.randomUUID()}.${ext}`;

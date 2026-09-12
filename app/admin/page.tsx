@@ -20,6 +20,23 @@ type ReprocessResponse = {
 type ToastTone = "success" | "error" | "info";
 type Toast = { id: number; tone: ToastTone; msg: string };
 
+type DocumentItem = {
+  id: string;
+  name: string;
+  createdAt: string;
+  chunkCount: number;
+};
+
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("es-PE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 export default function AdminPage() {
   const supabase = useMemo(() => supabaseBrowser(), []);
   const router = useRouter();
@@ -31,11 +48,28 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [fileName, setFileName] = useState("");
 
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<DocumentItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toast = useCallback((tone: ToastTone, msg: string) => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, tone, msg }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3800);
+  }, []);
+
+  const fetchDocuments = useCallback(async () => {
+    setDocumentsLoading(true);
+    try {
+      const res = await fetch("/api/documents");
+      if (res.ok) {
+        const data = (await res.json()) as { documents?: DocumentItem[] };
+        setDocuments(data.documents ?? []);
+      }
+    } catch {}
+    setDocumentsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -48,8 +82,9 @@ export default function AdminPage() {
 
       setUserId(user.id);
       setUserEmail(user.email ?? "");
+      void fetchDocuments();
     })();
-  }, [router, supabase]);
+  }, [router, supabase, fetchDocuments]);
 
   async function uploadAndProcess(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -61,6 +96,9 @@ export default function AdminPage() {
 
     if (!file) return toast("error", "Selecciona un archivo primero");
     if (!userId) return toast("error", "Sesión expirada. Vuelve a iniciar sesión.");
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return toast("error", `Archivo demasiado grande (${(file.size / (1024 * 1024)).toFixed(1)} MB). El límite es 10 MB.`);
+    }
 
     const formData = new FormData();
     formData.append("file", file);
@@ -95,6 +133,7 @@ export default function AdminPage() {
       toast("success", `Documento procesado · ${data?.chunks ?? "?"} chunks generados`);
       form.reset();
       setFileName("");
+      void fetchDocuments();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       toast("error", message);
@@ -118,6 +157,32 @@ export default function AdminPage() {
     }
     setStatus(`Re-proceso OK | docs: ${data.reprocessed ?? 0} | chunks: ${data.totalChunks ?? 0}`);
     toast("success", `Re-proceso completo · ${data.reprocessed ?? 0} docs · ${data.totalChunks ?? 0} chunks`);
+  }
+
+  async function confirmDeleteDocument() {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setIsDeleting(true);
+
+    try {
+      const res = await fetch(`/api/documents/${target.id}`, { method: "DELETE" });
+      const data = (await res.json()) as { error?: string };
+
+      if (!res.ok) {
+        toast("error", data.error ?? "Error al eliminar el documento");
+        setIsDeleting(false);
+        return;
+      }
+
+      setDocuments((prev) => prev.filter((d) => d.id !== target.id));
+      toast("success", `"${target.name}" eliminado`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast("error", message);
+    }
+
+    setIsDeleting(false);
+    setDeleteTarget(null);
   }
 
   async function logout() {
@@ -249,7 +314,7 @@ export default function AdminPage() {
                 <p className="text-sm font-semibold text-[var(--ink)]">
                   {fileName || "Haz clic para seleccionar un archivo"}
                 </p>
-                <p className="mt-1 text-xs text-[var(--ink-soft)]">PDF · DOCX · TXT</p>
+                <p className="mt-1 text-xs text-[var(--ink-soft)]">PDF · DOCX · TXT · máx. 10 MB</p>
                 <input
                   id="document-file"
                   className="sr-only"
@@ -298,6 +363,46 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {/* Mis documentos — HU23-5/HU23-6 */}
+          <div className="stat-card">
+            <p className="eyebrow mb-4">Mis documentos</p>
+
+            {documentsLoading ? (
+              <div className="space-y-3" aria-hidden="true">
+                {[0, 1].map((i) => (
+                  <div key={i} className="h-14 animate-pulse rounded-xl bg-black/5" />
+                ))}
+              </div>
+            ) : documents.length === 0 ? (
+              <p className="text-sm text-[var(--ink-soft)]">
+                Aún no has subido ningún documento para el contexto de la IA.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {documents.map((doc) => (
+                  <li
+                    key={doc.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-white/70 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[var(--ink)]">{doc.name}</p>
+                      <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--ink-soft)]">
+                        {formatDate(doc.createdAt)} · {doc.chunkCount} chunks
+                      </p>
+                    </div>
+                    <button
+                      className="shrink-0 rounded-lg border border-[rgba(201,64,64,0.25)] bg-[rgba(201,64,64,0.06)] px-3 py-1.5 text-xs font-semibold text-[var(--red)] transition hover:bg-[rgba(201,64,64,0.12)]"
+                      onClick={() => setDeleteTarget(doc)}
+                      aria-label={`Eliminar ${doc.name}`}
+                    >
+                      🗑 Eliminar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           {/* Last doc */}
           {lastDocumentId && (
             <div className="stat-card flex flex-wrap items-center justify-between gap-4">
@@ -330,6 +435,35 @@ export default function AdminPage() {
               <span>{t.msg}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Modal: eliminar documento ── */}
+      {deleteTarget && (
+        <div className="ui-modal-overlay" onClick={() => !isDeleting && setDeleteTarget(null)}>
+          <div className="ui-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(201,64,64,0.12)] text-2xl">
+              🗑️
+            </div>
+            <h3 className="display-title text-2xl font-black">¿Eliminar documento?</h3>
+            <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+              Se eliminará <strong className="text-[var(--ink)]">&ldquo;{deleteTarget.name}&rdquo;</strong> de
+              Storage junto con sus {deleteTarget.chunkCount} chunks vectorizados. Dejará de
+              formar parte del contexto de la IA. Esta acción no se puede deshacer.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button className="ghost-button" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
+                Cancelar
+              </button>
+              <button
+                className="primary-button !bg-[var(--red)] !shadow-none"
+                onClick={() => void confirmDeleteDocument()}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Eliminando..." : "Sí, eliminar"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </main>

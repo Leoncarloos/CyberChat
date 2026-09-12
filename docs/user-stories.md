@@ -20,7 +20,7 @@
 > | HU18 | **HU20** | Exportación CSV de resultados organizacionales y por empleado |
 > | HU19 | **HU21** | Banco de preguntas fijo para el post-test + historial de notas |
 > | HU20 | **HU22** | Evaluación recurrente cada 5 días |
-> | — | **HU23** | Gestión de documentos de contexto para la IA (nueva, pedida en las Observaciones del backlog oficial — aún no tiene HU detallada en este archivo) |
+> | — | **HU23** | Gestión de documentos de contexto para la IA (nueva, pedida en las Observaciones del backlog oficial) |
 >
 > Nota: la **HU19 oficial** (gestión de roles, Escenario 3 = rol `platform_admin`) está
 > pendiente de implementación, diferida a propósito por el usuario.
@@ -868,3 +868,157 @@ corrupta.
 - `/chat` (client): al cargar, consulta el status; si hay evaluación pendiente, presenta el módulo de evaluación en modo obligatorio.
 - `lib/orgMetrics.ts` + `GET /api/org-dashboard`: agregar métricas de recurrencia (promedio último intento, tendencia, áreas críticas agregadas, % cumplimiento).
 - `app/dashboard/page.tsx` + `GET /api/dashboard`: línea de tiempo unificada, áreas críticas del último intento, countdown de próxima evaluación.
+
+---
+
+# Historia de Usuario — HU23
+
+---
+
+## Información General
+
+| Campo                    | Detalle                                                        |
+|--------------------------|-----------------------------------------------------------------|
+| **Código**               | HU23                                                             |
+| **Nombre**               | Gestión de documentos de contexto para la IA                    |
+| **Usuario involucrado**  | Administrador (dueño de la empresa)                              |
+| **Prioridad**            | Media                                                            |
+| **Riesgo de desarrollo** | Bajo                                                             |
+| **Puntos estimados**     | 5                                                                |
+| **Puntos reales**        | —                                                                |
+| **Recurso responsable**  | Development Team                                                 |
+| **Iteración asignada**   | Sprint 7                                                          |
+
+---
+
+## Descripción
+
+**Como** dueño de la empresa,
+**quiero** subir documentos que establezcan un contexto para la IA del chat conversacional de concientización, y gestionar (ver y borrar) esos documentos,
+**para** que las respuestas del asistente virtual se adapten al contexto real de mi empresa, manteniendo control sobre qué información quedó cargada.
+
+---
+
+## Contexto / Problema actual
+
+Historia nueva, pedida en las Observaciones del backlog oficial (no existía en el
+Product Backlog original HU01–HU19). Al momento de redactarla, `/admin` ya permitía
+subir documentos (`POST /api/documents/upload-and-process`) y re-procesar embeddings de
+forma global (`POST /api/documents/reprocess`), pero no existía forma de ver qué se
+había subido, borrar un documento individual, ni ningún límite de tamaño de archivo.
+
+---
+
+## Criterios de Aceptación
+
+### Escenario 1 — Subida de documento válido
+
+**Dado que** el administrador sube un archivo `.pdf`, `.docx` o `.txt`,
+**cuando** lo envía desde `/admin`,
+**entonces** el sistema lo guarda en Storage, extrae el texto, lo fragmenta en chunks y
+genera sus embeddings, dejándolo disponible para el RAG del chat.
+
+---
+
+### Escenario 2 — Formato no soportado
+
+**Dado que** el administrador sube un archivo con extensión distinta de `.pdf`, `.docx`
+o `.txt`,
+**cuando** lo envía,
+**entonces** el sistema rechaza la subida (400) con el mensaje "Formato no soportado:
+.ext. Usa PDF, DOCX o TXT."
+
+---
+
+### Escenario 3 — Documento sin texto legible
+
+**Dado que** el archivo es, por ejemplo, un PDF escaneado como imagen sin texto
+extraíble,
+**cuando** el sistema intenta extraer el texto,
+**entonces** rechaza la subida (400) con el mensaje "Documento sin texto legible (puede
+ser una imagen escaneada)".
+
+---
+
+### Escenario 4 — Restricción de tamaño máximo de archivo
+
+**Dado que** el administrador intenta subir un archivo de gran tamaño (ej. 200 MB),
+**cuando** lo envía,
+**entonces** el sistema rechaza la subida (400) antes de escribir a Storage, con el
+mensaje "Archivo demasiado grande (X MB). El límite es 10 MB." El límite (10 MB) se
+valida tanto en el cliente (`/admin`, feedback inmediato) como en el servidor
+(`POST /api/documents/upload-and-process`, la validación real).
+
+---
+
+### Escenario 5 — Listado de documentos subidos
+
+**Dado que** el administrador quiere ver qué documentos ha subido a la base de
+conocimiento de su empresa,
+**cuando** accede a la sección "Mis documentos" en `/admin`,
+**entonces** el sistema muestra, para cada documento de su propia cuenta (`uploaded_by`
+= admin autenticado), su nombre, fecha de subida y cantidad de chunks generados,
+ordenados del más reciente al más antiguo.
+
+---
+
+### Escenario 6 — Eliminación de un documento
+
+**Dado que** el administrador ya no quiere que un documento forme parte del contexto de
+la IA,
+**cuando** selecciona "Eliminar" en el listado y confirma en el diálogo,
+**entonces** el sistema borra el archivo de Storage, la fila en `documents`, y en
+cascada todos sus `document_chunks` (con sus embeddings), y el documento desaparece del
+listado sin recargar la página.
+
+---
+
+### Escenario 7 — Aislamiento entre organizaciones al eliminar
+
+**Dado que** un administrador intenta eliminar un documento que no le pertenece
+(manipulando el `id` en el request),
+**cuando** el backend valida la propiedad,
+**entonces** responde `403` y no borra nada — ni de Storage ni de la base de datos.
+
+---
+
+### Escenario 8 — Re-procesamiento de documentos existentes
+
+**Dado que** se actualiza el modelo de embeddings o se detecta un chunk corrupto,
+**cuando** el administrador solicita re-procesar,
+**entonces** el sistema re-embebe todos los documentos de esa cuenta
+(`POST /api/documents/reprocess`, ya implementado de forma global).
+
+**Pendiente (no incluido en esta iteración):** re-procesar un documento individual
+desde el listado, en vez de todos a la vez. Requiere extender `/api/documents/reprocess`
+para aceptar un `document_id` opcional, y agregar el botón correspondiente por fila en
+"Mis documentos".
+
+---
+
+## Restricciones
+
+- El límite de tamaño de archivo (10 MB) se valida **siempre en el servidor** —la
+  validación de cliente es solo UX, nunca la única barrera.
+- El listado y el borrado están **scopeados por `uploaded_by`**: un administrador nunca
+  ve ni puede borrar documentos subidos por el administrador de otra empresa.
+- `document_chunks` tiene `ON DELETE CASCADE` sobre `document_id` — borrar la fila de
+  `documents` es suficiente para limpiar todos sus chunks, no hace falta borrarlos por
+  separado.
+- El borrado es **irreversible**: no hay papelera ni confirmación por correo, solo el
+  diálogo de confirmación en el cliente.
+
+---
+
+## Notas Técnicas
+
+- `app/api/documents/upload-and-process/route.ts`: valida `file.size` contra
+  `MAX_FILE_SIZE_BYTES` (10 MB) antes de subir a Storage.
+- `GET /api/documents` (nuevo): lista los documentos del admin autenticado con conteo de
+  chunks por documento (una query a `documents` + una query agregada a
+  `document_chunks`, sin N+1).
+- `DELETE /api/documents/[id]` (nuevo): valida rol `admin` + propiedad
+  (`uploaded_by === user.id`) antes de borrar de Storage y de `documents`.
+- `app/admin/page.tsx`: nueva sección "Mis documentos" (lista + botón eliminar) y modal
+  de confirmación reutilizando el patrón visual ya usado en `/chat` para eliminar
+  conversaciones.
