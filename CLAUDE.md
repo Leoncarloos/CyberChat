@@ -58,17 +58,18 @@ GROQ_API_KEY      # Groq — qwen/qwen3.8-27b
 4. Respuesta + metadata de fuentes devuelta al cliente
 
 ## Supabase
+- Identidad de usuario: no hay tabla `employees`/`profiles`. Rol, RUC, nombre y estado de
+  aprobación viven en `auth.users.user_metadata`, gestionados vía `supabaseAdmin().auth.admin.*`.
 - `diagnostic_results` — resultados del diagnóstico inicial (score, topics_performance, completed_at)
 - `quiz_results` — resultados de evaluaciones en /chat (score, total, taken_at) — legacy, se mantiene con doble escritura
-- `posttest_questions` — banco fijo de 200 preguntas para post-test/recurrentes (25 por tema × 8 temas) — HU19. SQL en `docs/sql/posttest_questions.sql` + seed en `docs/sql/posttest_questions_seed.sql`
-- `evaluation_attempts` — intentos de evaluación con test_type (posttest/recurrente) y topics_performance por tema — HU20. SQL en `docs/sql/evaluation_attempts.sql`
-- `seen_questions` — preguntas del banco ya respondidas por usuario (anti-repetición, ciclo se reinicia por tema al agotarse) — HU20
+- `posttest_questions` — banco fijo de 200 preguntas para post-test/recurrentes (25 por tema × 8 temas) — HU21. SQL en `docs/sql/posttest_questions.sql` + seed en `docs/sql/posttest_questions_seed.sql`
+- `evaluation_attempts` — intentos de evaluación con test_type (posttest/recurrente) y topics_performance por tema — HU22. SQL en `docs/sql/evaluation_attempts.sql`
+- `seen_questions` — preguntas del banco ya respondidas por usuario (anti-repetición, ciclo se reinicia por tema al agotarse) — HU22
 - `conversations` — historial de conversaciones por usuario
 - `messages` — mensajes dentro de cada conversación
 - `documents` — documentos subidos por admin
-- `document_chunks` — chunks vectorizados (pgvector 384-dim)
-- `employees` / `profiles` — datos y estado de empleados
-- `learning_progress` — progreso de la ruta por tema (user_id, topic_key, status: pendiente/en_progreso/completado) — HU11. SQL en `docs/sql/learning_progress.sql`
+- `document_chunks` — chunks vectorizados (pgvector 384-dim), con índice HNSW sobre `embedding`
+- `learning_progress` — progreso de la ruta por tema (user_id, topic_key, status: pendiente/en_progreso/completado) — HU16. SQL en `docs/sql/learning_progress.sql`
 - `org_summaries` — cache + log de auditoría de resúmenes IA org (ruc, period, summary_text, warnings, metrics, generated_by, generated_at) — HU17. SQL en `docs/sql/org_summaries.sql`
 
 Clientes:

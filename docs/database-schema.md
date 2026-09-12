@@ -8,7 +8,7 @@
 ## Proveedor
 Supabase (PostgreSQL 17 + extensión pgvector)
 
-## Identidad de usuario — no hay tabla `employees`/`profiles` activa
+## Identidad de usuario — no hay tabla `employees`/`profiles`
 
 El rol (`admin`/`employee`), el RUC de la empresa, el nombre, el estado de aprobación
 (`active`/`pending`/`rejected`) y demás datos del usuario **viven en
@@ -17,10 +17,12 @@ El rol (`admin`/`employee`), el RUC de la empresa, el nombre, el estado de aprob
 una tabla `employees` ni `profiles` — el filtrado por empresa se hace en memoria,
 iterando `listUsers()` y comparando `user_metadata.ruc`.
 
-Existe una tabla `profiles` (`id`, `email`, `role`, `created_at`) en la base de datos,
-con RLS y políticas propias, pero **ningún código del repositorio la usa** (`grep` sobre
-`app/` y `lib/` no encuentra ningún `.from("profiles")`). Es un remanente de un diseño
-anterior — candidato a eliminar o a documentar explícitamente como deprecado.
+**2026-09-12 (issue #16):** existía una tabla `profiles` (`id`, `email`, `role`,
+`created_at`) con un trigger (`on_auth_user_created` → `handle_new_user()`) que
+insertaba una fila en cada registro nuevo con `role` **hardcodeado a `'user'`**, nunca
+sincronizado con el rol real (`admin`/`employee`) de `user_metadata`. Ningún código del
+repositorio la consultaba. Se eliminó la tabla, el trigger y la función — no queda
+ningún rastro de identidad de usuario fuera de `auth.users.user_metadata`.
 
 ## Tablas
 
@@ -79,11 +81,9 @@ RLS: política `documents_select_own`.
 
 RLS: política `document_chunks_select_own`.
 
-**Índices:** solo la primary key (`document_chunks_pkey`, btree sobre `id`). **No existe
-un índice HNSW/IVFFlat sobre `embedding`** — la búsqueda por similitud coseno hace un
-scan secuencial. Es aceptable al volumen actual (piloto de 3 MYPEs), pero es el primer
-cuello de botella esperable si la base documental crece; considerar `CREATE INDEX ...
-USING hnsw (embedding vector_cosine_ops)` antes de escalar.
+**Índices:** primary key (`document_chunks_pkey`, btree sobre `id`) y, desde el
+2026-09-12 (issue #17), `document_chunks_embedding_hnsw_idx` (`USING hnsw (embedding
+vector_cosine_ops)`) para evitar el scan secuencial en la búsqueda por similitud.
 
 ---
 
@@ -223,21 +223,6 @@ SQL: `docs/sql/org_summaries.sql`.
 
 ---
 
-### `profiles` — sin uso, no eliminar sin confirmar
-| Columna | Tipo |
-|---------|------|
-| `id` | uuid PK |
-| `email` | text |
-| `role` | text |
-| `created_at` | timestamptz |
-
-RLS: `profiles_select_own`, `profiles_update_own`. Sin ninguna referencia en el código
-actual — ver nota al inicio del documento. No se documenta su SQL de creación porque no
-hay migración rastreada en `docs/sql/` para ella (fue creada directo en el editor de
-Supabase antes de existir ese flujo).
-
----
-
 ## Funciones RPC
 
 ### `match_document_chunks_scoped`
@@ -269,9 +254,13 @@ AS $$
 $$;
 ```
 
-`filter_document_id = NULL` busca en todos los documentos del usuario. No hay una
-migración rastreada en `docs/sql/` para esta función — se creó directo en el editor SQL
-de Supabase (mismo caso que `profiles`).
+`filter_document_id = NULL` busca en todos los documentos del usuario. Se creó
+originalmente directo en el editor SQL de Supabase; desde el 2026-09-12 (issue #18) su
+definición real queda versionada en `docs/sql/match_document_chunks_scoped.sql`.
+
+Desde el 2026-09-12 (issue #17), `document_chunks.embedding` tiene un índice
+`document_chunks_embedding_hnsw_idx` (HNSW, `vector_cosine_ops`) — antes solo existía
+la primary key btree y la búsqueda por similitud hacía scan secuencial completo.
 
 ---
 
@@ -285,7 +274,7 @@ de Supabase (mismo caso que `profiles`).
 ---
 
 ## Notas RLS
-- Las 12 tablas de `public` tienen `relrowsecurity = true`.
+- Las 11 tablas de `public` tienen `relrowsecurity = true`.
 - Los endpoints con lógica sensible (registro, aprobación de empleados, escritura de
   evaluaciones, dashboards) usan `supabaseAdmin` (service_role key, bypassa RLS) — solo
   en server, nunca expuesto al cliente. Las tablas nuevas (`posttest_questions`,
@@ -298,6 +287,8 @@ La versión anterior de este documento (previa a 2026-09-11) tenía dos imprecis
 reales, encontradas al verificar contra la base de datos en vivo:
 1. Documentaba una tabla `profiles`/`employees` con columnas `first_name`, `last_name`,
    `ruc`, `status` como si fuera la fuente de verdad de empleados — **nunca fue así**;
-   siempre fue `auth.users.user_metadata`. La tabla `profiles` real que existe en la
-   base de datos tiene un esquema distinto y no la usa ningún código.
-2. Afirmaba un índice HNSW sobre `document_chunks.embedding` que nunca se creó.
+   siempre fue `auth.users.user_metadata`. La tabla `profiles` real que existía en la
+   base de datos tenía un esquema distinto y no la usaba ningún código — se eliminó el
+   2026-09-12 (issue #16, ver nota al inicio del documento).
+2. Afirmaba un índice HNSW sobre `document_chunks.embedding` que no existía entonces —
+   se creó el 2026-09-12 (issue #17, ver sección `document_chunks`).
