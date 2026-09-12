@@ -3,11 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { diagnosticTopics, totalQuestions } from "@/lib/diagnosticQuestions";
+import { diagnosticTopics, totalQuestions } from "@/lib/diagnosticTopics";
 
 type Step = "intro" | number | "results";
 
 type TopicPerformance = Record<string, { correct: number; total: number }>;
+
+// Las preguntas llegan del servidor SIN la respuesta correcta; la corrección se
+// recibe recién al enviar (POST /api/diagnostic).
+type Question = { id: string; question: string; options: string[] };
+type Topic = { key: string; label: string; questions: Question[] };
+type DiagnosticResult = {
+  score: number;
+  total: number;
+  topicsPerformance: TopicPerformance;
+};
 
 export default function DiagnosticPage() {
   const router = useRouter();
@@ -17,6 +27,9 @@ export default function DiagnosticPage() {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [result, setResult] = useState<DiagnosticResult | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -29,6 +42,19 @@ export default function DiagnosticPage() {
         router.push("/chat");
         return;
       }
+
+      try {
+        const res = await fetch("/api/diagnostic/questions");
+        const json = (await res.json()) as { topics?: Topic[]; error?: string };
+        if (res.ok && json.topics?.length) {
+          setTopics(json.topics);
+        } else {
+          setLoadError(json.error ?? "No se pudo cargar la evaluación.");
+        }
+      } catch {
+        setLoadError("No se pudo cargar la evaluación.");
+      }
+
       setIsCheckingAuth(false);
     })();
   }, [router, supabase]);
@@ -38,10 +64,49 @@ export default function DiagnosticPage() {
   }
 
   function canAdvance() {
-    if (step === "intro") return true;
+    if (step === "intro") return topics.length > 0;
     if (typeof step !== "number") return false;
-    const topic = diagnosticTopics[step];
-    return topic.questions.every((q) => answers[q.id] !== undefined);
+    const topic = topics[step];
+    return Boolean(topic) && topic.questions.every((q) => answers[q.id] !== undefined);
+  }
+
+  // El puntaje lo calcula el servidor: al terminar la última temática se envían
+  // las respuestas y la pantalla de resultados usa lo que devuelve.
+  async function finishAndGrade() {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch("/api/diagnostic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          answers: Object.entries(answers).map(([questionId, selectedIndex]) => ({
+            questionId,
+            selectedIndex,
+          })),
+        }),
+      });
+
+      const data = (await res.json()) as Partial<DiagnosticResult> & { error?: string };
+
+      if (!res.ok || typeof data.score !== "number" || !data.topicsPerformance) {
+        setLoadError(data.error ?? "No se pudo registrar tu evaluación. Intenta nuevamente.");
+        return;
+      }
+
+      setResult({
+        score: data.score,
+        total: data.total ?? totalQuestions,
+        topicsPerformance: data.topicsPerformance,
+      });
+      setStep("results");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      setLoadError("No se pudo registrar tu evaluación. Intenta nuevamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function advance() {
@@ -50,51 +115,18 @@ export default function DiagnosticPage() {
       return;
     }
     if (typeof step === "number") {
-      if (step < diagnosticTopics.length - 1) {
+      if (step < topics.length - 1) {
         setStep(step + 1);
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
-        setStep("results");
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        void finishAndGrade();
       }
     }
   }
 
-  function computeResults(): { score: number; topicsPerformance: TopicPerformance } {
-    let score = 0;
-    const topicsPerformance: TopicPerformance = {};
-
-    for (const topic of diagnosticTopics) {
-      let correct = 0;
-      for (const q of topic.questions) {
-        if (answers[q.id] === q.correctIndex) {
-          correct++;
-          score++;
-        }
-      }
-      topicsPerformance[topic.key] = { correct, total: topic.questions.length };
-    }
-
-    return { score, topicsPerformance };
-  }
-
-  async function submitDiagnostic() {
-    setIsSubmitting(true);
-    const { score, topicsPerformance } = computeResults();
-
-    const res = await fetch("/api/diagnostic", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ score, total: totalQuestions, topicsPerformance }),
-    });
-
-    if (!res.ok) {
-      const data = (await res.json()) as { error?: string };
-      alert("Error al guardar resultados: " + (data.error ?? "desconocido"));
-      setIsSubmitting(false);
-      return;
-    }
-
+  // El resultado ya quedó guardado al calificar; aquí solo se refresca el token
+  // para que lleve diagnostic_done y se entra a la plataforma.
+  async function enterPlatform() {
     await supabase.auth.refreshSession();
     router.push("/chat");
   }
@@ -107,7 +139,25 @@ export default function DiagnosticPage() {
     );
   }
 
-  const { score, topicsPerformance } = step === "results" ? computeResults() : { score: 0, topicsPerformance: {} };
+  if (loadError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[var(--paper)] px-6">
+        <div className="max-w-md rounded-[1.6rem] border border-[rgba(201,64,64,0.25)] bg-[rgba(201,64,64,0.05)] px-8 py-10 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(201,64,64,0.12)] text-2xl">
+            ⚠️
+          </div>
+          <p className="text-lg font-bold text-[var(--ink)]">{loadError}</p>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            Si el problema persiste, avisa al administrador de la plataforma.
+          </p>
+          <button className="secondary-button mt-6" onClick={() => window.location.reload()}>
+            Reintentar
+          </button>
+        </div>
+      </main>
+    );
+  }
+
   const answeredCount = Object.keys(answers).length;
   const progressPct = Math.round((answeredCount / totalQuestions) * 100);
 
@@ -146,24 +196,25 @@ export default function DiagnosticPage() {
       <div className="relative z-10 mx-auto max-w-4xl px-6 py-10">
         {step === "intro" && <IntroScreen onStart={advance} />}
 
-        {typeof step === "number" && (
+        {typeof step === "number" && topics[step] && (
           <TopicScreen
+            topic={topics[step]}
             topicIndex={step}
-            totalTopics={diagnosticTopics.length}
+            totalTopics={topics.length}
             answers={answers}
             onSelect={selectAnswer}
             onNext={advance}
             canAdvance={canAdvance()}
+            isSubmitting={isSubmitting}
           />
         )}
 
-        {step === "results" && (
+        {step === "results" && result && (
           <ResultsScreen
-            score={score}
-            total={totalQuestions}
-            topicsPerformance={topicsPerformance}
-            isSubmitting={isSubmitting}
-            onEnter={submitDiagnostic}
+            score={result.score}
+            total={result.total}
+            topicsPerformance={result.topicsPerformance}
+            onEnter={enterPlatform}
           />
         )}
       </div>
@@ -216,21 +267,24 @@ function IntroScreen({ onStart }: { onStart: () => void }) {
 }
 
 function TopicScreen({
+  topic,
   topicIndex,
   totalTopics,
   answers,
   onSelect,
   onNext,
   canAdvance,
+  isSubmitting,
 }: {
+  topic: Topic;
   topicIndex: number;
   totalTopics: number;
   answers: Record<string, number>;
   onSelect: (questionId: string, optionIndex: number) => void;
   onNext: () => void;
   canAdvance: boolean;
+  isSubmitting: boolean;
 }) {
-  const topic = diagnosticTopics[topicIndex];
   const isLast = topicIndex === totalTopics - 1;
 
   return (
@@ -300,9 +354,9 @@ function TopicScreen({
         <button
           className="primary-button !px-8 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={onNext}
-          disabled={!canAdvance}
+          disabled={!canAdvance || isSubmitting}
         >
-          {isLast ? "Ver resultados →" : "Siguiente temática →"}
+          {isSubmitting ? "Calificando..." : isLast ? "Ver resultados →" : "Siguiente temática →"}
         </button>
       </div>
 
@@ -319,13 +373,11 @@ function ResultsScreen({
   score,
   total,
   topicsPerformance,
-  isSubmitting,
   onEnter,
 }: {
   score: number;
   total: number;
   topicsPerformance: TopicPerformance;
-  isSubmitting: boolean;
   onEnter: () => void;
 }) {
   const pct = Math.round((score / total) * 100);
@@ -442,11 +494,10 @@ function ResultsScreen({
 
       <div className="flex justify-center pb-4">
         <button
-          className="primary-button !px-10 !py-4 !text-base disabled:opacity-60 disabled:cursor-not-allowed"
+          className="primary-button !px-10 !py-4 !text-base"
           onClick={onEnter}
-          disabled={isSubmitting}
         >
-          {isSubmitting ? "Guardando..." : "Ingresar a la plataforma →"}
+          Ingresar a la plataforma →
         </button>
       </div>
     </div>

@@ -6,7 +6,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { quizBodySchema } from "@/lib/validators/evaluation";
 import { flattenFieldErrors } from "@/lib/validators/shared";
-import { diagnosticTopics } from "@/lib/diagnosticQuestions";
+import { diagnosticTopics } from "@/lib/diagnosticTopics";
 import { QUESTIONS_PER_TOPIC, TOTAL_QUESTIONS } from "@/lib/evaluationConfig";
 
 type BankRow = {

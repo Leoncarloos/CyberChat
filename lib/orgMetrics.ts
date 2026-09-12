@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { diagnosticTopics } from "@/lib/diagnosticQuestions";
+import { diagnosticTopics } from "@/lib/diagnosticTopics";
 
 export type RiskLevel = "low" | "medium" | "high";
 export type Period = "week" | "month" | "quarter" | "all";

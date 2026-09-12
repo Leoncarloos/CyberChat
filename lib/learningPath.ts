@@ -1,4 +1,4 @@
-import { diagnosticTopics } from "@/lib/diagnosticQuestions";
+import { diagnosticTopics } from "@/lib/diagnosticTopics";
 
 export type KnowledgeLevel = "bajo" | "medio" | "alto";
 export type ProgressStatus = "pendiente" | "en_progreso" | "completado";

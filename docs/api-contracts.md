@@ -260,29 +260,62 @@ Verifica si el usuario autenticado completó el diagnóstico inicial.
 
 ---
 
-### POST `/api/diagnostic`
-Guarda el resultado del diagnóstico y desbloquea el acceso a la plataforma.
+### GET `/api/diagnostic/questions`
+Devuelve las 16 preguntas del diagnóstico agrupadas por tema, **sin `correctIndex` ni
+`explanation`**. El banco vive en `lib/diagnosticBank.ts`, que es `server-only`: hasta
+el 2026-09-12 lo importaba el componente cliente y las respuestas viajaban en el bundle.
 
-**Validado con Zod** (`diagnosticBodySchema`, `lib/validators/evaluation.ts`): `score`
-y `total` enteros no negativos con `score <= total`; `topicsPerformance` es un record
-cuyas claves deben ser exactamente una de los 8 `topic_key` reales de
-`diagnosticTopics` (no cualquier string).
+#### Response 200
+```json
+{
+  "topics": [
+    {
+      "key": "phishing",
+      "label": "Phishing e Ingeniería Social",
+      "questions": [{ "id": "p1", "question": "texto", "options": ["a", "b", "c", "d"] }]
+    }
+  ],
+  "totalQuestions": 16
+}
+```
+| Status | Causa |
+|--------|-------|
+| 401 | Sin sesión |
+| 409 | El usuario ya completó el diagnóstico |
+
+---
+
+### POST `/api/diagnostic`
+**Califica** el diagnóstico, guarda el resultado y desbloquea el acceso a la plataforma.
+
+El cliente envía sus **respuestas**, no el puntaje: `score` y `topicsPerformance` los
+calcula el servidor contra `lib/diagnosticBank.ts`.
+
+**Validado con Zod** (`diagnosticBodySchema`): `answers`, entre 1 y 64 entradas de
+`{ questionId: string, selectedIndex: int 0..9 }`.
+
+Además, el servidor exige un intento completo: **exactamente las 16 preguntas del
+banco**, sin repetidos y sin ids desconocidos. El diagnóstico es un banco fijo y
+completo, así que se valida el set exacto y no solo la cantidad.
 
 #### Request
 ```json
 {
-  "score": 12,
-  "total": 16,
-  "topicsPerformance": {
-    "phishing": { "correct": 2, "total": 2 },
-    "ia_amenazas": { "correct": 1, "total": 2 }
-  }
+  "answers": [{ "questionId": "p1", "selectedIndex": 1 }]
 }
 ```
 
 #### Response 200
 ```json
-{ "ok": true }
+{
+  "ok": true,
+  "score": 12,
+  "total": 16,
+  "topicsPerformance": { "phishing": { "correct": 2, "total": 2 } },
+  "results": [
+    { "questionId": "p1", "selectedIndex": 1, "correctIndex": 1, "isCorrect": true, "explanation": "texto" }
+  ]
+}
 ```
 
 **Efectos colaterales:** INSERT en `diagnostic_results` + `auth.admin.updateUserById`
@@ -291,8 +324,9 @@ la siguiente request.
 
 | Status | Causa |
 |--------|-------|
-| 400 | Falla de validación Zod (`fieldErrors` por campo) |
+| 400 | Falla de validación Zod, respuestas repetidas, o intento incompleto |
 | 401 | Sin sesión |
+| 409 | Ya completó el diagnóstico — se rinde una sola vez (HU12-1). Sin esta regla, repetirlo respondiendo mal bajaría la línea base e inflaría el % de mejora |
 | 500 | Error Supabase al insertar o al actualizar metadata |
 
 ---

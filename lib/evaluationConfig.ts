@@ -1,4 +1,4 @@
-import { diagnosticTopics } from "@/lib/diagnosticQuestions";
+import { diagnosticTopics } from "@/lib/diagnosticTopics";
 
 export const QUESTIONS_PER_TOPIC = 2;
 

@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { diagnosticTopics } from "@/lib/diagnosticQuestions";
+import { diagnosticTopics } from "@/lib/diagnosticTopics";
 import { embedHF } from "@/lib/embedHF";
 import { resolveOrgAdminId } from "@/lib/orgAdmin";
 

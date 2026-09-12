@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { diagnosticTopics } from "@/lib/diagnosticQuestions";
+import { diagnosticTopics } from "@/lib/diagnosticTopics";
 
 const VALID_TOPIC_KEYS = diagnosticTopics.map((t) => t.key) as [string, ...string[]];
 

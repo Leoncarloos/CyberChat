@@ -1,3 +1,13 @@
+import "server-only";
+
+/**
+ * Banco del diagnóstico inicial CON las respuestas correctas.
+ *
+ * `import "server-only"` hace que cualquier intento de importar este archivo desde
+ * un componente cliente falle en build, en vez de filtrar los `correctIndex` al
+ * bundle del navegador — que es exactamente lo que pasaba hasta el 2026-09-12.
+ * Para `key`/`label` de los temas usa `lib/diagnosticTopics.ts`.
+ */
 export type DiagnosticQuestion = {
   id: string;
   question: string;
@@ -6,16 +16,14 @@ export type DiagnosticQuestion = {
   explanation: string;
 };
 
-export type DiagnosticTopic = {
+export type DiagnosticTopicBank = {
   key: string;
-  label: string;
   questions: DiagnosticQuestion[];
 };
 
-export const diagnosticTopics: DiagnosticTopic[] = [
+export const diagnosticBank: DiagnosticTopicBank[] = [
   {
     key: "phishing",
-    label: "Phishing e Ingeniería Social",
     questions: [
       {
         id: "p1",
@@ -49,7 +57,6 @@ export const diagnosticTopics: DiagnosticTopic[] = [
   },
   {
     key: "ia_amenazas",
-    label: "Inteligencia Artificial y Nuevas Amenazas",
     questions: [
       {
         id: "ia1",
@@ -83,7 +90,6 @@ export const diagnosticTopics: DiagnosticTopic[] = [
   },
   {
     key: "canales_venta",
-    label: "Seguridad en Canales de Venta Digitales",
     questions: [
       {
         id: "cv1",
@@ -117,7 +123,6 @@ export const diagnosticTopics: DiagnosticTopic[] = [
   },
   {
     key: "contrasenas",
-    label: "Gestión de Contraseñas",
     questions: [
       {
         id: "c1",
@@ -150,7 +155,6 @@ export const diagnosticTopics: DiagnosticTopic[] = [
   },
   {
     key: "accesos",
-    label: "Control de Accesos",
     questions: [
       {
         id: "a1",
@@ -184,7 +188,6 @@ export const diagnosticTopics: DiagnosticTopic[] = [
   },
   {
     key: "ley_29733",
-    label: "Protección de la Información del Cliente (Ley N.° 29733)",
     questions: [
       {
         id: "l1",
@@ -218,7 +221,6 @@ export const diagnosticTopics: DiagnosticTopic[] = [
   },
   {
     key: "datos_sensibles",
-    label: "Manejo de Datos Sensibles",
     questions: [
       {
         id: "ds1",
@@ -252,7 +254,6 @@ export const diagnosticTopics: DiagnosticTopic[] = [
   },
   {
     key: "resiliencia",
-    label: "Resiliencia con Recursos Mínimos",
     questions: [
       {
         id: "r1",
@@ -286,7 +287,3 @@ export const diagnosticTopics: DiagnosticTopic[] = [
   },
 ];
 
-export const totalQuestions = diagnosticTopics.reduce(
-  (n, t) => n + t.questions.length,
-  0
-);

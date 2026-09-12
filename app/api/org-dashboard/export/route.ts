@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { computeOrgMetrics } from "@/lib/orgMetrics";
 import { toCsv } from "@/lib/csv";
-import { diagnosticTopics } from "@/lib/diagnosticQuestions";
+import { diagnosticTopics } from "@/lib/diagnosticTopics";
 
 const STATUS_LABEL: Record<string, string> = {
   active: "Activo",

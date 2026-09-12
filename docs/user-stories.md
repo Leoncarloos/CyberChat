@@ -38,6 +38,15 @@
 > | HU22 | 9 | 9 | 1:1 con HU22-1…HU22-9 |
 > | HU23 | 8 | 8 | 1:1 con HU23-1…HU23-8 |
 >
+> **Integridad de las evaluaciones (2026-09-12).** Tanto el diagnóstico inicial (HU12)
+> como el post-test y las recurrentes (HU21/HU22) se califican **en el servidor**. Las
+> preguntas viajan al navegador sin `correctIndex` ni `explanation`; el cliente envía
+> sus respuestas y recibe la corrección recién en la respuesta. Antes el puntaje se
+> calculaba en el navegador y el backend lo guardaba tal cual, así que ambas
+> mediciones —y el % de mejora que sale de restarlas— eran autoreportadas. El banco del
+> diagnóstico vive en `lib/diagnosticBank.ts`, marcado `server-only` para que importarlo
+> desde un componente cliente falle en build en vez de filtrarse al bundle.
+>
 > Nota: la **HU19 oficial** (control por roles) tiene 2 criterios: acceso con rol válido
 > y acceso no autorizado, ambos implementados. El tercer criterio que propuso el backlog
 > académico (un rol `platform_admin` separado de `admin` y `employee`) **se descartó por
