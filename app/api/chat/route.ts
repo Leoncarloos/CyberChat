@@ -144,7 +144,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         model: "qwen/qwen3.8-27b",
         temperature: 0.15,
-        max_tokens: 1024,
+        max_tokens: 900,
         messages: [system, ...messages],
       }),
       cache: "no-store",

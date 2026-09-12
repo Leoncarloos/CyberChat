@@ -145,7 +145,7 @@ Los temas ya están ordenados del más débil al más fuerte. Genera una recomen
         model: "qwen/qwen3.8-27b",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.25,
-        max_tokens: 1400,
+        max_tokens: 900,
       }),
     });
     const groqJson = (await groqRes.json()) as {
