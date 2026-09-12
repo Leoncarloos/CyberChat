@@ -22,8 +22,27 @@
 > | HU20 | **HU22** | Evaluación recurrente cada 5 días |
 > | — | **HU23** | Gestión de documentos de contexto para la IA (nueva, pedida en las Observaciones del backlog oficial) |
 >
-> Nota: la **HU19 oficial** (gestión de roles, Escenario 3 = rol `platform_admin`) está
-> pendiente de implementación, diferida a propósito por el usuario.
+> **Trazabilidad de escenarios.** Los códigos de HU ya coinciden con el Excel, pero el
+> número de escenarios no siempre: este archivo desglosa con más detalle de ingeniería
+> (estados de carga, errores, casos de borde) que el backlog académico, que agrupa.
+> Donde los conteos difieren, el escenario de aquí se mapea así al criterio oficial:
+>
+> | HU | Escenarios aquí | Criterios oficiales | Mapeo |
+> |---|---|---|---|
+> | HU08 | 6 | 4 | 1→HU08-1 · 2→HU08-3 · 3+4→HU08-2 · 5→HU08-2 (enlace inválido) · 6→HU03-4/5 |
+> | HU16 | 5 | 3 | 1+4→HU16-3 (ruta y progreso) · 2→HU16-1 · 3→HU16-2 · 5→HU16-3 (sin datos) |
+> | HU17 | 6 | 4 | 1→HU17-1 · 2+4→HU17-1 (regeneración y carga) · 3→HU17-4 · 5→HU17-4 · 6→HU17-3. La privacidad (HU17-2) se cubre en Restricciones. |
+> | HU18 | 8 | 2 | 1,2,3,4,5,6,8→HU18-1 (generación y sus casos de borde) · 7→HU18-2 |
+> | HU20 | 6 | 6 | 1:1 con HU20-1…HU20-6 |
+> | HU21 | 6 | 6 | 1:1 con HU21-1…HU21-6 |
+> | HU22 | 9 | 9 | 1:1 con HU22-1…HU22-9 |
+> | HU23 | 8 | 8 | 1:1 con HU23-1…HU23-8 |
+>
+> Nota: la **HU19 oficial** (control por roles) tiene 2 criterios: acceso con rol válido
+> y acceso no autorizado, ambos implementados. El tercer criterio que propuso el backlog
+> académico (un rol `platform_admin` separado de `admin` y `employee`) **se descartó por
+> decisión del equipo el 2026-09-12** y ya no figura en el Excel: el sistema mantiene
+> dos roles.
 
 ---
 
@@ -288,7 +307,7 @@
 
 **Dado que** el administrador accede al dashboard pero el período seleccionado tiene datos insuficientes (menos del umbral mínimo de registros requeridos),  
 **cuando** el sistema intenta generar el resumen,  
-**entonces** el sistema muestra un mensaje informativo que indica que no hay suficientes datos para generar un resumen confiable, especificando qué condición no se cumple (ej.: *"Se requieren al menos 1 evaluación completada en el período"*), y no genera un resumen parcial ni incorrecto.
+**entonces** el sistema responde con `insufficient: true` y la advertencia *"Se requiere al menos 1 evaluación diagnóstica completada en el período para generar un resumen confiable."*, y no genera un resumen parcial ni inventado.
 
 ---
 
@@ -571,7 +590,7 @@ corrupta.
 
 **Dado que** el administrador hace clic en "Exportar por empleado",  
 **cuando** el sistema procesa la solicitud,  
-**entonces** se descarga un archivo `.csv` con una fila por empleado de su organización (nombre, correo, estado, score diagnóstico, score quiz, nivel por tema, última actividad), incluyendo únicamente empleados con `ruc` igual al del administrador.
+**entonces** se descarga un archivo `.csv` con una fila por empleado de su organización (nombre, correo, estado, score diagnóstico, score post-test, nivel de riesgo, tema más débil, fecha de última evaluación y una columna de porcentaje por cada uno de los 8 temas), incluyendo únicamente empleados con `ruc` igual al del administrador.
 
 ---
 
@@ -611,7 +630,7 @@ corrupta.
 
 ## Notas Técnicas
 
-- Nuevos endpoints sugeridos: `/api/org-dashboard/export` (resumen agregado) y `/api/org-dashboard/export-employees` (detalle por empleado), ambos `GET`, validando `supabaseServer().auth.getUser()` + `role === "admin"` + `ruc` como en `route.ts` (`app/api/org-dashboard/route.ts`).
+- Implementado como **un solo endpoint**: `GET /api/org-dashboard/export?type=summary|employees` (no dos rutas separadas como se había previsto), validando `supabaseServer().auth.getUser()` + `role === "admin"` + `ruc` como en `app/api/org-dashboard/route.ts`. Un `type` distinto de esos dos valores responde `400`.
 - Reutilizar `computeOrgMetrics(adminRuc)` de `lib/orgMetrics.ts` para el CSV agregado; para el detalle por empleado, reutilizar la misma query de empleados scopeada por `ruc` ya presente ahí.
 - Respuesta con headers `Content-Type: text/csv; charset=utf-8` y `Content-Disposition: attachment; filename="..."`.
 - Botones en `org-dashboard/page.tsx` disparan `fetch` + blob download, sin exponer lógica de agregación en cliente.
@@ -659,11 +678,11 @@ corrupta.
 
 ---
 
-## Contexto / Problema actual
+## Contexto / Problema que resolvió (estado previo a esta HU, ya superado)
 
-- El diagnóstico inicial (`lib/diagnosticQuestions.ts`) es un banco **fijo y hardcodeado** de 8 temas × 2 preguntas = **16 preguntas totales**.
-- El post-test (`app/api/posttest/route.ts`) **genera 10 preguntas nuevas en cada intento** vía Groq (`llama-3.1-8b-instant`), en tiempo real, sin persistir el banco. Esto rompe la comparabilidad: cantidad distinta (10 vs 16), preguntas distintas cada vez, y sin garantía de que cubran los mismos temas del diagnóstico.
-- `quiz_results` guarda `score` y `total` por intento (sí permite ver histórico de notas en el tiempo), pero no guarda el detalle por pregunta/tema, por lo que no se puede comparar avance tema por tema contra el diagnóstico inicial.
+- El diagnóstico inicial (`lib/diagnosticQuestions.ts`) es un banco **fijo y hardcodeado** de 8 temas × 2 preguntas = **16 preguntas totales**. Sigue siendo así.
+- El post-test **generaba 10 preguntas nuevas en cada intento** vía Groq (`llama-3.1-8b-instant`), en tiempo real, sin persistir el banco. Eso rompía la comparabilidad: cantidad distinta (10 vs 16), preguntas distintas cada vez, y sin garantía de cubrir los mismos temas del diagnóstico. **Resuelto:** hoy lee del banco fijo `posttest_questions`.
+- `quiz_results` guardaba `score` y `total` por intento, pero no el detalle por pregunta/tema, así que no se podía comparar el avance tema por tema contra el diagnóstico. **Resuelto** con `evaluation_attempts.topics_performance` (HU22).
 
 ---
 
@@ -689,7 +708,7 @@ corrupta.
 
 **Dado que** un empleado rinde el post-test más de una vez,
 **cuando** el sistema arma cada intento,
-**entonces** las preguntas se seleccionan al azar dentro del pool de 25 por tema (evitando repetir el mismo set exacto en intentos consecutivos cuando sea posible), sin llamar a Groq para generar contenido nuevo.
+**entonces** las preguntas se seleccionan al azar dentro del pool de 25 por tema, excluyendo las que ese usuario ya respondió (registradas en `seen_questions`), sin llamar a Groq para generar contenido nuevo. Si a un tema le quedan menos de 2 preguntas sin ver, se completa con las vistas más antiguas — el reinicio de ciclo por tema de HU22-3.
 
 ---
 
@@ -697,7 +716,7 @@ corrupta.
 
 **Dado que** un empleado completa un post-test,
 **cuando** el resultado se guarda (`POST /api/quiz`),
-**entonces** se registra una nueva fila en `quiz_results` (no se sobrescribe la anterior) con `score`, `total` y `taken_at`, de modo que el histórico completo de intentos queda disponible para ese usuario.
+**entonces** se registra una nueva fila (no se sobrescribe la anterior) con `score`, `total` y `taken_at`, de modo que el histórico completo de intentos queda disponible para ese usuario. La escritura es **doble**: `quiz_results` (legacy, se mantiene por compatibilidad con las lecturas existentes) y `evaluation_attempts` (con `test_type` y `topics_performance`, introducida en HU22).
 
 ---
 
@@ -730,7 +749,8 @@ corrupta.
 ## Notas Técnicas
 
 - Nueva tabla `posttest_questions`: `id uuid`, `topic_key text` (FK lógica a los keys de `diagnosticTopics`), `question text`, `options jsonb` (4 opciones), `correct_index int`, `explanation text`, `active boolean default true`, `created_at timestamptz default now()`. SQL en `docs/sql/posttest_questions.sql`.
-- `app/api/posttest/route.ts` se reescribe para: 1) leer `topic_key` válidos, 2) por cada uno, `SELECT ... WHERE topic_key = X AND active ORDER BY random() LIMIT 2`, 3) devolver 16 preguntas mezcladas (sin exponer `correct_index` al cliente si se quiere evitar trampa, evaluando en backend — a definir con `/api/quiz`).
+- `app/api/posttest/route.ts` se reescribe para: 1) leer `topic_key` válidos, 2) traer el banco activo y descartar por usuario lo ya visto (`seen_questions`), 3) elegir 2 por tema al azar y devolver 16 preguntas mezcladas. El `testType` (`posttest` o `recurrente`) se deduce de si el usuario ya tiene intentos previos.
+- **Conocido, sin resolver:** el endpoint devuelve `correctIndex` al cliente y el puntaje se calcula en el navegador (`submitQuiz` en `app/chat/page.tsx`) antes de enviarlo a `POST /api/quiz`, que lo acepta tal cual. Un usuario con la consola abierta puede ver las respuestas o enviar un puntaje arbitrario. Es aceptable para el alcance de una herramienta de concientización sin nota vinculante, pero **no debe presentarse como evaluación confiable**; corregirlo implica evaluar en backend y dejar de exponer `correct_index`.
 - Las 200 preguntas se generan una única vez (offline, por este mismo asistente) y se inyectan vía migración/seed SQL — no en runtime.
 - Dashboard (`app/dashboard/page.tsx`, `app/api/dashboard/route.ts`) se ajusta para leer todas las filas de `quiz_results` del usuario (no solo la última) y mostrar evolución.
 
@@ -916,7 +936,9 @@ había subido, borrar un documento individual, ni ningún límite de tamaño de 
 **Dado que** el administrador sube un archivo `.pdf`, `.docx` o `.txt`,
 **cuando** lo envía desde `/admin`,
 **entonces** el sistema lo guarda en Storage, extrae el texto, lo fragmenta en chunks y
-genera sus embeddings, dejándolo disponible para el RAG del chat.
+genera sus embeddings, dejándolo disponible para el RAG del chat **de toda la empresa**:
+los empleados consultan los documentos que subió su dueño, no solo los propios (ver
+Notas Técnicas).
 
 ---
 
@@ -926,7 +948,8 @@ genera sus embeddings, dejándolo disponible para el RAG del chat.
 o `.txt`,
 **cuando** lo envía,
 **entonces** el sistema rechaza la subida (400) con el mensaje "Formato no soportado:
-.ext. Usa PDF, DOCX o TXT."
+.ext. Usa PDF, DOCX o TXT." **sin dejar rastro**: no se crea el archivo en Storage ni la
+fila en `documents`.
 
 ---
 
@@ -936,7 +959,10 @@ o `.txt`,
 extraíble,
 **cuando** el sistema intenta extraer el texto,
 **entonces** rechaza la subida (400) con el mensaje "Documento sin texto legible (puede
-ser una imagen escaneada)".
+ser una imagen escaneada)", igualmente **sin dejar rastro** en Storage ni en
+`documents`. Si el archivo tiene texto pero no alcanza para generar ningún fragmento
+indexable, el mensaje es "El documento no tiene suficiente texto aprovechable para
+indexarlo".
 
 ---
 
@@ -973,16 +999,7 @@ listado sin recargar la página.
 
 ---
 
-### Escenario 7 — Aislamiento entre organizaciones al eliminar
-
-**Dado que** un administrador intenta eliminar un documento que no le pertenece
-(manipulando el `id` en el request),
-**cuando** el backend valida la propiedad,
-**entonces** responde `403` y no borra nada — ni de Storage ni de la base de datos.
-
----
-
-### Escenario 8 — Re-procesamiento de documentos existentes
+### Escenario 7 — Re-procesamiento de documentos existentes
 
 **Dado que** se actualiza el modelo de embeddings o se detecta un chunk corrupto,
 **cuando** el administrador solicita re-procesar,
@@ -993,6 +1010,36 @@ listado sin recargar la página.
 desde el listado, en vez de todos a la vez. Requiere extender `/api/documents/reprocess`
 para aceptar un `document_id` opcional, y agregar el botón correspondiente por fila en
 "Mis documentos".
+
+---
+
+### Escenario 8 — Solo el dueño de la empresa puede subir documentos
+
+**Dado que** un usuario con rol `employee`, autenticado y con acceso aprobado, invoca
+directamente `POST /api/documents/upload-and-process` con un archivo perfectamente
+válido,
+**cuando** el backend valida el rol antes de procesar el archivo,
+**entonces** responde `403` ("Solo admins") y no guarda el archivo en Storage ni lo
+indexa.
+
+Hasta el 2026-09-12 este endpoint era el único del módulo que validaba la sesión pero
+**no** el rol, por lo que cualquier empleado podía inyectar documentos en la base de
+conocimiento de su empresa. El listado, el borrado y el re-procesamiento sí lo
+validaban. Ganó gravedad al corregirse el alcance del RAG (ver Notas Técnicas): esos
+documentos ya no habrían quedado solo en la cuenta del que los subió, sino que habrían
+llegado a todos sus compañeros.
+
+---
+
+### Escenario adicional del repo — Aislamiento entre organizaciones al eliminar
+
+Sin criterio propio en el backlog oficial; queda cubierto por **HU19-2** (acceso no
+autorizado).
+
+**Dado que** un administrador intenta eliminar un documento que no le pertenece
+(manipulando el `id` en el request),
+**cuando** el backend valida la propiedad,
+**entonces** responde `403` y no borra nada — ni de Storage ni de la base de datos.
 
 ---
 
@@ -1012,8 +1059,22 @@ para aceptar un `document_id` opcional, y agregar el botón correspondiente por 
 
 ## Notas Técnicas
 
-- `app/api/documents/upload-and-process/route.ts`: valida `file.size` contra
-  `MAX_FILE_SIZE_BYTES` (10 MB) antes de subir a Storage.
+- `app/api/documents/upload-and-process/route.ts`: valida rol `admin`, `file.size` contra
+  `MAX_FILE_SIZE_BYTES` (10 MB) y la extensión, y extrae el texto **antes de la primera
+  escritura**. Los embeddings también se calculan antes, de modo que un fallo no deja
+  nada a medias; las dos escrituras que quedan (Storage → `documents` → `document_chunks`)
+  revierten lo anterior si fallan. Los bytes se leen una sola vez: hasta el 2026-09-12 el
+  archivo se subía a Storage para inmediatamente volver a descargarlo y extraerle el
+  texto.
+- **Alcance del RAG por empresa** (`lib/orgAdmin.ts`, corregido el 2026-09-12): el RPC
+  `match_document_chunks_scoped` acota por `documents.uploaded_by`, y `/api/chat` le
+  pasaba el `id` del usuario que consultaba. Como los documentos los sube el dueño,
+  ningún empleado recuperaba contexto: `usedContext` era siempre `false`. Ahora
+  `resolveOrgAdminId(ruc)` resuelve el dueño de la empresa y ese es el `id` que se pasa.
+  El RUC sale de la sesión, nunca del body. La llamada usa `supabaseAdmin` porque el RPC
+  es `SECURITY INVOKER` y la política `documents_select_own` limitaría el JOIN a los
+  documentos propios, anulando el alcance de empresa. `/api/recommendations` ya resolvía
+  el dueño por RUC con código duplicado; ahora usa el mismo helper.
 - `GET /api/documents` (nuevo): lista los documentos del admin autenticado con conteo de
   chunks por documento (una query a `documents` + una query agregada a
   `document_chunks`, sin N+1).
