@@ -5,8 +5,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { diagnosticTopics } from "@/lib/diagnosticQuestions";
-
-const QUESTIONS_PER_TOPIC = 2;
+import { QUESTIONS_PER_TOPIC } from "@/lib/evaluationConfig";
 
 type BankRow = {
   id: string;
@@ -72,13 +71,13 @@ export async function GET() {
     const hasPriorAttempt = (attemptsRes.count ?? 0) > 0;
     const testType = hasPriorAttempt ? "recurrente" : "posttest";
 
+    // Sin correct_index ni explanation: la respuesta correcta no sale del servidor
+    // hasta que el usuario envía sus respuestas y POST /api/quiz las califica.
     const questions: {
       id: string;
       topicKey: string;
       question: string;
       options: string[];
-      correctIndex: number;
-      explanation: string;
     }[] = [];
 
     for (const topicKey of topicKeys) {
@@ -111,8 +110,6 @@ export async function GET() {
           topicKey: q.topic_key,
           question: q.question,
           options: q.options,
-          correctIndex: q.correct_index,
-          explanation: q.explanation,
         });
       }
     }

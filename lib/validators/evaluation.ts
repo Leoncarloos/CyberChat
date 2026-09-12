@@ -30,17 +30,23 @@ export const diagnosticBodySchema = z
     path: ["score"],
   });
 
-export const quizBodySchema = z
-  .object({
-    ...scoreAndTotal,
-    testType: z.enum(["posttest", "recurrente"]).optional(),
-    topicsPerformance: topicsPerformanceSchema.optional(),
-    questionIds: z.array(z.string().uuid()).optional(),
-  })
-  .refine((v) => v.score <= v.total, {
-    message: "score no puede ser mayor que total",
-    path: ["score"],
-  });
+/**
+ * El cliente envía sus RESPUESTAS, no el puntaje: calificar en el navegador
+ * permitía enviar cualquier nota. El score, el total y el desempeño por tema los
+ * calcula el servidor contra `posttest_questions.correct_index`.
+ */
+export const quizBodySchema = z.object({
+  testType: z.enum(["posttest", "recurrente"]).optional(),
+  answers: z
+    .array(
+      z.object({
+        questionId: z.string().uuid("questionId debe ser un UUID"),
+        selectedIndex: z.number().int().min(0).max(9),
+      })
+    )
+    .min(1, "Debes enviar al menos una respuesta")
+    .max(64, "Demasiadas respuestas"),
+});
 
 export type DiagnosticBodyInput = z.infer<typeof diagnosticBodySchema>;
 export type QuizBodyInput = z.infer<typeof quizBodySchema>;

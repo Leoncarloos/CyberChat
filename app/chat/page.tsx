@@ -35,13 +35,26 @@ type ChatApiResponse = {
 type ModuleKey = "chat" | "evaluations";
 type ToastTone = "success" | "error" | "info";
 type Toast = { id: number; tone: ToastTone; msg: string };
+// El servidor no envía la respuesta correcta con la pregunta: llega en QuizResult
+// después de enviar la evaluación (ver POST /api/quiz).
 type QuizQuestion = {
-  id?: string;
-  topicKey?: string;
+  id: string;
+  topicKey: string;
   question: string;
   options: string[];
+};
+type QuizGrade = {
+  questionId: string;
+  selectedIndex: number;
   correctIndex: number;
+  isCorrect: boolean;
   explanation: string;
+};
+type QuizResult = {
+  score: number;
+  total: number;
+  testType: TestType;
+  results: QuizGrade[];
 };
 type TestType = "posttest" | "recurrente";
 type RecurringStatus = {
@@ -102,123 +115,6 @@ const quickPrompts = [
   },
 ];
 
-const quizQuestions: QuizQuestion[] = [
-  {
-    question: "¿Cuál es la señal más común de un correo de phishing?",
-    options: [
-      "Tiene muchos colores llamativos",
-      "Pide actuar con urgencia y solicita datos o clics",
-      "Llega temprano en la mañana",
-      "Incluye el logo del banco",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Los correos de phishing suelen crear urgencia para presionarte a hacer clic o revelar información.",
-  },
-  {
-    question: "¿Qué práctica protege mejor los archivos importantes de una MYPE?",
-    options: [
-      "Guardar todo en una sola laptop",
-      "Respaldar con la regla 3-2-1",
-      "Confiar solo en el antivirus",
-      "Cambiar de carpeta cada semana",
-    ],
-    correctIndex: 1,
-    explanation:
-      "La regla 3-2-1 reduce el riesgo de pérdida por errores humanos, fallos o ransomware.",
-  },
-  {
-    question: "Si un empleado sospecha que fue hackeado, ¿qué debe hacer primero?",
-    options: [
-      "Seguir trabajando mientras observa",
-      "Apagar todo y borrar archivos",
-      "Desconectarse de la red y avisar al responsable",
-      "Publicarlo en redes sociales",
-    ],
-    correctIndex: 2,
-    explanation:
-      "Aislar el equipo y reportarlo rápido ayuda a contener el incidente antes de que se expanda.",
-  },
-  {
-    question: "¿Qué contraseña es más segura?",
-    options: ["empresa123", "admin2024", "k#9Lp@2qR!mN", "peru2025"],
-    correctIndex: 2,
-    explanation:
-      "Una contraseña larga y aleatoria es mucho más resistente que combinaciones predecibles.",
-  },
-  {
-    question: "¿Cómo deben gestionarse los accesos de un empleado que deja la empresa?",
-    options: [
-      "Dejar la cuenta activa por si regresa",
-      "Revocar accesos y cambiar credenciales compartidas de inmediato",
-      "Avisarle que ya no puede entrar, sin más cambios",
-      "Esperar al cierre de mes para desactivarla",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Revocar accesos apenas termina la relación laboral evita que credenciales antiguas se usen para acceder sin autorización.",
-  },
-  {
-    question: "Según la Ley 29733 de Protección de Datos Personales, ¿qué debe hacer una MYPE con los datos de sus clientes?",
-    options: [
-      "Compartirlos libremente con cualquier proveedor",
-      "Guardarlos indefinidamente sin control",
-      "Tratarlos con consentimiento del titular y medidas de seguridad adecuadas",
-      "Publicarlos para fines de marketing sin aviso",
-    ],
-    correctIndex: 2,
-    explanation:
-      "La ley exige consentimiento informado y medidas de seguridad razonables para proteger los datos personales de clientes y empleados.",
-  },
-  {
-    question: "¿Cuál es una buena práctica para la red WiFi de una MYPE?",
-    options: [
-      "Usar la misma red para clientes y para sistemas administrativos",
-      "Separar la red de invitados de la red interna del negocio",
-      "Dejar la red sin contraseña para mayor comodidad",
-      "Compartir la contraseña del WiFi en redes sociales",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Separar la red de invitados de la red interna evita que un dispositivo externo comprometido acceda a sistemas críticos del negocio.",
-  },
-  {
-    question: "Un cliente reporta que recibió un mensaje pidiendo pagar por WhatsApp a un número distinto al oficial de la empresa. ¿Qué tipo de riesgo es este?",
-    options: [
-      "Un error de facturación normal",
-      "Fraude por suplantación de identidad (phishing dirigido al cliente)",
-      "Un problema del banco del cliente",
-      "Una promoción legítima de la empresa",
-    ],
-    correctIndex: 1,
-    explanation:
-      "Los atacantes suplantan canales de venta digitales para engañar a los clientes; hay que alertar y usar solo canales oficiales verificados.",
-  },
-  {
-    question: "¿Qué elemento agrega una capa extra de seguridad además de la contraseña?",
-    options: [
-      "Usar la misma contraseña en todas las cuentas",
-      "La autenticación de doble factor (2FA)",
-      "Compartir la contraseña solo con compañeros de confianza",
-      "Cambiar la contraseña una vez al año",
-    ],
-    correctIndex: 1,
-    explanation:
-      "El doble factor de autenticación exige una segunda verificación, protegiendo la cuenta incluso si la contraseña es robada.",
-  },
-  {
-    question: "Recibes una llamada de alguien que dice ser del área de soporte técnico y te pide tu contraseña para 'solucionar un problema'. ¿Qué haces?",
-    options: [
-      "Dar la contraseña porque dice ser de soporte",
-      "Colgar y verificar la solicitud por un canal oficial de la empresa",
-      "Dar una contraseña parecida pero no la real",
-      "Pedirle que llame más tarde y dársela entonces",
-    ],
-    correctIndex: 1,
-    explanation:
-      "El soporte técnico legítimo nunca pide contraseñas por teléfono; esto es vishing, una técnica de ingeniería social.",
-  },
-];
 
 function formatTime(value: string) {
   const date = new Date(value);
@@ -306,7 +202,7 @@ function renderAssistantHtml(text: string) {
 }
 
 function createEmptyAnswers() {
-  return Array.from({ length: quizQuestions.length }, () => -1);
+  return [] as number[];
 }
 
 export default function ChatPage() {
@@ -341,6 +237,9 @@ function ChatPageInner() {
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [generatedQuestions, setGeneratedQuestions] = useState<QuizQuestion[] | null>(null);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [quizLoadError, setQuizLoadError] = useState<string | null>(null);
+  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
+  const [isGradingQuiz, setIsGradingQuiz] = useState(false);
   const quizFetchedRef = useRef(false);
   const [testType, setTestType] = useState<TestType>("posttest");
   const [recurringStatus, setRecurringStatus] = useState<RecurringStatus | null>(null);
@@ -451,6 +350,7 @@ function ChatPageInner() {
     quizFetchedRef.current = true;
     void (async () => {
       setIsGeneratingQuiz(true);
+      setQuizLoadError(null);
       try {
         const res = await fetch("/api/posttest");
         const json = (await res.json()) as {
@@ -458,12 +358,17 @@ function ChatPageInner() {
           testType?: TestType;
           error?: string;
         };
-        if (json.questions && json.questions.length > 0) {
+        if (res.ok && json.questions && json.questions.length > 0) {
           setGeneratedQuestions(json.questions);
           setQuizAnswers(Array.from({ length: json.questions.length }, () => -1));
           setTestType(json.testType ?? "posttest");
+        } else {
+          // HU21-6: error controlado, sin banco de respaldo improvisado.
+          setQuizLoadError(json.error ?? "No se pudo cargar la evaluación. Intenta nuevamente.");
         }
-      } catch {}
+      } catch {
+        setQuizLoadError("No se pudo cargar la evaluación. Intenta nuevamente.");
+      }
       setIsGeneratingQuiz(false);
     })();
   }, [activeModule]);
@@ -652,59 +557,70 @@ function ChatPageInner() {
     setQuizAnswers((prev) => prev.map((value, index) => (index === questionIndex ? optionIndex : value)));
   }
 
-  function submitQuiz() {
+  // El puntaje lo calcula el servidor: aquí solo se envían las respuestas elegidas.
+  async function submitQuiz() {
+    if (isGradingQuiz || quizSubmitted) return;
+    if (!activeQuestions.length) return;
     if (quizAnswers.some((value) => value === -1)) {
       toast("info", "Responde todas las preguntas antes de enviar.");
       return;
     }
 
-    setQuizSubmitted(true);
+    setIsGradingQuiz(true);
+    try {
+      const res = await fetch("/api/quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          testType,
+          answers: activeQuestions.map((q, i) => ({
+            questionId: q.id,
+            selectedIndex: quizAnswers[i],
+          })),
+        }),
+      });
 
-    const score = activeQuestions.reduce(
-      (n, q, i) => n + (quizAnswers[i] === q.correctIndex ? 1 : 0),
-      0
-    );
+      const data = (await res.json()) as Partial<QuizResult> & { error?: string };
 
-    const topicsPerformance: Record<string, { correct: number; total: number }> = {};
-    activeQuestions.forEach((q, i) => {
-      if (!q.topicKey) return;
-      if (!topicsPerformance[q.topicKey]) topicsPerformance[q.topicKey] = { correct: 0, total: 0 };
-      topicsPerformance[q.topicKey].total++;
-      if (quizAnswers[i] === q.correctIndex) topicsPerformance[q.topicKey].correct++;
-    });
+      if (!res.ok || typeof data.score !== "number" || !Array.isArray(data.results)) {
+        toast("error", data.error ?? "No se pudo registrar tu evaluación. Intenta nuevamente.");
+        return;
+      }
 
-    void fetch("/api/quiz", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        score,
-        total: activeQuestions.length,
-        testType,
-        topicsPerformance,
-        questionIds: activeQuestions.map((q) => q.id).filter(Boolean),
-      }),
-    });
+      const result: QuizResult = {
+        score: data.score,
+        total: data.total ?? activeQuestions.length,
+        testType: data.testType ?? testType,
+        results: data.results,
+      };
+      setQuizResult(result);
+      setQuizSubmitted(true);
+      setTestType(result.testType);
 
-    // Escenario 4 — al superar el umbral, los temas en progreso pasan a completado.
-    const passed = score >= Math.ceil(activeQuestions.length * 0.6);
-    if (passed && learningPath) {
-      learningPath.path
-        .filter((t) => t.status === "en_progreso")
-        .forEach((t) => markTopicProgress(t.key, "completado"));
+      // Escenario 4 — al superar el umbral, los temas en progreso pasan a completado.
+      if (result.score >= Math.ceil(result.total * 0.6) && learningPath) {
+        learningPath.path
+          .filter((t) => t.status === "en_progreso")
+          .forEach((t) => markTopicProgress(t.key, "completado"));
+      }
+    } catch {
+      toast("error", "No se pudo registrar tu evaluación. Intenta nuevamente.");
+    } finally {
+      setIsGradingQuiz(false);
     }
   }
 
   function resetQuiz() {
-    const len = activeQuestions.length;
-    setQuizAnswers(Array.from({ length: len }, () => -1));
+    setQuizAnswers(Array.from({ length: activeQuestions.length }, () => -1));
     setQuizSubmitted(false);
+    setQuizResult(null);
   }
 
-  const activeQuestions = generatedQuestions ?? quizQuestions;
+  const activeQuestions = generatedQuestions ?? [];
   const queryCount = messages.filter((message) => message.role === "user").length;
-  const quizScore = activeQuestions.reduce(
-    (score, question, index) => score + (quizAnswers[index] === question.correctIndex ? 1 : 0),
-    0
+  const quizScore = quizResult?.score ?? 0;
+  const gradeByQuestionId = new Map(
+    (quizResult?.results ?? []).map((r) => [r.questionId, r])
   );
 
   return (
@@ -1243,73 +1159,94 @@ function ChatPageInner() {
               {isGeneratingQuiz && (
                 <div className="rounded-[1.5rem] border border-[var(--border)] bg-white/80 px-6 py-10 text-center shadow-[0_10px_24px_rgba(26,21,16,0.06)]">
                   <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-[var(--amber)] border-t-transparent" />
-                  <p className="text-[var(--ink-soft)]">Generando tu evaluación personalizada con IA...</p>
+                  <p className="text-[var(--ink-soft)]">Preparando tu evaluación...</p>
                   <p className="mt-2 font-mono text-[10px] text-[var(--ink-soft)]">Esto puede tardar unos segundos</p>
                 </div>
               )}
 
+              {!isGeneratingQuiz && quizLoadError && (
+                <div className="rounded-[1.5rem] border border-[rgba(201,64,64,0.25)] bg-[rgba(201,64,64,0.05)] px-6 py-10 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[rgba(201,64,64,0.12)] text-2xl">
+                    ⚠️
+                  </div>
+                  <p className="text-base font-semibold text-[var(--ink)]">{quizLoadError}</p>
+                  <p className="mt-2 text-sm text-[var(--ink-soft)]">
+                    Si el problema persiste, avisa al administrador de la plataforma.
+                  </p>
+                  <button className="secondary-button mt-5" onClick={() => setActiveModule("chat")}>
+                    Volver al chat
+                  </button>
+                </div>
+              )}
+
               <div className="space-y-4">
-                {activeQuestions.map((question, questionIndex) => (
-                  <div
-                    key={question.question}
-                    className="rounded-[1.5rem] border border-[var(--border)] bg-white/80 px-6 py-6 shadow-[0_10px_24px_rgba(26,21,16,0.06)]"
-                  >
-                    <div className="mb-4 flex items-center justify-between gap-4">
-                      <div>
-                        <p className="eyebrow">Pregunta {questionIndex + 1}</p>
-                        <h3 className="display-title mt-2 text-3xl font-black">{question.question}</h3>
+                {activeQuestions.map((question, questionIndex) => {
+                  // La corrección llega del servidor tras enviar; antes de eso no
+                  // existe en el cliente.
+                  const grade = gradeByQuestionId.get(question.id);
+
+                  return (
+                    <div
+                      key={question.id}
+                      className="rounded-[1.5rem] border border-[var(--border)] bg-white/80 px-6 py-6 shadow-[0_10px_24px_rgba(26,21,16,0.06)]"
+                    >
+                      <div className="mb-4 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="eyebrow">Pregunta {questionIndex + 1}</p>
+                          <h3 className="display-title mt-2 text-3xl font-black">{question.question}</h3>
+                        </div>
+                        {grade ? (
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              grade.isCorrect
+                                ? "bg-[rgba(46,125,82,0.12)] text-[var(--green)]"
+                                : "bg-[rgba(201,64,64,0.12)] text-[var(--red)]"
+                            }`}
+                          >
+                            {grade.isCorrect ? "Correcta" : "Revisar"}
+                          </span>
+                        ) : null}
                       </div>
-                      {quizSubmitted ? (
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            quizAnswers[questionIndex] === question.correctIndex
-                              ? "bg-[rgba(46,125,82,0.12)] text-[var(--green)]"
-                              : "bg-[rgba(201,64,64,0.12)] text-[var(--red)]"
-                          }`}
-                        >
-                          {quizAnswers[questionIndex] === question.correctIndex ? "Correcta" : "Revisar"}
-                        </span>
+
+                      <div className="grid gap-3">
+                        {question.options.map((option, optionIndex) => {
+                          const selected = quizAnswers[questionIndex] === optionIndex;
+                          const correct = grade?.correctIndex === optionIndex;
+
+                          let optionClass =
+                            "border-[var(--border)] bg-white hover:border-[var(--amber)]";
+
+                          if (selected) optionClass = "border-[var(--amber)] bg-[rgba(232,117,10,0.08)]";
+                          if (grade && correct) {
+                            optionClass = "border-[rgba(46,125,82,0.25)] bg-[rgba(46,125,82,0.08)]";
+                          } else if (grade && selected && !correct) {
+                            optionClass = "border-[rgba(201,64,64,0.25)] bg-[rgba(201,64,64,0.08)]";
+                          }
+
+                          return (
+                            <button
+                              key={option}
+                              className={`rounded-xl border px-4 py-4 text-left text-sm leading-7 text-[var(--ink)] transition ${optionClass}`}
+                              onClick={() => selectQuizOption(questionIndex, optionIndex)}
+                              disabled={quizSubmitted || isGradingQuiz}
+                            >
+                              <span className="mr-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-xs font-semibold">
+                                {String.fromCharCode(65 + optionIndex)}
+                              </span>
+                              {option}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {grade ? (
+                        <div className="mt-4 rounded-xl border border-[rgba(10,126,126,0.2)] bg-[rgba(10,126,126,0.06)] px-4 py-4 text-sm leading-7 text-[var(--teal-dim)]">
+                          {grade.explanation}
+                        </div>
                       ) : null}
                     </div>
-
-                    <div className="grid gap-3">
-                      {question.options.map((option, optionIndex) => {
-                        const selected = quizAnswers[questionIndex] === optionIndex;
-                        const correct = question.correctIndex === optionIndex;
-
-                        let optionClass =
-                          "border-[var(--border)] bg-white hover:border-[var(--amber)]";
-
-                        if (selected) optionClass = "border-[var(--amber)] bg-[rgba(232,117,10,0.08)]";
-                        if (quizSubmitted && correct) {
-                          optionClass = "border-[rgba(46,125,82,0.25)] bg-[rgba(46,125,82,0.08)]";
-                        } else if (quizSubmitted && selected && !correct) {
-                          optionClass = "border-[rgba(201,64,64,0.25)] bg-[rgba(201,64,64,0.08)]";
-                        }
-
-                        return (
-                          <button
-                            key={option}
-                            className={`rounded-xl border px-4 py-4 text-left text-sm leading-7 text-[var(--ink)] transition ${optionClass}`}
-                            onClick={() => selectQuizOption(questionIndex, optionIndex)}
-                            disabled={quizSubmitted}
-                          >
-                            <span className="mr-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-xs font-semibold">
-                              {String.fromCharCode(65 + optionIndex)}
-                            </span>
-                            {option}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {quizSubmitted ? (
-                      <div className="mt-4 rounded-xl border border-[rgba(10,126,126,0.2)] bg-[rgba(10,126,126,0.06)] px-4 py-4 text-sm leading-7 text-[var(--teal-dim)]">
-                        {question.explanation}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="rounded-[1.5rem] border border-[var(--border)] bg-white/78 px-6 py-6 shadow-[0_10px_24px_rgba(26,21,16,0.06)]">
@@ -1318,8 +1255,12 @@ function ChatPageInner() {
                     <p className="text-sm text-[var(--ink-soft)]">
                       Completa todas las preguntas y envía tu evaluación.
                     </p>
-                    <button className="primary-button" onClick={submitQuiz}>
-                      Ver resultados
+                    <button
+                      className="primary-button"
+                      onClick={() => void submitQuiz()}
+                      disabled={isGradingQuiz || !activeQuestions.length}
+                    >
+                      {isGradingQuiz ? "Calificando..." : "Ver resultados"}
                     </button>
                   </div>
                 ) : (

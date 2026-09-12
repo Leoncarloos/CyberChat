@@ -297,11 +297,15 @@ la siguiente request.
 
 ---
 
-### GET `/api/posttest` — HU19/HU20
+### GET `/api/posttest` — HU21/HU22
 Arma una evaluación de 16 preguntas (2 por cada uno de los 8 temas) extraídas del banco
 fijo `posttest_questions`, excluyendo las preguntas que el usuario ya vio
 (`seen_questions`). Si algún tema se queda sin preguntas no vistas, completa con las
 vistas más antiguas de ese tema (reinicio de ciclo). Requiere `diagnostic_done = true`.
+
+**No devuelve `correctIndex` ni `explanation`**: la respuesta correcta nunca sale del
+servidor antes de que el usuario envíe la suya. Llega en la respuesta de
+`POST /api/quiz`, que es quien califica.
 
 #### Response 200
 ```json
@@ -311,9 +315,7 @@ vistas más antiguas de ese tema (reinicio de ciclo). Requiere `diagnostic_done 
       "id": "uuid-de-posttest_questions",
       "topicKey": "phishing",
       "question": "texto",
-      "options": ["a", "b", "c", "d"],
-      "correctIndex": 1,
-      "explanation": "texto"
+      "options": ["a", "b", "c", "d"]
     }
   ],
   "testType": "posttest"
@@ -331,31 +333,64 @@ adelante (se determina por si ya existe alguna fila en `evaluation_attempts`).
 ---
 
 ### POST `/api/quiz`
-Guarda el resultado de un intento de evaluación (post-test o recurrente).
+**Califica** un intento de evaluación (post-test o recurrente) y guarda el resultado.
 
-**Validado con Zod** (`quizBodySchema`): `score`/`total` como en diagnóstico;
-`testType` opcional (`"posttest"` | `"recurrente"`, default `"posttest"`);
-`topicsPerformance` opcional con las mismas reglas de topic_key válido;
-`questionIds` opcional, arreglo de UUIDs (deben ser IDs reales de `posttest_questions`).
+El cliente envía sus **respuestas**, no el puntaje: `score`, `total` y
+`topicsPerformance` los calcula el servidor contra `posttest_questions.correct_index`.
+Hasta el 2026-09-12 este endpoint aceptaba el puntaje ya calculado en el navegador, lo
+que permitía enviar cualquier nota.
+
+**Validado con Zod** (`quizBodySchema`): `answers` es obligatorio, entre 1 y 64 entradas
+de `{ questionId: uuid, selectedIndex: int 0..9 }`; `testType` opcional y meramente
+informativo (el servidor lo deriva de si ya existen intentos previos).
+
+Además de Zod, el servidor exige que el intento sea uno legítimo:
+
+| Regla | Respuesta si falla |
+|---|---|
+| Exactamente `TOTAL_QUESTIONS` (16) respuestas | 400 — si no, bastaría enviar 1 acierto para obtener 100% |
+| Sin `questionId` repetidos | 400 — evita 16 copias de la pregunta más fácil |
+| Todas las preguntas existen y están activas | 400 |
+| Composición de 2 preguntas por cada uno de los 8 temas | 400 — evita armar un intento a medida |
+
+Un `selectedIndex` fuera del rango de opciones no es un error: simplemente no coincide
+con `correct_index` y cuenta como incorrecto.
 
 #### Request
 ```json
 {
-  "score": 12,
-  "total": 16,
   "testType": "recurrente",
-  "topicsPerformance": { "phishing": { "correct": 2, "total": 2 } },
-  "questionIds": ["uuid1", "uuid2"]
+  "answers": [
+    { "questionId": "uuid-de-posttest_questions", "selectedIndex": 1 }
+  ]
 }
 ```
 
 #### Response 200
 ```json
-{ "ok": true }
+{
+  "ok": true,
+  "score": 12,
+  "total": 16,
+  "testType": "recurrente",
+  "topicsPerformance": { "phishing": { "correct": 2, "total": 2 } },
+  "results": [
+    {
+      "questionId": "uuid",
+      "selectedIndex": 1,
+      "correctIndex": 1,
+      "isCorrect": true,
+      "explanation": "texto"
+    }
+  ]
+}
 ```
+`results` es lo que el cliente usa para pintar la retroalimentación (acierto por
+pregunta, opción correcta y explicación); es el único momento en que la respuesta
+correcta viaja al navegador.
 
 **Efectos colaterales:** INSERT en `quiz_results` (legacy) + INSERT en
-`evaluation_attempts` + UPSERT en `seen_questions` por cada `questionId` recibido.
+`evaluation_attempts` + UPSERT en `seen_questions` por cada pregunta respondida.
 
 | Status | Causa |
 |--------|-------|
