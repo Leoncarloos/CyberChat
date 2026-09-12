@@ -578,7 +578,7 @@ function ChatPageInner() {
 
     if (!apiRes.ok) {
       setIsSending(false);
-      toast("error", data?.error ?? "Error al obtener respuesta del chat");
+      toast("error", data?.error ?? "Error al procesar la consulta, intente nuevamente.");
       return;
     }
 

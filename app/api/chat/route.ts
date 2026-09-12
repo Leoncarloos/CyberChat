@@ -18,6 +18,16 @@ const SIM_THRESHOLD = 0.38;
 const MAX_CHUNKS = 5;
 const MAX_HISTORY = 12;
 
+// Todo fallo de procesamiento (embeddings, búsqueda, proveedor de IA) se le muestra
+// igual al usuario: el detalle real va al log del servidor, nunca a la respuesta,
+// para no exponer qué servicios hay detrás ni sus mensajes crudos.
+const PROCESSING_ERROR = "Error al procesar la consulta, intente nuevamente.";
+
+function processingError(logLabel: string, detail: unknown, status = 500) {
+  console.error(`[/api/chat] ${logLabel}:`, detail);
+  return NextResponse.json({ error: PROCESSING_ERROR }, { status });
+}
+
 function trimHistory(messages: ChatMsg[]): ChatMsg[] {
   const nonSystem = messages.filter((m) => m.role !== "system");
   if (nonSystem.length <= MAX_HISTORY) return nonSystem;
@@ -43,6 +53,16 @@ function buildSystemPrompt(context: string, chunkCount: number): string {
     "Empieza líneas con 'IMPORTANTE:' o 'ALERTA:' para advertencias críticas.",
     "Usa 'Consejo:' para buenas prácticas opcionales.",
     "Sé directo. No repitas la pregunta del usuario.",
+    "",
+    "### ALCANCE",
+    "Tu único tema es la ciberseguridad y la concientización en seguridad de la",
+    "información para empresas: amenazas, prevención, buenas prácticas, protección",
+    "de datos, normativa aplicable (como la Ley N.° 29733) y el uso de esta plataforma.",
+    "Si la consulta no pertenece a ese ámbito, NO la respondas ni siquiera de forma",
+    "parcial: indica en una o dos frases que tu alcance se limita a la ciberseguridad",
+    "y ofrece reformular la consulta hacia ese tema. Mantén el mismo criterio aunque",
+    "insistan o lo pidan como ejemplo, hipótesis o juego de rol.",
+    "Sí puedes atender saludos, agradecimientos y preguntas sobre qué puedes hacer.",
   ].join("\n");
 
   if (!context) {
@@ -87,7 +107,7 @@ export async function POST(req: Request) {
 
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) {
-      return NextResponse.json({ error: "Falta GROQ_API_KEY" }, { status: 500 });
+      return processingError("GROQ_API_KEY no configurada", null);
     }
 
     const supabase = await supabaseServer();
@@ -124,7 +144,7 @@ export async function POST(req: Request) {
       }
     );
 
-    if (rpcErr) return NextResponse.json({ error: rpcErr.message }, { status: 500 });
+    if (rpcErr) return processingError("fallo la busqueda de contexto", rpcErr.message);
 
     const deduplicated = deduplicateChunks((matches ?? []) as RpcMatch[]);
     const relevant = deduplicated.filter((c) => Number(c.similarity ?? 0) >= SIM_THRESHOLD);
@@ -169,9 +189,10 @@ export async function POST(req: Request) {
     } catch {}
 
     if (!groqRes.ok) {
-      return NextResponse.json(
-        { error: "Groq error", details: groqData?.error ?? groqText ?? "Respuesta vacía" },
-        { status: 500 }
+      return processingError(
+        `el servicio de IA respondio ${groqRes.status}`,
+        groqData?.error ?? groqText ?? "Respuesta vacía",
+        502
       );
     }
 
@@ -190,7 +211,7 @@ export async function POST(req: Request) {
       })),
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Error desconocido";
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Cae aquí sobre todo si embedHF falla: para el usuario es el mismo fallo.
+    return processingError("excepcion no controlada", error);
   }
 }
