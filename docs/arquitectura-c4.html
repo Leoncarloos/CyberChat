@@ -1,0 +1,744 @@
+<title>CyberChat en Cuatro Niveles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap">
+
+<style>
+  :root {
+    /* Notación C4 — colores canónicos del modelo, iguales en ambos temas */
+    --c4-person:    #08427B;
+    --c4-system:    #1168BD;
+    --c4-container: #438DD5;
+    --c4-component: #85BBF0;
+    --c4-code:      #C2DDF5;
+    --c4-external:  #8A8A8A;
+    --c4-on-dark:   #FFFFFF;
+    --c4-on-light:  #0B2440;
+
+    /* Neutros de página, sesgados hacia el azul de la notación */
+    --ground:   #F6F8FB;
+    --surface:  #FFFFFF;
+    --canvas:   #FCFDFE;
+    --ink:      #15233A;
+    --ink-soft: #55688A;
+    --line:     #DCE3EC;
+    --line-soft:#EDF1F6;
+    --accent:   #1168BD;
+    --accent-soft: #E8F1FA;
+    --warn:     #8A5A00;
+    --warn-soft:#FBF3E2;
+
+    --stroke:   #6A7C96;
+    --label:    #44587A;
+
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --serif: "Source Serif 4", Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --ground:   #0D1420;
+      --surface:  #141D2C;
+      --canvas:   #101826;
+      --ink:      #E6ECF5;
+      --ink-soft: #94A6C0;
+      --line:     #263346;
+      --line-soft:#1B2637;
+      --accent:   #6FB0EE;
+      --accent-soft: #16273B;
+      --warn:     #E0B463;
+      --warn-soft:#2A2213;
+      --stroke:   #7E90AB;
+      --label:    #A7B8D2;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:   #0D1420;
+    --surface:  #141D2C;
+    --canvas:   #101826;
+    --ink:      #E6ECF5;
+    --ink-soft: #94A6C0;
+    --line:     #263346;
+    --line-soft:#1B2637;
+    --accent:   #6FB0EE;
+    --accent-soft: #16273B;
+    --warn:     #E0B463;
+    --warn-soft:#2A2213;
+    --stroke:   #7E90AB;
+    --label:    #A7B8D2;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 20px 96px;
+  }
+
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  .prose { max-width: 66ch; }
+
+  /* ── Cabecera ── */
+  header.top {
+    padding: 64px 0 40px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 44px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(34px, 5vw, 52px);
+    line-height: 1.08;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+  .standfirst { font-size: 18px; color: var(--ink-soft); margin: 0 0 28px; }
+  .standfirst strong { color: var(--ink); font-weight: 600; }
+
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 10px 28px;
+    font-size: 13px; color: var(--ink-soft);
+    padding-top: 22px; border-top: 1px solid var(--line-soft);
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  /* ── Leyenda ── */
+  .key {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px 26px;
+    margin-bottom: 56px;
+  }
+  .key h2 { font-family: var(--serif); font-size: 19px; margin: 0 0 4px; font-weight: 600; }
+  .key p  { margin: 0 0 20px; font-size: 14px; color: var(--ink-soft); }
+  .key-grid { display: grid; gap: 14px 26px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  .key-item { display: flex; gap: 11px; align-items: flex-start; font-size: 13.5px; line-height: 1.45; }
+  .swatch { width: 26px; height: 18px; border-radius: 3px; flex: none; margin-top: 2px; }
+  .key-item b { display: block; font-weight: 600; }
+  .key-item span { color: var(--ink-soft); }
+
+  /* ── Niveles ── */
+  .level { margin-bottom: 76px; scroll-margin-top: 24px; }
+
+  .level-head { display: flex; gap: 20px; align-items: baseline; margin-bottom: 8px; }
+  .level-num {
+    font-family: var(--mono);
+    font-size: 13px; font-weight: 500;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 3px 12px;
+    flex: none;
+  }
+  h2.level-title {
+    font-family: var(--serif);
+    font-size: clamp(26px, 3.4vw, 34px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .level > .prose { margin-bottom: 24px; }
+  .level p { margin: 0 0 14px; }
+
+  /* Ficha del nivel */
+  .card {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 26px;
+    background: var(--surface);
+  }
+  .card > div { padding: 16px 20px; border-right: 1px solid var(--line-soft); }
+  .card > div:last-child { border-right: none; }
+  .card dt {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--ink-soft); margin: 0 0 6px;
+  }
+  .card dd { margin: 0; font-size: 14px; line-height: 1.5; }
+
+  .note {
+    border-left: 3px solid var(--warn);
+    background: var(--warn-soft);
+    padding: 14px 18px;
+    border-radius: 0 7px 7px 0;
+    font-size: 14px;
+    margin: 0 0 26px;
+    color: var(--ink);
+  }
+  .note b { font-weight: 600; }
+  .note cite { font-style: italic; color: var(--ink-soft); }
+
+  /* Marco del diagrama */
+  .figure { margin: 0 0 22px; }
+  .frame {
+    background: var(--canvas);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    overflow-x: auto;
+  }
+  .frame svg { display: block; width: 100%; height: auto; min-width: 640px; }
+  figcaption {
+    font-size: 13px; color: var(--ink-soft);
+    margin-top: 12px; padding-left: 2px;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  .reading { font-size: 15px; }
+  .reading h3 {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-soft);
+    margin: 0 0 10px; font-weight: 500;
+  }
+  .reading ol, .reading ul { margin: 0; padding-left: 20px; }
+  .reading li { margin-bottom: 7px; }
+  .reading li::marker { color: var(--ink-soft); }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding-top: 26px;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+  }
+  footer a { color: var(--accent); }
+
+  @media (max-width: 720px) {
+    .level-head { flex-direction: column; gap: 10px; }
+    .card > div { border-right: none; border-bottom: 1px solid var(--line-soft); }
+    .card > div:last-child { border-bottom: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Documentación de arquitectura · Modelo C4</p>
+    <h1>CyberChat en cuatro niveles</h1>
+    <p class="standfirst">
+      Una misma plataforma explicada cuatro veces, cada vez con un poco más de detalle.
+      Se empieza por lo que cualquiera puede entender —<strong>quiénes la usan y para qué</strong>—
+      y se termina en cómo está construida por dentro. Quien solo necesite entender el sistema
+      puede detenerse después del primer nivel.
+    </p>
+    <div class="meta">
+      <span><b>Sistema</b> · Plataforma de concientización en ciberseguridad para MYPES peruanas</span>
+      <span><b>Notación</b> · C4 model</span>
+      <span><b>Niveles</b> · Contexto · Contenedores · Componentes · Código</span>
+    </div>
+  </header>
+
+  <section class="key">
+    <h2>Cómo leer los diagramas</h2>
+    <p>Toda figura de este documento usa las mismas convenciones. El color indica qué clase de cosa es cada caja.</p>
+    <div class="key-grid">
+      <div class="key-item"><span class="swatch" style="background:#08427B"></span><div><b>Persona</b><span>Alguien que usa el sistema</span></div></div>
+      <div class="key-item"><span class="swatch" style="background:#1168BD"></span><div><b>Sistema</b><span>La plataforma completa</span></div></div>
+      <div class="key-item"><span class="swatch" style="background:#438DD5"></span><div><b>Contenedor</b><span>Una aplicación o un almacén de datos</span></div></div>
+      <div class="key-item"><span class="swatch" style="background:#85BBF0"></span><div><b>Componente</b><span>Una pieza con una responsabilidad</span></div></div>
+      <div class="key-item"><span class="swatch" style="background:#C2DDF5"></span><div><b>Elemento de código</b><span>Una unidad concreta de programación</span></div></div>
+      <div class="key-item"><span class="swatch" style="background:#8A8A8A"></span><div><b>Externo</b><span>Algo de lo que dependemos, ajeno a nosotros</span></div></div>
+    </div>
+  </section>
+
+  <!-- ══════════ NIVEL 1 ══════════ -->
+  <section class="level" id="n1">
+    <div class="level-head">
+      <span class="level-num">Nivel 1</span>
+      <h2 class="level-title">Contexto: el sistema visto desde afuera</h2>
+    </div>
+    <div class="prose">
+      <p>
+        La plataforma se dibuja como una sola caja. No interesa todavía cómo está hecha por dentro,
+        sino quién la usa y de qué depende para funcionar. Es el mapa general.
+      </p>
+    </div>
+
+    <dl class="card">
+      <div><dt>Alcance</dt><dd>Un sistema de software</dd></div>
+      <div><dt>Audiencia</dt><dd>Todos, técnicos y no técnicos, dentro y fuera del equipo</dd></div>
+      <div><dt>¿C4 lo recomienda?</dt><dd>Sí, para todos los equipos</dd></div>
+    </dl>
+
+    <figure class="figure">
+      <div class="frame" id="d1"></div>
+      <figcaption><b>Figura 1.</b> Diagrama de contexto de CyberChat.</figcaption>
+    </figure>
+
+    <div class="reading prose">
+      <h3>Qué cuenta esta figura</h3>
+      <ul>
+        <li>Hay <b>dos tipos de usuario</b>: el empleado, que se capacita, y el dueño de la empresa, que administra y decide.</li>
+        <li>CyberChat <b>no funciona solo</b>: se apoya en tres servicios contratados a terceros.</li>
+        <li>Esos servicios están en gris porque <b>no son responsabilidad nuestra</b>: si uno falla o cambia de precio, la plataforma lo sufre.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ══════════ NIVEL 2 ══════════ -->
+  <section class="level" id="n2">
+    <div class="level-head">
+      <span class="level-num">Nivel 2</span>
+      <h2 class="level-title">Contenedores: las piezas que se ejecutan</h2>
+    </div>
+    <div class="prose">
+      <p>
+        Se abre la caja del nivel anterior. Dentro hay <b>aplicaciones</b> que se ejecutan y
+        <b>almacenes</b> donde queda guardada la información. Cada uno podría, en principio,
+        arrancarse, detenerse o reemplazarse por separado.
+      </p>
+    </div>
+
+    <dl class="card">
+      <div><dt>Alcance</dt><dd>Un sistema de software</dd></div>
+      <div><dt>Audiencia</dt><dd>Personas técnicas dentro y fuera del equipo</dd></div>
+      <div><dt>¿C4 lo recomienda?</dt><dd>Sí, para todos los equipos</dd></div>
+    </dl>
+
+    <figure class="figure">
+      <div class="frame" id="d2"></div>
+      <figcaption><b>Figura 2.</b> Diagrama de contenedores. Entre corchetes, la tecnología de cada pieza.</figcaption>
+    </figure>
+
+    <div class="reading prose">
+      <h3>Qué cuenta esta figura</h3>
+      <ul>
+        <li>Lo que el usuario ve es una <b>aplicación que corre en su navegador</b>; no hay nada que instalar.</li>
+        <li>Toda petición pasa por la <b>API de la plataforma</b>, que es donde se aplican las reglas y se decide quién puede hacer qué.</li>
+        <li>La información vive en <b>tres almacenes distintos</b> según su naturaleza: identidades, datos y archivos.</li>
+        <li>Solo la API habla con los servicios de inteligencia artificial. El navegador <b>nunca</b> los contacta directamente.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ══════════ NIVEL 3 ══════════ -->
+  <section class="level" id="n3">
+    <div class="level-head">
+      <span class="level-num">Nivel 3</span>
+      <h2 class="level-title">Componentes: qué hay dentro de la API</h2>
+    </div>
+    <div class="prose">
+      <p>
+        Se abre el contenedor más importante, la API, y aparecen las ocho piezas funcionales que la
+        componen. Cada una tiene <b>una responsabilidad clara</b> y se apoya en las demás.
+      </p>
+    </div>
+
+    <dl class="card">
+      <div><dt>Alcance</dt><dd>Un solo contenedor: la API de la plataforma</dd></div>
+      <div><dt>Audiencia</dt><dd>Arquitectos de software y desarrolladores</dd></div>
+      <div><dt>¿C4 lo recomienda?</dt><dd>Solo si aporta valor</dd></div>
+    </dl>
+
+    <div class="note">
+      <b>Nota sobre el modelo.</b> C4 no recomienda este nivel de forma general:
+      <cite>«No, solo cree diagramas de componentes si considera que aportan valor.»</cite>
+      Se incluye aquí porque esta memoria necesita justificar cómo se reparten las responsabilidades
+      dentro del sistema, que es precisamente lo que esta figura muestra.
+    </div>
+
+    <figure class="figure">
+      <div class="frame" id="d3"></div>
+      <figcaption><b>Figura 3.</b> Componentes de la API y sus relaciones.</figcaption>
+    </figure>
+
+    <div class="reading prose">
+      <h3>El ciclo que recorre un empleado</h3>
+      <ol>
+        <li><b>Identidad</b> comprueba quién es y si su empresa ya lo aprobó.</li>
+        <li><b>Evaluación</b> mide su nivel en cada tema de ciberseguridad.</li>
+        <li>Ese resultado define su <b>ruta de aprendizaje</b>: qué le conviene reforzar primero.</li>
+        <li>La ruta lo lleva a conversar con el <b>asistente</b>, que responde apoyándose en los documentos que subió su propia empresa.</li>
+        <li>Todo queda reflejado en <b>analítica</b>, y la <b>generación con IA</b> lo convierte en recomendaciones concretas.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ══════════ NIVEL 4 ══════════ -->
+  <section class="level" id="n4">
+    <div class="level-head">
+      <span class="level-num">Nivel 4</span>
+      <h2 class="level-title">Código: dentro de un solo componente</h2>
+    </div>
+    <div class="prose">
+      <p>
+        El último acercamiento posible: se toma un único componente —el de evaluación, que es donde
+        vive la medición que sustenta toda la investigación— y se muestran las piezas concretas que
+        lo forman.
+      </p>
+    </div>
+
+    <dl class="card">
+      <div><dt>Alcance</dt><dd>Un solo componente: Evaluación del conocimiento</dd></div>
+      <div><dt>Audiencia</dt><dd>Arquitectos de software y desarrolladores</dd></div>
+      <div><dt>¿C4 lo recomienda?</dt><dd>No</dd></div>
+    </dl>
+
+    <div class="note">
+      <b>Nota sobre el modelo.</b> C4 desaconseja documentar este nivel:
+      <cite>«No, particularmente para documentación de larga vida, porque la mayoría de los entornos de
+      desarrollo pueden generar este detalle bajo demanda.»</cite>
+      El motivo es que envejece mal: cualquier cambio en el código la deja desactualizada. Se incluye
+      un único ejemplo, deliberadamente acotado, para ilustrar hasta dónde llega el modelo.
+    </div>
+
+    <figure class="figure">
+      <div class="frame" id="d4"></div>
+      <figcaption><b>Figura 4.</b> Estructura interna del componente de evaluación.</figcaption>
+    </figure>
+
+    <div class="reading prose">
+      <h3>Por qué justo este componente</h3>
+      <ul>
+        <li>Las <b>reglas de la evaluación</b> están reunidas en un solo sitio: cuántas preguntas, de qué temas y cada cuánto se repite.</li>
+        <li>El <b>calificador vive en el servidor</b>. El navegador nunca recibe cuál es la respuesta correcta antes de responder, ni puede enviar una nota inventada.</li>
+        <li>Cada intento se guarda <b>sin sobrescribir los anteriores</b>, que es lo que permite medir la evolución de una persona en el tiempo.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="prose">
+    <p>
+      Notación conforme al <a href="https://c4model.com">modelo C4</a> de Simon Brown. Las citas sobre
+      la conveniencia de cada nivel provienen de la guía oficial. Los niveles 1 y 2 son los recomendados
+      para documentación permanente; los niveles 3 y 4 se incluyen por su valor explicativo en el marco
+      de esta memoria.
+    </p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var NS = "http://www.w3.org/2000/svg";
+  var FILL = {
+    person:    { bg: "#08427B", fg: "#FFFFFF" },
+    system:    { bg: "#1168BD", fg: "#FFFFFF" },
+    container: { bg: "#438DD5", fg: "#FFFFFF" },
+    component: { bg: "#85BBF0", fg: "#0B2440" },
+    code:      { bg: "#C2DDF5", fg: "#0B2440" },
+    external:  { bg: "#8A8A8A", fg: "#FFFFFF" }
+  };
+
+  function el(name, attrs) {
+    var n = document.createElementNS(NS, name);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+
+  function text(x, y, str, opts) {
+    var t = el("text", {
+      x: x, y: y,
+      "text-anchor": opts.anchor || "middle",
+      "font-family": opts.mono ? "IBM Plex Mono, monospace" : "IBM Plex Sans, sans-serif",
+      "font-size": opts.size,
+      "font-weight": opts.weight || 400,
+      fill: opts.fill,
+      "font-style": opts.italic ? "italic" : "normal"
+    });
+    t.textContent = str;
+    return t;
+  }
+
+  /* Dibuja una caja C4: nombre, tipo entre corchetes y descripción en líneas ya partidas. */
+  function drawBox(svg, b) {
+    var c = FILL[b.kind];
+    var g = el("g", {});
+    g.appendChild(el("rect", {
+      x: b.x, y: b.y, width: b.w, height: b.h, rx: 4,
+      fill: c.bg, stroke: c.bg
+    }));
+
+    var cx = b.x + b.w / 2;
+    var y = b.y + 24;
+    g.appendChild(text(cx, y, b.name, { size: 13.5, weight: 600, fill: c.fg }));
+
+    if (b.type) {
+      y += 16;
+      g.appendChild(text(cx, y, "[" + b.type + "]", { size: 10, fill: c.fg, mono: true }));
+    }
+    if (b.desc) {
+      y += 9;
+      b.desc.forEach(function (line) {
+        y += 13;
+        g.appendChild(text(cx, y, line, { size: 10.5, fill: c.fg }));
+      });
+    }
+    svg.appendChild(g);
+  }
+
+  /* Recorta el segmento centro-a-centro en el borde de cada caja. */
+  function edgePoint(box, tx, ty) {
+    var cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+    var dx = tx - cx, dy = ty - cy;
+    if (dx === 0 && dy === 0) return { x: cx, y: cy };
+    var sx = dx === 0 ? Infinity : (box.w / 2 + 3) / Math.abs(dx);
+    var sy = dy === 0 ? Infinity : (box.h / 2 + 3) / Math.abs(dy);
+    var s = Math.min(sx, sy);
+    return { x: cx + dx * s, y: cy + dy * s };
+  }
+
+  function solapa(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  /* Coloca la etiqueta en el punto medio y, si cae sobre una caja o sobre otra
+     etiqueta ya puesta, la desplaza en perpendicular hasta despejarla. Evita tener
+     que ajustar a mano cada desplazamiento, que es justo lo que se descontrola. */
+  function ubicaEtiqueta(p1, p2, w, h, obstaculos) {
+    var dx = p2.x - p1.x, dy = p2.y - p1.y;
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    var perp = { x: -dy / len, y: dx / len };
+    var alturas = [0.5, 0.38, 0.62, 0.28, 0.72];
+    var saltos = [0, 15, -15, 28, -28, 42, -42, 58, -58, 76, -76, 96, -96];
+    var mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+
+    for (var a = 0; a < alturas.length; a++) {
+      var base = { x: p1.x + dx * alturas[a], y: p1.y + dy * alturas[a] };
+      for (var i = 0; i < saltos.length; i++) {
+        var c = { x: base.x + perp.x * saltos[i], y: base.y + perp.y * saltos[i] };
+        var r = { x: c.x - w / 2, y: c.y - h / 2, w: w, h: h };
+        var choca = false;
+        for (var j = 0; j < obstaculos.length; j++) {
+          if (solapa(r, obstaculos[j])) { choca = true; break; }
+        }
+        if (!choca) return c;
+      }
+    }
+    return mid;
+  }
+
+  function drawArrow(svg, from, to, label, opts, obstaculos) {
+    opts = opts || {};
+    var fc = { x: from.x + from.w / 2, y: from.y + from.h / 2 };
+    var tc = { x: to.x + to.w / 2, y: to.y + to.h / 2 };
+    var p1 = edgePoint(from, tc.x, tc.y);
+    var p2 = edgePoint(to, fc.x, fc.y);
+
+    svg.appendChild(el("line", {
+      x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
+      stroke: "var(--stroke)", "stroke-width": 1.4,
+      "marker-end": "url(#punta)",
+      "stroke-dasharray": opts.dashed ? "5 4" : "none"
+    }));
+
+    if (!label) return;
+    var lines = Array.isArray(label) ? label : [label];
+    var pad = 4, lh = 12;
+    var wide = 0;
+    lines.forEach(function (l) { wide = Math.max(wide, l.length * 5.3); });
+    var bw = wide + pad * 2, bh = lh * lines.length + pad * 2 - 2;
+
+    var c = ubicaEtiqueta(p1, p2, bw, bh, obstaculos);
+
+    svg.appendChild(el("rect", {
+      x: c.x - bw / 2, y: c.y - bh / 2, width: bw, height: bh,
+      rx: 3, fill: "var(--canvas)"
+    }));
+    lines.forEach(function (l, i) {
+      svg.appendChild(text(c.x, c.y - (lines.length - 1) * lh / 2 + i * lh + 3.5, l,
+        { size: 9.5, fill: "var(--label)" }));
+    });
+
+    obstaculos.push({ x: c.x - bw / 2, y: c.y - bh / 2, w: bw, h: bh });
+  }
+
+  function drawBoundary(svg, bd) {
+    svg.appendChild(el("rect", {
+      x: bd.x, y: bd.y, width: bd.w, height: bd.h, rx: 6,
+      fill: "none", stroke: "var(--stroke)", "stroke-width": 1.2,
+      "stroke-dasharray": "7 5", opacity: 0.75
+    }));
+    svg.appendChild(text(bd.x + 12, bd.y + bd.h - 11, bd.label,
+      { size: 10.5, fill: "var(--label)", anchor: "start", mono: true }));
+  }
+
+  function render(mount, spec) {
+    var svg = el("svg", {
+      viewBox: "0 0 " + spec.w + " " + spec.h,
+      role: "img", "aria-label": spec.alt
+    });
+    var defs = el("defs", {});
+    var marker = el("marker", {
+      id: "punta", viewBox: "0 0 10 10", refX: 9, refY: 5,
+      markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse"
+    });
+    marker.appendChild(el("path", { d: "M 0 1 L 10 5 L 0 9 z", fill: "var(--stroke)" }));
+    defs.appendChild(marker);
+    svg.appendChild(defs);
+
+    (spec.boundaries || []).forEach(function (b) { drawBoundary(svg, b); });
+
+    var obstaculos = Object.keys(spec.boxes).map(function (k) {
+      var b = spec.boxes[k];
+      return { x: b.x - 4, y: b.y - 4, w: b.w + 8, h: b.h + 8 };
+    });
+    (spec.arrows || []).forEach(function (a) {
+      drawArrow(svg, spec.boxes[a[0]], spec.boxes[a[1]], a[2], a[3], obstaculos);
+    });
+    Object.keys(spec.boxes).forEach(function (k) { drawBox(svg, spec.boxes[k]); });
+
+    mount.appendChild(svg);
+  }
+
+  /* ─────────── Nivel 1 · Contexto ─────────── */
+  render(document.getElementById("d1"), {
+    w: 900, h: 560,
+    alt: "Diagrama de contexto: empleado y dueño usan CyberChat, que se apoya en tres servicios externos.",
+    boxes: {
+      emp:  { x: 200, y: 16, w: 200, h: 92, kind: "person", name: "Empleado", type: "Persona",
+              desc: ["Se capacita y resuelve", "dudas de ciberseguridad"] },
+      due:  { x: 500, y: 16, w: 200, h: 92, kind: "person", name: "Dueño de la MYPE", type: "Persona",
+              desc: ["Administra su empresa", "y decide la capacitación"] },
+      sys:  { x: 320, y: 228, w: 260, h: 104, kind: "system", name: "CyberChat", type: "Sistema",
+              desc: ["Concientización en ciberseguridad", "para microempresas peruanas"] },
+      ia:   { x: 20,  y: 430, w: 250, h: 100, kind: "external", name: "Servicio de IA generativa", type: "Externo",
+              desc: ["Redacta respuestas,", "resúmenes y recomendaciones"] },
+      vec:  { x: 325, y: 430, w: 250, h: 100, kind: "external", name: "Servicio de vectorización", type: "Externo",
+              desc: ["Traduce texto a una forma", "comparable por significado"] },
+      nube: { x: 630, y: 430, w: 250, h: 100, kind: "external", name: "Plataforma de datos", type: "Externo",
+              desc: ["Identidades, base de datos", "y archivos en la nube"] }
+    },
+    arrows: [
+      ["emp", "sys", ["Consulta, rinde evaluaciones", "y revisa su progreso"], {}],
+      ["due", "sys", ["Aprueba empleados, carga", "documentos y ve métricas"], {}],
+      ["sys", "ia",   "Pide texto generado", {}],
+      ["sys", "vec",  "Pide vectores", {}],
+      ["sys", "nube", "Guarda y consulta", {}]
+    ]
+  });
+
+  /* ─────────── Nivel 2 · Contenedores ─────────── */
+  render(document.getElementById("d2"), {
+    w: 980, h: 700,
+    alt: "Diagrama de contenedores: aplicación web, API, y tres almacenes dentro del sistema.",
+    boundaries: [{ x: 30, y: 128, w: 920, h: 396, label: "Sistema CyberChat" }],
+    boxes: {
+      emp: { x: 210, y: 14, w: 190, h: 82, kind: "person", name: "Empleado", type: "Persona" },
+      due: { x: 500, y: 14, w: 190, h: 82, kind: "person", name: "Dueño de la MYPE", type: "Persona" },
+
+      web: { x: 300, y: 158, w: 240, h: 96, kind: "container", name: "Aplicación web", type: "Next.js · navegador",
+             desc: ["Lo que la persona ve y usa", "No requiere instalación"] },
+      api: { x: 300, y: 312, w: 240, h: 104, kind: "container", name: "API de la plataforma", type: "Next.js · servidor",
+             desc: ["Aplica las reglas de negocio", "y decide quién puede qué"] },
+
+      idn: { x: 50,  y: 312, w: 200, h: 104, kind: "container", name: "Servicio de identidad", type: "Almacén",
+             desc: ["Cuentas, contraseñas,", "rol y empresa"] },
+      bd:  { x: 600, y: 312, w: 200, h: 104, kind: "container", name: "Base de datos", type: "PostgreSQL",
+             desc: ["Evaluaciones, progreso", "y conversaciones"] },
+      arc: { x: 600, y: 158, w: 200, h: 96, kind: "container", name: "Almacén de archivos", type: "Almacén",
+             desc: ["Documentos que sube", "cada empresa"] },
+
+      ia:  { x: 200, y: 574, w: 230, h: 92, kind: "external", name: "IA generativa", type: "Externo",
+             desc: ["Redacta respuestas", "y resúmenes"] },
+      vec: { x: 520, y: 574, w: 230, h: 92, kind: "external", name: "Vectorización", type: "Externo",
+             desc: ["Prepara los documentos", "para ser encontrados"] }
+    },
+    arrows: [
+      ["emp", "web", "Usa", {}],
+      ["due", "web", "Usa", {}],
+      ["web", "api", "Envía peticiones", {}],
+      ["api", "idn", "Verifica quién es", {}],
+      ["api", "bd",  "Lee y escribe", {}],
+      ["api", "arc", "Guarda documentos", {}],
+      ["api", "ia",  "Pide texto", {}],
+      ["api", "vec", "Pide vectores", {}]
+    ]
+  });
+
+  /* ─────────── Nivel 3 · Componentes ─────────── */
+  render(document.getElementById("d3"), {
+    w: 1000, h: 700,
+    alt: "Diagrama de componentes: ocho piezas funcionales dentro de la API.",
+    boundaries: [{ x: 24, y: 96, w: 952, h: 402, label: "Contenedor: API de la plataforma" }],
+    boxes: {
+      web: { x: 380, y: 12, w: 240, h: 64, kind: "container", name: "Aplicación web", type: "Contenedor" },
+
+      idn: { x: 44,  y: 126, w: 218, h: 108, kind: "component", name: "Identidad y acceso", type: "Componente",
+             desc: ["Registro, ingreso,", "roles y aprobación"] },
+      org: { x: 292, y: 126, w: 218, h: 108, kind: "component", name: "Organización", type: "Componente",
+             desc: ["Aprobar o rechazar", "a los empleados"] },
+      ev:  { x: 540, y: 126, w: 218, h: 108, kind: "component", name: "Evaluación", type: "Componente",
+             desc: ["Diagnóstico, prueba final", "y pruebas periódicas"] },
+      rut: { x: 788, y: 126, w: 188, h: 108, kind: "component", name: "Ruta de aprendizaje", type: "Componente",
+             desc: ["Qué reforzar", "y en qué orden"] },
+
+      doc: { x: 44,  y: 300, w: 218, h: 108, kind: "component", name: "Base documental", type: "Componente",
+             desc: ["Documentos propios", "de cada empresa"] },
+      asi: { x: 292, y: 300, w: 218, h: 108, kind: "component", name: "Asistente virtual", type: "Componente",
+             desc: ["Responde apoyándose", "en esos documentos"] },
+      ana: { x: 540, y: 300, w: 218, h: 108, kind: "component", name: "Analítica", type: "Componente",
+             desc: ["Tableros personales", "y de la organización"] },
+      gen: { x: 788, y: 300, w: 188, h: 108, kind: "component", name: "Generación con IA", type: "Componente",
+             desc: ["Resúmenes y", "recomendaciones"] },
+
+      bd:  { x: 200, y: 560, w: 220, h: 82, kind: "container", name: "Base de datos", type: "Contenedor" },
+      ext: { x: 580, y: 560, w: 220, h: 82, kind: "external", name: "Servicios de IA", type: "Externo" }
+    },
+    arrows: [
+      ["web", "idn", "Autentica", {}],
+      ["web", "ev",  "Rinde evaluaciones", {}],
+      ["org", "idn", "Habilita", {}],
+      ["ev",  "rut", "Nivel por tema", {}],
+      ["ev",  "ana", "Resultados", {}],
+      ["rut", "asi", "Inicia el tema", {}],
+      ["doc", "asi", "Aporta contexto", {}],
+      ["asi", "ana", "Uso del chat", {}],
+      ["ana", "gen", "Métricas", {}],
+      ["ev",  "bd",  "", {}],
+      ["asi", "bd",  "Guarda", {}],
+      ["gen", "ext", "", {}],
+      ["doc", "ext", "", { dashed: true }]
+    ]
+  });
+
+  /* ─────────── Nivel 4 · Código ─────────── */
+  render(document.getElementById("d4"), {
+    w: 900, h: 470,
+    alt: "Diagrama de código: piezas internas del componente de evaluación.",
+    boundaries: [{ x: 24, y: 96, w: 852, h: 244, label: "Componente: Evaluación del conocimiento" }],
+    boxes: {
+      api: { x: 330, y: 14, w: 240, h: 64, kind: "component", name: "Resto de la API", type: "Componente" },
+
+      pol: { x: 48,  y: 126, w: 244, h: 118, kind: "code", name: "Reglas de la evaluación", type: "Configuración",
+             desc: ["16 preguntas, 2 por tema", "Se repite cada 5 días", "El diagnóstico va una sola vez"] },
+      ban: { x: 328, y: 126, w: 244, h: 118, kind: "code", name: "Banco de preguntas", type: "Catálogo",
+             desc: ["Preguntas y su respuesta", "correcta, que no salen", "nunca hacia el navegador"] },
+      cal: { x: 608, y: 126, w: 244, h: 118, kind: "code", name: "Calificador", type: "Servicio",
+             desc: ["Compara las respuestas", "recibidas contra el banco", "y calcula la nota"] },
+      reg: { x: 328, y: 372, w: 244, h: 84, kind: "code", name: "Registro de intentos", type: "Repositorio",
+             desc: ["Añade cada intento sin borrar los anteriores"] }
+    },
+    arrows: [
+      ["api", "ban", "Pide las preguntas", {}],
+      ["cal", "pol", "Comprueba que el intento esté completo", {}],
+      ["cal", "ban", "Consulta la respuesta correcta", {}],
+      ["cal", "reg", "Guarda nota y desempeño por tema", {}]
+    ]
+  });
+})();
+</script>
