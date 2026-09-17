@@ -448,6 +448,26 @@
     border-left: 3px solid var(--amber);
   }
 
+  /* ─────────── Vista para exportar ───────────
+     Pensada para capturar con html.to.design: las cinco pantallas apiladas y a
+     altura completa. El desplazamiento interno de chat y dashboard se elimina,
+     porque una captura solo toma lo visible dentro de cada contenedor. */
+  .export-toggle { margin-left: auto; }
+  .export-note {
+    max-width: 1320px; margin: 0 auto; padding: 0 24px 12px;
+    font-size: 13px; color: rgba(245, 240, 232, 0.72);
+  }
+  .export-note b { color: var(--amber-glow); font-weight: 700; }
+  body.export { min-width: 1320px; }
+  body.export .shell { position: static; }
+  body.export .tabs, body.export .sample-flag { display: none; }
+  body.export .screen[hidden] { display: block !important; }
+  body.export .screen + .screen { margin-top: 64px; }
+  body.export .stage { overflow: visible; }
+  body.export .device { height: auto; min-height: 800px; }
+  body.export .auth, body.export .app, body.export .content { height: auto; min-height: 800px; }
+  body.export .scroll, body.export .convs, body.export .auth-panel { overflow: visible; }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
   }
@@ -467,7 +487,13 @@
       <button class="tab" role="tab" data-screen="dash"><span class="n">05</span>Dashboard organizacional</button>
     </nav>
     <span class="sample-flag">Datos de ejemplo</span>
+    <button class="tab export-toggle" id="export-toggle" aria-pressed="false">⤓ Vista para exportar</button>
   </div>
+  <p class="export-note" id="export-note" hidden>
+    <b>Vista para exportar.</b> Las cinco pantallas están apiladas y a altura completa: captura la página
+    entera con html.to.design. El chat y la evaluación se exportan tal como los dejaste — envía un mensaje
+    o responde el test antes si quieres capturar esos estados.
+  </p>
 </header>
 
 <main>
@@ -921,8 +947,10 @@
 
   /* ───── Navegación entre pantallas ───── */
   var screens = ["login", "register", "chat", "eval", "dash"];
+  var current = "login";
   function show(name) {
     if (screens.indexOf(name) < 0) name = "login";
+    current = name;
     screens.forEach(function (s) { $("#screen-" + s).hidden = s !== name; });
     $$(".tab").forEach(function (t) { t.setAttribute("aria-selected", String(t.dataset.screen === name)); });
     try { localStorage.setItem("cc-mock-screen", name); } catch (e) {}
@@ -938,6 +966,21 @@
   var start = "login";
   try { start = localStorage.getItem("cc-mock-screen") || "login"; } catch (e) {}
   show(start);
+
+  function setExport(on) {
+    document.body.classList.toggle("export", on);
+    var btn = $("#export-toggle");
+    btn.setAttribute("aria-pressed", String(on));
+    btn.textContent = on ? "← Volver a las pestañas" : "⤓ Vista para exportar";
+    $("#export-note").hidden = !on;
+    if (!on) show(current);
+    window.scrollTo(0, 0);
+  }
+  $("#export-toggle").addEventListener("click", function () {
+    setExport(!document.body.classList.contains("export"));
+  });
+  // Abrir directo en la vista apilada: …/mockups-cyberchat.html#exportar
+  if (location.hash === "#exportar") setExport(true);
 
   /* ───── Login ───── */
   $("#login-form").addEventListener("submit", function (e) {
