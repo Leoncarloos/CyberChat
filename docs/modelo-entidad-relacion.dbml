@@ -1,0 +1,143 @@
+// Modelo entidad-relación de CyberChat para https://dbdiagram.io
+// empresas y roles son entidades lógicas: en la base real el RUC y el rol viven en
+// auth.users.raw_user_meta_data. usuarios representa a auth.users.
+
+Project CyberChat {
+  database_type: 'PostgreSQL'
+}
+
+Table empresas {
+  ruc varchar(11) [pk]
+  razon_social text
+  Note: 'Entidad lógica: no existe como tabla'
+}
+
+Table roles {
+  nombre text [pk, note: 'admin o employee']
+  Note: 'Entidad lógica: no existe como tabla'
+}
+
+Table usuarios {
+  id uuid [pk]
+  email text [unique]
+  nombre text
+  ruc varchar(11)
+  rol text
+  estado text [note: 'pendiente, activo o rechazado']
+  Note: 'auth.users de Supabase'
+}
+
+Table conversations {
+  id uuid [pk]
+  user_id uuid [not null]
+  title text [default: 'Nuevo chat']
+  created_at timestamptz
+}
+
+Table messages {
+  id uuid [pk]
+  conversation_id uuid [not null]
+  role text [note: 'user o assistant']
+  content text
+  created_at timestamptz
+}
+
+Table diagnostic_results {
+  id uuid [pk]
+  user_id uuid [not null]
+  score int
+  total int
+  topics_performance jsonb
+  completed_at timestamptz
+}
+
+Table quiz_results {
+  id uuid [pk]
+  user_id uuid [not null]
+  score int
+  total int
+  taken_at timestamptz
+}
+
+Table evaluation_attempts {
+  id uuid [pk]
+  user_id uuid [not null]
+  test_type text [note: 'posttest o recurrente']
+  score int
+  total int
+  topics_performance jsonb
+  taken_at timestamptz
+}
+
+Table posttest_questions {
+  id uuid [pk]
+  topic_key text
+  question text
+  options jsonb
+  correct_index int [note: 'entre 0 y 3']
+  explanation text
+  active bool [default: true]
+  created_at timestamptz
+}
+
+Table seen_questions {
+  user_id uuid
+  question_id uuid
+  seen_at timestamptz
+
+  indexes {
+    (user_id, question_id) [pk]
+  }
+}
+
+Table learning_progress {
+  id uuid [pk]
+  user_id uuid [not null]
+  topic_key text
+  status text [note: 'pendiente, en_progreso o completado']
+  updated_at timestamptz
+}
+
+Table documents {
+  id uuid [pk]
+  name text
+  storage_path text
+  uploaded_by uuid [not null]
+  created_at timestamptz
+}
+
+Table document_chunks {
+  id uuid [pk]
+  document_id uuid
+  content text
+  chunk_index int
+  embedding vector(384)
+  created_at timestamptz
+}
+
+Table org_summaries {
+  id uuid [pk]
+  ruc varchar(11)
+  period text [note: 'week, month, quarter o all']
+  summary_text text
+  warnings jsonb
+  metrics jsonb
+  generated_by uuid [not null]
+  generated_at timestamptz
+}
+
+Ref: usuarios.ruc > empresas.ruc
+Ref: usuarios.rol > roles.nombre
+Ref: org_summaries.ruc > empresas.ruc
+
+Ref: conversations.user_id > usuarios.id [delete: cascade]
+Ref: messages.conversation_id > conversations.id [delete: cascade]
+Ref: diagnostic_results.user_id > usuarios.id [delete: cascade]
+Ref: quiz_results.user_id > usuarios.id [delete: cascade]
+Ref: evaluation_attempts.user_id > usuarios.id [delete: cascade]
+Ref: learning_progress.user_id > usuarios.id [delete: cascade]
+Ref: seen_questions.user_id > usuarios.id [delete: cascade]
+Ref: seen_questions.question_id > posttest_questions.id [delete: cascade]
+Ref: documents.uploaded_by > usuarios.id
+Ref: document_chunks.document_id > documents.id [delete: cascade]
+Ref: org_summaries.generated_by > usuarios.id [delete: set null]

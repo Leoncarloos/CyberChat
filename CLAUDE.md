@@ -47,16 +47,16 @@ El middleware (`middleware.ts`) solo refresca cookies de sesión, no bloquea.
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
-HF_TOKEN          # HuggingFace — embeddings all-MiniLM-L6-v2
+HF_TOKEN          # HuggingFace — embeddings paraphrase-multilingual-MiniLM-L12-v2
 GROQ_API_KEY      # Groq — qwen/qwen3.8-27b
 ```
 
 ## Pipeline RAG
-1. Texto usuario → embedding 384-dim (HF `all-MiniLM-L6-v2`)
+1. Texto usuario → embedding 384-dim (HF `paraphrase-multilingual-MiniLM-L12-v2`)
 2. Supabase RPC `match_document_chunks_scoped` → top-5 chunks (umbral 0.38),
    acotado a la empresa: se pasa el id del dueño (`lib/orgAdmin.ts`), no el del
    usuario, y se invoca con `supabaseAdmin` porque el RPC es SECURITY INVOKER
-3. Contexto + historial (max 18 turnos) → Groq `qwen/qwen3.8-27b`
+3. Contexto + historial (últimos 12 mensajes) → Groq `qwen/qwen3.8-27b`
 4. Respuesta + metadata de fuentes devuelta al cliente
 
 ## Supabase

@@ -70,7 +70,7 @@ flowchart TB
     subgraph C7["CAPA 7 · SERVICIOS EXTERNOS DE IA"]
         direction LR
         X_GROQ["Groq · qwen/qwen3.8-27b<br/>generación de texto"]
-        X_HF["HuggingFace · all-MiniLM-L6-v2<br/>embeddings de 384 dimensiones"]
+        X_HF["HuggingFace · paraphrase-multilingual-MiniLM-L12-v2<br/>embeddings de 384 dimensiones"]
     end
 
     C1 ==> C2

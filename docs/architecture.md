@@ -10,7 +10,7 @@ Browser
   └── /api/*                          → Next.js Route Handlers (Node.js runtime)
         │
         ├── supabaseServer()          → Supabase (Auth + Postgres + Storage)
-        ├── HuggingFace Inference API → Embeddings all-MiniLM-L6-v2 (384-dim)
+        ├── HuggingFace Inference API → Embeddings paraphrase-multilingual-MiniLM-L12-v2 (384-dim)
         └── Groq API                  → qwen/qwen3.8-27b (LLM)
 ```
 
@@ -23,7 +23,7 @@ Browser
 | Base de datos | Supabase (PostgreSQL + pgvector) |
 | Auth | Supabase Auth (JWT + cookies SSR) |
 | Storage | Supabase Storage (bucket `documents`) |
-| Embeddings | HuggingFace Inference API — `all-MiniLM-L6-v2` |
+| Embeddings | HuggingFace Inference API — `paraphrase-multilingual-MiniLM-L12-v2` |
 | LLM | Groq — `qwen/qwen3.8-27b` |
 | Deploy | Vercel (inferido) |
 
@@ -50,7 +50,7 @@ POST { messages, document_id? }
   → RPC match_document_chunks_scoped(query_embedding, match_count=6, filter_user_id, filter_document_id)
   → Filtrar por umbral similaridad 0.25 → top-5 chunks
   → Construir system prompt con contexto
-  → Groq chat/completions (qwen/qwen3.8-27b, temp=0.2, max 18 turnos)
+  → Groq chat/completions (qwen/qwen3.8-27b, temp=0.15, últimos 12 mensajes)
   → Devolver { answer, matchesCount, bestSimilarity, usedContext, sources }
 ```
 
@@ -60,7 +60,7 @@ POST { messages, document_id? }
 Latencia ultra-baja (Groq hardware especializado). `qwen3.8-27b` da buena calidad en español para Q&A de ciberseguridad con RAG bien construido, sin comportamiento de "reasoning" que consuma el presupuesto de tokens de la respuesta final (a diferencia de otros modelos del catálogo de Groq, como `openai/gpt-oss-20b`, que sí razonan antes de responder). `llama-3.1-8b-instant` fue retirado del catálogo de Groq — swap realizado el 2026-09-11.
 
 ### Por qué HuggingFace para embeddings
-`all-MiniLM-L6-v2` es el estándar de facto para embeddings semánticos en 384 dimensiones. Gratuito con HF_TOKEN. Alternativa viable: OpenAI `text-embedding-3-small`.
+`paraphrase-multilingual-MiniLM-L12-v2` es multilingüe (reemplazó a `all-MiniLM-L6-v2`, entrenado solo en inglés) y genera embeddings de 384 dimensiones. Gratuito con HF_TOKEN. Alternativa viable: OpenAI `text-embedding-3-small`.
 
 ### Por qué Supabase
 Auth + Postgres + pgvector + Storage en una sola plataforma. El RLS (Row Level Security) de Postgres gestiona el aislamiento multiempresa sin código adicional.

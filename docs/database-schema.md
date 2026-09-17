@@ -73,7 +73,7 @@ RLS: política `documents_select_own`.
 | `document_id` | uuid FK → documents | Documento origen |
 | `content` | text | Texto del chunk |
 | `chunk_index` | int | Orden del chunk dentro del documento |
-| `embedding` | vector(384) | Embedding HF all-MiniLM-L6-v2 |
+| `embedding` | vector(384) | Embedding HF paraphrase-multilingual-MiniLM-L12-v2 |
 | `created_at` | timestamptz | Timestamp |
 
 **No tiene columna `user_id`.** El aislamiento por **empresa** se hace en la función RPC

@@ -79,7 +79,7 @@ Inferencia RAG + LLM (Groq `qwen/qwen3.8-27b`). Requiere sesión activa (cualqui
 
 | Campo | Tipo | Requerido | Descripción |
 |-------|------|-----------|-------------|
-| `messages` | `ChatMsg[]` | ✓ | Historial completo, máx 18 turnos usados como contexto. Mínimo 1 mensaje. |
+| `messages` | `ChatMsg[]` | ✓ | Historial completo, solo los últimos 12 mensajes se usan como contexto. Mínimo 1 mensaje. |
 | `document_id` | string | — | Filtra RAG a un documento específico. Si se omite, busca en todos los del admin de la misma empresa. |
 
 #### Response 200
