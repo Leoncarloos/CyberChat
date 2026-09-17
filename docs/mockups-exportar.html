@@ -1,9 +1,8 @@
 <meta charset="utf-8">
-<title>CyberChat Mockups</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<title>CyberChat Exportable</title>
+<!-- Archivo generado por docs/tools/generar-mockups-exportar.mjs a partir de
+     docs/mockups-cyberchat.html. No editar a mano: editar la fuente y regenerar. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600;9..144,800;9..144,900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-
 <style>
   /* Tokens de CyberChat, copiados de app/globals.css. La app solo tiene tema claro:
      el mockup lo respeta y pinta cada color de forma explícita. */
@@ -452,34 +451,24 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
   }
+
+  /* Vista estática para capturar: todo a altura completa y sin desplazamiento
+     interno, porque una captura solo toma lo visible de cada contenedor. */
+  body { min-width: 1320px; }
+  .export-page { max-width: 1320px; margin: 0 auto; padding: 40px 24px 80px; display: grid; gap: 64px; }
+  .frame-label { display: flex; align-items: baseline; gap: 14px; margin: 0 0 14px; }
+  .frame-label .n { font-family: var(--font-mono); font-size: 12px; color: var(--amber-dim); }
+  .frame-label b { font-family: var(--font-display); font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+  .frame-label .route { margin-left: auto; }
+  .stage { overflow: visible; }
+  .device { height: auto; min-height: 800px; }
+  .auth, .app, .content { height: auto; min-height: 800px; }
+  .scroll, .convs, .auth-panel { overflow: visible; }
 </style>
 
-<header class="shell">
-  <div class="shell-inner">
-    <div class="shell-brand">
-      <span class="brand-mark sm">CG</span>
-      <div><small>Mockups funcionales</small><strong>CyberChat</strong></div>
-    </div>
-    <nav class="tabs" role="tablist" aria-label="Pantallas">
-      <button class="tab" role="tab" data-screen="login"><span class="n">01</span>Inicio de sesión</button>
-      <button class="tab" role="tab" data-screen="register"><span class="n">02</span>Registro</button>
-      <button class="tab" role="tab" data-screen="chat"><span class="n">03</span>Chat con IA</button>
-      <button class="tab" role="tab" data-screen="eval"><span class="n">04</span>Evaluación</button>
-      <button class="tab" role="tab" data-screen="dash"><span class="n">05</span>Dashboard organizacional</button>
-    </nav>
-    <span class="sample-flag">Datos de ejemplo</span>
-  </div>
-</header>
-
-<main>
-
-  <!-- ═══════════ 01 · LOGIN ═══════════ -->
-  <section class="screen" id="screen-login" role="tabpanel">
-    <div class="screen-meta">
-      <h1>Inicio de sesión</h1>
-      <span class="route">/login</span>
-      <p>Mismo mensaje para correo inexistente y contraseña errónea, para no revelar qué cuentas existen.</p>
-    </div>
+<main class="export-page">
+  <section class="frame">
+    <div class="frame-label"><span class="n">01</span><b>Inicio de sesión</b><span class="route">/login</span></div>
     <div class="stage"><div class="device">
       <div class="auth">
         <aside class="auth-hero">
@@ -516,7 +505,6 @@
               </div>
               <div class="banner error" id="login-error" hidden></div>
               <button class="btn primary block" type="submit">Entrar al panel</button>
-              <p class="muted" style="margin:0;font-size:12px;text-align:center">Prueba: con cualquier correo válido y una contraseña entras al chat. Con <b>error@empresa.com</b> ves el mensaje de rechazo.</p>
             </form>
             <div class="auth-foot">
               <span class="muted" style="font-size:14px">¿No tienes cuenta todavía?</span>
@@ -528,13 +516,8 @@
     </div></div>
   </section>
 
-  <!-- ═══════════ 02 · REGISTRO ═══════════ -->
-  <section class="screen" id="screen-register" role="tabpanel" hidden>
-    <div class="screen-meta">
-      <h1>Registro</h1>
-      <span class="route" id="reg-route">/register/admin</span>
-      <p>La empresa se registra con su dueño; cada colaborador solicita acceso con el RUC y espera aprobación.</p>
-    </div>
+  <section class="frame">
+    <div class="frame-label"><span class="n">02</span><b>Registro · Empresa</b><span class="route">/register/admin</span></div>
     <div class="stage"><div class="device">
       <div class="auth">
         <aside class="auth-hero">
@@ -616,13 +599,91 @@
     </div></div>
   </section>
 
-  <!-- ═══════════ 03 · CHAT ═══════════ -->
-  <section class="screen" id="screen-chat" role="tabpanel" hidden>
-    <div class="screen-meta">
-      <h1>Chat con IA</h1>
-      <span class="route">/chat</span>
-      <p>El asistente responde con los documentos que subió la empresa y avisa cuando usa conocimiento general.</p>
-    </div>
+  <section class="frame">
+    <div class="frame-label"><span class="n">03</span><b>Registro · Colaborador</b><span class="route">/register/employee</span></div>
+    <div class="stage"><div class="device">
+      <div class="auth">
+        <aside class="auth-hero">
+          <div>
+            <span class="brand-mark">CG</span>
+            <p class="eyebrow" style="margin-top:24px">Seguridad colaborativa</p>
+            <h2 class="display hero-title" id="reg-title">Únete a <em>tu empresa</em></h2>
+            <p class="hero-lead" id="reg-lead">Indica el RUC de la empresa donde trabajas. Tu cuenta quedará pendiente hasta que el administrador la apruebe.</p>
+          </div>
+          <div class="features">
+            <div class="feature"><span class="tag">01</span><div><b id="reg-step1">RUC de tu empresa</b><span id="reg-step1d">Debe estar registrada previamente por su dueño.</span></div></div>
+            <div class="feature"><span class="tag">02</span><div><b id="reg-step2">Aprobación del administrador</b><span id="reg-step2d">Recibirás acceso cuando revise tu solicitud.</span></div></div>
+          </div>
+        </aside>
+        <div class="auth-panel">
+          <div class="auth-card wide">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+              <p class="eyebrow" id="reg-eyebrow">Solicitud de acceso</p>
+              <div class="seg" role="group" aria-label="Tipo de cuenta">
+                <button type="button" aria-pressed="false" data-mode="empresa">Empresa</button>
+                <button type="button" aria-pressed="true" data-mode="colaborador">Colaborador</button>
+              </div>
+            </div>
+            <form class="auth-form" id="reg-form" novalidate style="gap:11px">
+              <div class="grid-2">
+                <div>
+                  <label class="field-label" for="reg-ruc">Número de RUC</label>
+                  <input class="input" id="reg-ruc" inputmode="numeric" maxlength="11" placeholder="Ej. 20123456789">
+                  <p class="field-error" id="reg-ruc-err" hidden></p>
+                </div>
+                <div data-only="empresa" hidden>
+                  <label class="field-label" for="reg-razon">Razón social</label>
+                  <input class="input" id="reg-razon" placeholder="Ej. Mi Empresa SAC">
+                </div>
+                <div data-only="colaborador">
+                  <label class="field-label" for="reg-nombres">Nombres</label>
+                  <input class="input" id="reg-nombres" placeholder="Tus nombres">
+                </div>
+              </div>
+              <div data-only="empresa" hidden>
+                <label class="field-label" for="reg-owner">Nombres y apellidos completos</label>
+                <input class="input" id="reg-owner" placeholder="Ingrese sus nombres y apellidos">
+              </div>
+              <div data-only="colaborador">
+                <label class="field-label" for="reg-apellidos">Apellidos</label>
+                <input class="input" id="reg-apellidos" placeholder="Tus apellidos">
+              </div>
+              <div class="grid-2">
+                <div>
+                  <label class="field-label" for="reg-email">Correo</label>
+                  <input class="input" id="reg-email" type="email" placeholder="correo@empresa.com">
+                </div>
+                <div data-only="empresa" hidden>
+                  <label class="field-label" for="reg-phone">Número de celular</label>
+                  <input class="input" id="reg-phone" inputmode="numeric" placeholder="987 654 321">
+                </div>
+              </div>
+              <div>
+                <label class="field-label" for="reg-pass">Contraseña</label>
+                <input class="input" id="reg-pass" type="password" placeholder="Crea una contraseña segura">
+                <ul class="strength" id="reg-strength">
+                  <li data-rule="len">○ Al menos 8 caracteres</li>
+                  <li data-rule="up">○ Una letra mayúscula</li>
+                  <li data-rule="low">○ Una letra minúscula</li>
+                  <li data-rule="num">○ Un número</li>
+                  <li data-rule="sp">○ Un carácter especial (!@#$...)</li>
+                </ul>
+              </div>
+              <div class="banner success" id="reg-ok" hidden></div>
+              <button class="btn primary block" type="submit" id="reg-submit">Solicitar acceso</button>
+            </form>
+            <div class="auth-foot">
+              <span class="muted" style="font-size:14px">¿Ya tienes una cuenta?</span>
+              <button class="btn ghost sm" data-go="login">Iniciar sesión</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="frame">
+    <div class="frame-label"><span class="n">04</span><b>Chat con IA · Inicio</b><span class="route">/chat</span></div>
     <div class="stage"><div class="device">
       <div class="app">
         <aside class="side">
@@ -692,13 +753,79 @@
     </div></div>
   </section>
 
-  <!-- ═══════════ 04 · EVALUACIÓN ═══════════ -->
-  <section class="screen" id="screen-eval" role="tabpanel" hidden>
-    <div class="screen-meta">
-      <h1>Evaluación</h1>
-      <span class="route">/chat · módulo Evaluaciones</span>
-      <p>La nota se calcula en el servidor: la respuesta correcta y su explicación llegan recién después de enviar.</p>
-    </div>
+  <section class="frame">
+    <div class="frame-label"><span class="n">05</span><b>Chat con IA · Conversación</b><span class="route">/chat</span></div>
+    <div class="stage"><div class="device">
+      <div class="app">
+        <aside class="side">
+          <div class="side-head"><span class="brand-mark sm">C</span><div><strong>CyberChat</strong><small>Protección MYPE</small></div></div>
+          <div class="side-sec">
+            <button class="nav active">💬 <span>Chat de IA</span></button>
+            <button class="nav" data-go="eval">📝 <span>Evaluaciones</span></button>
+            <button class="nav" data-toast="En la app, Mi Dashboard muestra tu progreso personal.">📊 <span>Mi Dashboard</span></button>
+          </div>
+          <div class="side-sec"><p>Historial <button class="mini" id="chat-new">+ Nuevo</button></p></div>
+          <div class="convs" id="conv-list">
+            <button class="conv active"><b>¿Cuáles son las amenazas de cibersegurid</b><span>Ahora · 4 mensajes</span></button>
+            <button class="conv"><b>Correo sospechoso de SUNAT</b><span>Ayer · 6 mensajes</span></button>
+            <button class="conv"><b>Contraseñas para el equipo de ventas</b><span>Lun · 4 mensajes</span></button>
+            <button class="conv"><b>Qué hacer ante un ransomware</b><span>12 sep · 8 mensajes</span></button>
+          </div>
+          <div class="side-foot">
+            <div class="who"><small>Usuario</small><span>maria.quispe@comercialandes.pe</span></div>
+            <div class="side-row">
+              <div class="counter"><b class="num" id="chat-count">2</b><small>Consultas</small></div>
+              <button class="out" data-go="login">Salir</button>
+            </div>
+          </div>
+        </aside>
+
+        <div class="content">
+          <div class="topbar">
+            <div class="topbar-title">
+              <span class="brand-mark sm">C</span>
+              <div><p class="display">Agente CyberChat</p><span class="sub">Especialista en ciberseguridad para MYPES</span></div>
+            </div>
+            <span class="badge bajo">● 2 documentos de tu empresa</span>
+          </div>
+          <div class="scroll" id="chat-scroll">
+            <div class="welcome" id="chat-welcome" hidden>
+              <div class="welcome-head">
+                <p class="eyebrow">Hola, María</p>
+                <p class="display">¿En qué te ayudo a proteger tu empresa hoy?</p>
+                <p>Pregunta en tus palabras o empieza por uno de estos temas.</p>
+              </div>
+              <div class="prompts">
+                <button class="prompt" data-prompt="¿Cuáles son las amenazas de ciberseguridad más comunes para una MYPE peruana?"><i>⚠️</i><b>Amenazas más comunes en MYPES</b><span>Phishing, ransomware, fraudes</span></button>
+                <button class="prompt" data-prompt="Dame un plan rápido de 5 pasos para mejorar la ciberseguridad de mi empresa."><i>🚀</i><b>Plan de seguridad exprés</b><span>5 pasos para empezar hoy</span></button>
+                <button class="prompt" data-prompt="¿Cómo saber si mi empresa ya fue hackeada sin darme cuenta?"><i>🔎</i><b>¿Fui hackeado sin saberlo?</b><span>Señales de alerta a detectar</span></button>
+              </div>
+              <div class="path">
+                <div class="path-head"><b>Tu ruta de aprendizaje</b><span class="muted" style="font-size:12px">Según tu diagnóstico inicial</span></div>
+                <div class="chips">
+                  <button class="chip" data-prompt="Explícame qué exige la Ley N.° 29733 a una MYPE sobre los datos de sus clientes.">🔐 Ley N.° 29733 <span class="badge alto">Nivel bajo</span></button>
+                  <button class="chip" data-prompt="¿Cómo usan los atacantes la inteligencia artificial para engañar a los empleados?">🤖 IA y nuevas amenazas <span class="badge alto">Nivel bajo</span></button>
+                  <button class="chip" data-prompt="¿Cómo controlo quién accede a los sistemas de mi empresa?">🗝️ Control de accesos <span class="badge medio">Nivel medio</span></button>
+                  <button class="chip" data-prompt="¿Qué hago si la computadora principal de mi negocio falla?">🛟 Resiliencia <span class="badge medio">Nivel medio</span></button>
+                </div>
+              </div>
+            </div>
+            <div class="thread" id="chat-thread"><div class="msg user">¿Cuáles son las amenazas de ciberseguridad más comunes para una MYPE peruana?</div><div class="msg bot"><span class="who-tag">CyberChat</span>Según los documentos de tu empresa, las amenazas más frecuentes para una MYPE son:<ol><li><b>Phishing</b> por correo y WhatsApp que suplanta a SUNAT o a bancos.</li><li><b>Fraude del proveedor</b>: piden cambiar la cuenta bancaria para el próximo pago.</li><li><b>Ransomware</b> que cifra la información y exige un rescate.</li></ol><span class="alert">ALERTA: nunca compartas el código OTP que llega por SMS, aunque digan ser del banco.</span><div class="sources"><span class="source">📄 Politica_seguridad_2026.pdf</span><span class="source">📄 Ley_29733_resumen.txt</span></div></div><div class="msg user">Dame un plan rápido de 5 pasos para mejorar la ciberseguridad de mi empresa.</div><div class="msg bot"><span class="who-tag">CyberChat</span>Un plan de cinco pasos para empezar hoy:<ol><li>Activa la verificación en dos pasos en correo y banca.</li><li>Haz copias de seguridad semanales fuera de la oficina.</li><li>Revisa quién tiene acceso a cada sistema.</li><li>Capacita al equipo para detectar phishing.</li><li>Define a quién avisar ante un incidente.</li></ol>Adicionalmente, en general, conviene mantener los equipos actualizados.<div class="sources"><span class="source">📄 Politica_seguridad_2026.pdf</span></div></div></div>
+          </div>
+          <div class="composer">
+            <form class="composer-box" id="chat-form">
+              <textarea id="chat-input" rows="1" placeholder="Escribe tu mensaje o pregunta aquí..." aria-label="Mensaje"></textarea>
+              <button class="btn primary sm" type="submit">Enviar ➤</button>
+            </form>
+            <p class="composer-note">La IA puede cometer errores. Verifica la información sensible.</p>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="frame">
+    <div class="frame-label"><span class="n">06</span><b>Evaluación · En curso</b><span class="route">/chat · Evaluaciones</span></div>
     <div class="stage"><div class="device">
       <div class="app">
         <aside class="side">
@@ -743,12 +870,12 @@
               </div>
               <div class="panel">
                 <p class="eyebrow">Progreso</p>
-                <p class="progress-num num" id="eval-progress">0/4</p>
-                <div class="bar"><span id="eval-bar" style="width:0%"></span></div>
+                <p class="progress-num num" id="eval-progress">2/4</p>
+                <div class="bar"><span id="eval-bar" style="width:50%"></span></div>
                 <p class="soft" style="margin:10px 0 0;font-size:13px" id="eval-progress-note">Preguntas respondidas hasta ahora.</p>
               </div>
             </div>
-            <div class="questions" id="eval-questions"></div>
+            <div class="questions" id="eval-questions"><article class="q"><div class="q-head"><div><p class="eyebrow">Pregunta 1 · Phishing e Ingeniería Social</p><h3>¿Cuál de estas URLs es más probable que sea phishing dirigido a un banco peruano?</h3></div></div><div class="opts"><button class="opt" aria-pressed="false"><span class="l">A</span><span>www.bcp.gob.pe</span></button><button class="opt" aria-pressed="true"><span class="l">B</span><span>www.bcp-verificacion-cliente.com</span></button><button class="opt" aria-pressed="false"><span class="l">C</span><span>www.bcp.com.pe</span></button><button class="opt" aria-pressed="false"><span class="l">D</span><span>www.viabcp.com</span></button></div></article><article class="q"><div class="q-head"><div><p class="eyebrow">Pregunta 2 · Gestión de Contraseñas</p><h3>¿Qué se entiende por «passphrase» como alternativa a una contraseña compleja de símbolos?</h3></div></div><div class="opts"><button class="opt" aria-pressed="false"><span class="l">A</span><span>Una sola palabra del diccionario</span></button><button class="opt" aria-pressed="false"><span class="l">B</span><span>Una contraseña de 4 dígitos</span></button><button class="opt" aria-pressed="true"><span class="l">C</span><span>Una frase larga y memorable combinando varias palabras poco relacionadas, más fácil de recordar y difícil de adivinar</span></button><button class="opt" aria-pressed="false"><span class="l">D</span><span>El nombre de la empresa seguido de un número</span></button></div></article><article class="q"><div class="q-head"><div><p class="eyebrow">Pregunta 3 · Inteligencia Artificial y Nuevas Amenazas</p><h3>¿Qué es un «agente autónomo de IA» malicioso en ciberseguridad?</h3></div></div><div class="opts"><button class="opt" aria-pressed="false"><span class="l">A</span><span>Un antivirus con inteligencia artificial</span></button><button class="opt" aria-pressed="false"><span class="l">B</span><span>Un sistema de facturación electrónica</span></button><button class="opt" aria-pressed="false"><span class="l">C</span><span>Un chatbot de atención al cliente</span></button><button class="opt" aria-pressed="false"><span class="l">D</span><span>Un programa que usa IA para ejecutar ataques de forma automática, como buscar vulnerabilidades o enviar phishing a gran escala</span></button></div></article><article class="q"><div class="q-head"><div><p class="eyebrow">Pregunta 4 · Manejo de Datos Sensibles</p><h3>¿Qué riesgo implica imprimir reportes con datos sensibles de clientes y dejarlos en la impresora compartida?</h3></div></div><div class="opts"><button class="opt" aria-pressed="false"><span class="l">A</span><span>Cualquier persona con acceso a la impresora puede ver información confidencial de clientes</span></button><button class="opt" aria-pressed="false"><span class="l">B</span><span>Es una práctica recomendada de transparencia</span></button><button class="opt" aria-pressed="false"><span class="l">C</span><span>Mejora el tiempo de respuesta del área</span></button><button class="opt" aria-pressed="false"><span class="l">D</span><span>Ninguno si la oficina es pequeña</span></button></div></article></div>
             <div class="panel eval-foot" id="eval-foot">
               <span class="soft">Completa todas las preguntas y envía tu evaluación.</span>
               <button class="btn primary" id="eval-submit" disabled>Ver resultados</button>
@@ -759,13 +886,67 @@
     </div></div>
   </section>
 
-  <!-- ═══════════ 05 · DASHBOARD ═══════════ -->
-  <section class="screen" id="screen-dash" role="tabpanel" hidden>
-    <div class="screen-meta">
-      <h1>Dashboard organizacional</h1>
-      <span class="route">/org-dashboard</span>
-      <p>Solo el dueño lo ve. El resumen de IA se genera con datos agregados: nunca nombra a empleados.</p>
-    </div>
+  <section class="frame">
+    <div class="frame-label"><span class="n">07</span><b>Evaluación · Resultados</b><span class="route">/chat · Evaluaciones</span></div>
+    <div class="stage"><div class="device">
+      <div class="app">
+        <aside class="side">
+          <div class="side-head"><span class="brand-mark sm">C</span><div><strong>CyberChat</strong><small>Protección MYPE</small></div></div>
+          <div class="side-sec">
+            <button class="nav" data-go="chat">💬 <span>Chat de IA</span></button>
+            <button class="nav active">📝 <span>Evaluaciones</span></button>
+            <button class="nav" data-toast="En la app, Mi Dashboard muestra tu progreso personal.">📊 <span>Mi Dashboard</span></button>
+          </div>
+          <div class="side-sec"><p>Historial</p></div>
+          <div class="convs">
+            <button class="conv" data-go="chat"><b>Correo sospechoso de SUNAT</b><span>Ayer · 6 mensajes</span></button>
+            <button class="conv" data-go="chat"><b>Contraseñas para el equipo de ventas</b><span>Lun · 4 mensajes</span></button>
+          </div>
+          <div class="side-foot">
+            <div class="who"><small>Usuario</small><span>maria.quispe@comercialandes.pe</span></div>
+            <div class="side-row">
+              <div class="counter"><b class="num">14</b><small>Consultas</small></div>
+              <button class="out" data-go="login">Salir</button>
+            </div>
+          </div>
+        </aside>
+
+        <div class="content">
+          <div class="topbar">
+            <div class="topbar-title">
+              <span class="brand-mark sm">C</span>
+              <div><p class="display">Evaluaciones CyberChat</p><span class="sub">Test guiado para reforzar concientización</span></div>
+            </div>
+            <span class="badge medio">Evaluación recurrente · cada 5 días</span>
+          </div>
+          <div class="scroll">
+            <div class="eval-top">
+              <div class="panel">
+                <p class="eyebrow">Evaluación guiada</p>
+                <h2 class="display">Evaluación recurrente</h2>
+                <p class="soft" style="margin:0 0 12px">Evaluación periódica cada 5 días. Mide tu progreso continuo y detecta áreas críticas.</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <span class="badge neutral">Muestra de 4 preguntas</span>
+                  <span class="badge neutral">La real tiene 16: 2 por tema</span>
+                </div>
+              </div>
+              <div class="panel">
+                <p class="eyebrow">Progreso</p>
+                <p class="progress-num num" id="eval-progress">3/4</p>
+                <div class="bar"><span id="eval-bar" style="width:75%"></span></div>
+                <p class="soft" style="margin:10px 0 0;font-size:13px" id="eval-progress-note">Resultado final de tu evaluación.</p>
+              </div>
+            </div>
+            <div class="questions" id="eval-questions"><article class="q"><div class="q-head"><div><p class="eyebrow">Pregunta 1 · Phishing e Ingeniería Social</p><h3>¿Cuál de estas URLs es más probable que sea phishing dirigido a un banco peruano?</h3></div><span class="badge bajo">Correcta</span></div><div class="opts"><button class="opt" aria-pressed="false" disabled><span class="l">A</span><span>www.bcp.gob.pe</span></button><button class="opt correct" aria-pressed="false" disabled><span class="l">B</span><span>www.bcp-verificacion-cliente.com</span></button><button class="opt" aria-pressed="false" disabled><span class="l">C</span><span>www.bcp.com.pe</span></button><button class="opt" aria-pressed="false" disabled><span class="l">D</span><span>www.viabcp.com</span></button></div><div class="explain">Los dominios largos con palabras añadidas («verificacion-cliente») y extensión distinta suelen ser señal de phishing.</div></article><article class="q"><div class="q-head"><div><p class="eyebrow">Pregunta 2 · Gestión de Contraseñas</p><h3>¿Qué se entiende por «passphrase» como alternativa a una contraseña compleja de símbolos?</h3></div><span class="badge alto">Revisar</span></div><div class="opts"><button class="opt wrong" aria-pressed="false" disabled><span class="l">A</span><span>Una sola palabra del diccionario</span></button><button class="opt" aria-pressed="false" disabled><span class="l">B</span><span>Una contraseña de 4 dígitos</span></button><button class="opt correct" aria-pressed="false" disabled><span class="l">C</span><span>Una frase larga y memorable combinando varias palabras poco relacionadas, más fácil de recordar y difícil de adivinar</span></button><button class="opt" aria-pressed="false" disabled><span class="l">D</span><span>El nombre de la empresa seguido de un número</span></button></div><div class="explain">Una passphrase (por ejemplo, «CaballoAzulLuna47!») puede ser tan segura como una contraseña compleja, pero más fácil de recordar.</div></article><article class="q"><div class="q-head"><div><p class="eyebrow">Pregunta 3 · Inteligencia Artificial y Nuevas Amenazas</p><h3>¿Qué es un «agente autónomo de IA» malicioso en ciberseguridad?</h3></div><span class="badge bajo">Correcta</span></div><div class="opts"><button class="opt" aria-pressed="false" disabled><span class="l">A</span><span>Un antivirus con inteligencia artificial</span></button><button class="opt" aria-pressed="false" disabled><span class="l">B</span><span>Un sistema de facturación electrónica</span></button><button class="opt" aria-pressed="false" disabled><span class="l">C</span><span>Un chatbot de atención al cliente</span></button><button class="opt correct" aria-pressed="false" disabled><span class="l">D</span><span>Un programa que usa IA para ejecutar ataques de forma automática, como buscar vulnerabilidades o enviar phishing a gran escala</span></button></div><div class="explain">Estos agentes automatizan el reconocimiento de objetivos, la generación de phishing y la explotación de vulnerabilidades sin intervención humana constante.</div></article><article class="q"><div class="q-head"><div><p class="eyebrow">Pregunta 4 · Manejo de Datos Sensibles</p><h3>¿Qué riesgo implica imprimir reportes con datos sensibles de clientes y dejarlos en la impresora compartida?</h3></div><span class="badge bajo">Correcta</span></div><div class="opts"><button class="opt correct" aria-pressed="false" disabled><span class="l">A</span><span>Cualquier persona con acceso a la impresora puede ver información confidencial de clientes</span></button><button class="opt" aria-pressed="false" disabled><span class="l">B</span><span>Es una práctica recomendada de transparencia</span></button><button class="opt" aria-pressed="false" disabled><span class="l">C</span><span>Mejora el tiempo de respuesta del área</span></button><button class="opt" aria-pressed="false" disabled><span class="l">D</span><span>Ninguno si la oficina es pequeña</span></button></div><div class="explain">Los documentos olvidados en impresoras compartidas exponen información confidencial a cualquiera que pase por el área.</div></article></div>
+            <div class="panel eval-foot" id="eval-foot"><div class="result"><h3>Obtuviste 3 de 4</h3><p class="soft" style="margin:0">Vas bien, pero todavía hay puntos por reforzar. Revisa las explicaciones y vuelve a intentarlo.</p></div><div class="controls"><button class="btn ghost">Reiniciar test</button><button class="btn primary">Volver al chat</button></div></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="frame">
+    <div class="frame-label"><span class="n">08</span><b>Dashboard organizacional</b><span class="route">/org-dashboard</span></div>
     <div class="stage"><div class="device">
       <div class="app">
         <aside class="side">
@@ -861,7 +1042,7 @@
 
               <div class="panel">
                 <p class="card-title">Nivel de conocimiento por temática — promedio organizacional</p>
-                <div class="topics" id="dash-topics"></div>
+                <div class="topics" id="dash-topics"><div class="topic"><span class="name" title="Phishing e Ingeniería Social">Phishing e Ingeniería Social</span><div class="bar"><span class="mid" style="width:72%"></span></div><b class="num">72 %</b></div><div class="topic"><span class="name" title="Inteligencia Artificial y Nuevas Amenazas">Inteligencia Artificial y Nuevas Amenazas</span><div class="bar"><span class="lo" style="width:48%"></span></div><b class="num">48 %</b></div><div class="topic"><span class="name" title="Seguridad en Canales de Venta Digitales">Seguridad en Canales de Venta Digitales</span><div class="bar"><span class="mid" style="width:66%"></span></div><b class="num">66 %</b></div><div class="topic"><span class="name" title="Gestión de Contraseñas">Gestión de Contraseñas</span><div class="bar"><span class="hi" style="width:81%"></span></div><b class="num">81 %</b></div><div class="topic"><span class="name" title="Control de Accesos">Control de Accesos</span><div class="bar"><span class="mid" style="width:58%"></span></div><b class="num">58 %</b></div><div class="topic"><span class="name" title="Protección de la Información del Cliente (Ley N.° 29733)">Protección de la Información del Cliente (Ley N.° 29733)</span><div class="bar"><span class="lo" style="width:44%"></span></div><b class="num">44 %</b></div><div class="topic"><span class="name" title="Manejo de Datos Sensibles">Manejo de Datos Sensibles</span><div class="bar"><span class="mid" style="width:63%"></span></div><b class="num">63 %</b></div><div class="topic"><span class="name" title="Resiliencia con Recursos Mínimos">Resiliencia con Recursos Mínimos</span><div class="bar"><span class="mid" style="width:55%"></span></div><b class="num">55 %</b></div><div class="scale" aria-hidden="true"><span></span><span><span>0</span><span>50</span><span>100 %</span></span><span></span></div></div>
               </div>
 
               <div class="panel">
@@ -896,407 +1077,3 @@
     </div></div>
   </section>
 </main>
-
-<div class="toasts" id="toasts" aria-live="polite"></div>
-
-<script>
-(function () {
-  "use strict";
-
-  var $ = function (s, r) { return (r || document).querySelector(s); };
-  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
-
-  function toast(msg) {
-    var t = document.createElement("div");
-    t.className = "toast";
-    t.textContent = msg;
-    $("#toasts").appendChild(t);
-    setTimeout(function () { t.remove(); }, 3600);
-  }
-
-  function esc(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-    });
-  }
-
-  /* ───── Navegación entre pantallas ───── */
-  var screens = ["login", "register", "chat", "eval", "dash"];
-  function show(name) {
-    if (screens.indexOf(name) < 0) name = "login";
-    screens.forEach(function (s) { $("#screen-" + s).hidden = s !== name; });
-    $$(".tab").forEach(function (t) { t.setAttribute("aria-selected", String(t.dataset.screen === name)); });
-    try { localStorage.setItem("cc-mock-screen", name); } catch (e) {}
-    window.scrollTo(0, 0);
-  }
-  $$(".tab").forEach(function (t) { t.addEventListener("click", function () { show(t.dataset.screen); }); });
-  document.addEventListener("click", function (e) {
-    var go = e.target.closest("[data-go]");
-    if (go) { e.preventDefault(); show(go.dataset.go); return; }
-    var tt = e.target.closest("[data-toast]");
-    if (tt) { e.preventDefault(); toast(tt.dataset.toast); }
-  });
-  var start = "login";
-  try { start = localStorage.getItem("cc-mock-screen") || "login"; } catch (e) {}
-  show(start);
-
-  /* ───── Login ───── */
-  $("#login-form").addEventListener("submit", function (e) {
-    e.preventDefault();
-    var email = $("#login-email").value.trim();
-    var pass = $("#login-pass").value;
-    var err = $("#login-error");
-    var valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    $("#login-email").setAttribute("aria-invalid", String(!valid));
-    if (!valid) { err.textContent = "Ingresa un correo electrónico válido."; err.hidden = false; return; }
-    if (!pass) { err.textContent = "La contraseña es obligatoria."; err.hidden = false; return; }
-    if (email.toLowerCase() === "error@empresa.com") {
-      err.textContent = "Correo o contraseña incorrectos.";
-      err.hidden = false;
-      return;
-    }
-    err.hidden = true;
-    toast("Sesión iniciada como empleado: te llevamos al chat.");
-    show("chat");
-  });
-
-  /* ───── Registro ───── */
-  var mode = "empresa";
-  var copy = {
-    empresa: {
-      route: "/register/admin", eyebrow: "Registro de empresa", submit: "Crear cuenta de empresa",
-      title: 'Únase a la red de <em>protección digital</em>',
-      lead: "Registre a su empresa y conviértase en su administrador. Después podrá aprobar a sus colaboradores y cargar los documentos que guiarán al asistente.",
-      s1: ["Datos de la empresa", "RUC válido de 11 dígitos y razón social."],
-      s2: ["Cuenta administradora", "Usted gestiona empleados, documentos y métricas."],
-      ok: "Cuenta administradora creada. Ahora inicia sesión con tus credenciales.",
-    },
-    colaborador: {
-      route: "/register/employee", eyebrow: "Solicitud de acceso", submit: "Solicitar acceso",
-      title: 'Únete a <em>tu empresa</em>',
-      lead: "Indica el RUC de la empresa donde trabajas. Tu cuenta quedará pendiente hasta que el administrador la apruebe.",
-      s1: ["RUC de tu empresa", "Debe estar registrada previamente por su dueño."],
-      s2: ["Aprobación del administrador", "Recibirás acceso cuando revise tu solicitud."],
-      ok: "Solicitud de empleado registrada. Podrás ingresar cuando tu administrador la apruebe.",
-    },
-  };
-  function setMode(m) {
-    mode = m;
-    var c = copy[m];
-    $$(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.mode === m)); });
-    $$("[data-only]").forEach(function (el) { el.hidden = el.dataset.only !== m; });
-    $("#reg-route").textContent = c.route;
-    $("#reg-eyebrow").textContent = c.eyebrow;
-    $("#reg-submit").textContent = c.submit;
-    $("#reg-title").innerHTML = c.title;
-    $("#reg-lead").textContent = c.lead;
-    $("#reg-step1").textContent = c.s1[0]; $("#reg-step1d").textContent = c.s1[1];
-    $("#reg-step2").textContent = c.s2[0]; $("#reg-step2d").textContent = c.s2[1];
-    $("#reg-ok").hidden = true;
-  }
-  $$(".seg button").forEach(function (b) { b.addEventListener("click", function () { setMode(b.dataset.mode); }); });
-
-  function rucError(v) {
-    if (!v) return "";
-    if (!/^\d{11}$/.test(v)) return "El RUC debe tener exactamente 11 dígitos";
-    if (["10", "15", "17", "20"].indexOf(v.slice(0, 2)) < 0) return "El RUC debe iniciar con 10, 15, 17 o 20";
-    return "";
-  }
-  // Mientras se escribe: el prefijo se avisa desde el 2.º dígito; la longitud, al completar 11.
-  $("#reg-ruc").addEventListener("input", function (e) {
-    var v = e.target.value.replace(/\D/g, "");
-    e.target.value = v;
-    var msg = "";
-    if (v.length >= 2 && ["10", "15", "17", "20"].indexOf(v.slice(0, 2)) < 0) msg = "El RUC debe iniciar con 10, 15, 17 o 20";
-    else if (v.length === 11) msg = rucError(v);
-    var el = $("#reg-ruc-err");
-    el.textContent = msg;
-    el.hidden = !msg;
-    e.target.setAttribute("aria-invalid", String(!!msg));
-  });
-
-  var rules = {
-    len: function (p) { return p.length >= 8; },
-    up: function (p) { return /[A-Z]/.test(p); },
-    low: function (p) { return /[a-z]/.test(p); },
-    num: function (p) { return /[0-9]/.test(p); },
-    sp: function (p) { return /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(p); },
-  };
-  $("#reg-pass").addEventListener("input", function (e) {
-    var p = e.target.value;
-    $$("#reg-strength li").forEach(function (li) {
-      var ok = rules[li.dataset.rule](p);
-      li.classList.toggle("ok", ok);
-      li.textContent = (ok ? "✓ " : "○ ") + li.textContent.slice(2);
-    });
-  });
-
-  $("#reg-form").addEventListener("submit", function (e) {
-    e.preventDefault();
-    var ruc = $("#reg-ruc").value;
-    var err = rucError(ruc) || (!ruc ? "Ingresa el RUC" : "");
-    var p = $("#reg-pass").value;
-    var strong = Object.keys(rules).every(function (k) { return rules[k](p); });
-    if (err) {
-      $("#reg-ruc-err").textContent = err;
-      $("#reg-ruc-err").hidden = false;
-      $("#reg-ruc").setAttribute("aria-invalid", "true");
-      return;
-    }
-    if (!strong) { toast("La contraseña aún no cumple todos los requisitos."); return; }
-    var ok = $("#reg-ok");
-    ok.textContent = copy[mode].ok;
-    ok.hidden = false;
-  });
-
-  /* ───── Chat ───── */
-  var count = 0;
-  var replies = [
-    {
-      match: /amenaza|común|comun/i,
-      html: '<span class="who-tag">CyberChat</span>Según los documentos de tu empresa, las amenazas más frecuentes para una MYPE son:' +
-        '<ol><li><b>Phishing</b> por correo y WhatsApp que suplanta a SUNAT o a bancos.</li>' +
-        '<li><b>Fraude del proveedor</b>: piden cambiar la cuenta bancaria para el próximo pago.</li>' +
-        '<li><b>Ransomware</b> que cifra la información y exige un rescate.</li></ol>' +
-        '<span class="alert">ALERTA: nunca compartas el código OTP que llega por SMS, aunque digan ser del banco.</span>',
-      sources: ["Politica_seguridad_2026.pdf", "Ley_29733_resumen.txt"],
-    },
-    {
-      match: /plan|pasos/i,
-      html: '<span class="who-tag">CyberChat</span>Un plan de cinco pasos para empezar hoy:' +
-        '<ol><li>Activa la verificación en dos pasos en correo y banca.</li><li>Haz copias de seguridad semanales fuera de la oficina.</li>' +
-        '<li>Revisa quién tiene acceso a cada sistema.</li><li>Capacita al equipo para detectar phishing.</li><li>Define a quién avisar ante un incidente.</li></ol>' +
-        'Adicionalmente, en general, conviene mantener los equipos actualizados.',
-      sources: ["Politica_seguridad_2026.pdf"],
-    },
-  ];
-  var fallback = {
-    html: '<span class="who-tag">CyberChat</span>Buena pregunta. No encontré ese tema en los documentos de tu empresa, así que te respondo con conocimiento general de ciberseguridad para MYPES.' +
-      '<ol><li>Identifica qué información es crítica para tu negocio.</li><li>Limita quién puede acceder a ella.</li><li>Verifica siempre por un canal oficial antes de actuar.</li></ol>' +
-      'Consejo: tu administrador puede subir documentos propios para obtener respuestas basadas en las políticas de la empresa.',
-    sources: [],
-  };
-
-  function addMessage(role, html, sources) {
-    var thread = $("#chat-thread");
-    $("#chat-welcome").hidden = true;
-    thread.hidden = false;
-    var m = document.createElement("div");
-    m.className = "msg " + role;
-    m.innerHTML = html;
-    if (sources && sources.length) {
-      var s = document.createElement("div");
-      s.className = "sources";
-      s.innerHTML = sources.map(function (x) { return '<span class="source">📄 ' + esc(x) + "</span>"; }).join("");
-      m.appendChild(s);
-    }
-    thread.appendChild(m);
-    var sc = $("#chat-scroll");
-    sc.scrollTop = sc.scrollHeight;
-    return m;
-  }
-
-  function send(text) {
-    text = text.trim();
-    if (!text) { toast("Escribe una pregunta antes de enviar."); return; }
-    addMessage("user", esc(text));
-    count += 1;
-    $("#chat-count").textContent = String(count);
-    var conv = $("#conv-list .conv.active b");
-    if (conv && conv.textContent === "Nueva conversación") conv.textContent = text.slice(0, 40);
-    var typing = addMessage("bot", '<span class="typing" aria-label="Escribiendo"><i></i><i></i><i></i></span>');
-    var r = replies.find(function (x) { return x.match.test(text); }) || fallback;
-    setTimeout(function () {
-      typing.remove();
-      addMessage("bot", r.html, r.sources);
-    }, 900);
-  }
-
-  $("#chat-form").addEventListener("submit", function (e) {
-    e.preventDefault();
-    var input = $("#chat-input");
-    send(input.value);
-    input.value = "";
-    input.style.height = "";
-  });
-  $("#chat-input").addEventListener("keydown", function (e) {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#chat-form").requestSubmit(); }
-  });
-  $("#chat-input").addEventListener("input", function (e) {
-    e.target.style.height = "auto";
-    e.target.style.height = Math.min(e.target.scrollHeight, 110) + "px";
-  });
-  $$("[data-prompt]").forEach(function (b) {
-    b.addEventListener("click", function () { send(b.dataset.prompt); });
-  });
-  $("#chat-new").addEventListener("click", function () {
-    $$("#conv-list .conv").forEach(function (c) { c.classList.remove("active"); });
-    var btn = document.createElement("button");
-    btn.className = "conv active";
-    btn.innerHTML = "<b>Nueva conversación</b><span>Ahora</span>";
-    $("#conv-list").prepend(btn);
-    $("#chat-thread").innerHTML = "";
-    $("#chat-thread").hidden = true;
-    $("#chat-welcome").hidden = false;
-  });
-
-  /* ───── Evaluación ───── */
-  // Preguntas reales del banco posttest_questions, con la respuesta correcta en
-  // posiciones distintas. En la app, correct y exp llegan del servidor al enviar.
-  var questions = [
-    { topic: "Phishing e Ingeniería Social",
-      q: "¿Cuál de estas URLs es más probable que sea phishing dirigido a un banco peruano?",
-      o: ["www.bcp.gob.pe", "www.bcp-verificacion-cliente.com", "www.bcp.com.pe", "www.viabcp.com"],
-      correct: 1,
-      exp: "Los dominios largos con palabras añadidas («verificacion-cliente») y extensión distinta suelen ser señal de phishing." },
-    { topic: "Gestión de Contraseñas",
-      q: "¿Qué se entiende por «passphrase» como alternativa a una contraseña compleja de símbolos?",
-      o: ["Una sola palabra del diccionario", "Una contraseña de 4 dígitos",
-          "Una frase larga y memorable combinando varias palabras poco relacionadas, más fácil de recordar y difícil de adivinar",
-          "El nombre de la empresa seguido de un número"],
-      correct: 2,
-      exp: "Una passphrase (por ejemplo, «CaballoAzulLuna47!») puede ser tan segura como una contraseña compleja, pero más fácil de recordar." },
-    { topic: "Inteligencia Artificial y Nuevas Amenazas",
-      q: "¿Qué es un «agente autónomo de IA» malicioso en ciberseguridad?",
-      o: ["Un antivirus con inteligencia artificial", "Un sistema de facturación electrónica", "Un chatbot de atención al cliente",
-          "Un programa que usa IA para ejecutar ataques de forma automática, como buscar vulnerabilidades o enviar phishing a gran escala"],
-      correct: 3,
-      exp: "Estos agentes automatizan el reconocimiento de objetivos, la generación de phishing y la explotación de vulnerabilidades sin intervención humana constante." },
-    { topic: "Manejo de Datos Sensibles",
-      q: "¿Qué riesgo implica imprimir reportes con datos sensibles de clientes y dejarlos en la impresora compartida?",
-      o: ["Cualquier persona con acceso a la impresora puede ver información confidencial de clientes",
-          "Es una práctica recomendada de transparencia", "Mejora el tiempo de respuesta del área", "Ninguno si la oficina es pequeña"],
-      correct: 0,
-      exp: "Los documentos olvidados en impresoras compartidas exponen información confidencial a cualquiera que pase por el área." },
-  ];
-  var answers = questions.map(function () { return -1; });
-  var submitted = false;
-
-  function renderQuestions() {
-    var box = $("#eval-questions");
-    box.innerHTML = questions.map(function (q, qi) {
-      var tag = "";
-      if (submitted) {
-        tag = answers[qi] === q.correct
-          ? '<span class="badge bajo">Correcta</span>'
-          : '<span class="badge alto">Revisar</span>';
-      }
-      var opts = q.o.map(function (o, oi) {
-        var cls = "opt";
-        if (submitted && oi === q.correct) cls += " correct";
-        else if (submitted && oi === answers[qi]) cls += " wrong";
-        return '<button class="' + cls + '" data-q="' + qi + '" data-o="' + oi + '" aria-pressed="' +
-          (!submitted && answers[qi] === oi) + '"' + (submitted ? " disabled" : "") + '>' +
-          '<span class="l">' + "ABCD"[oi] + "</span><span>" + esc(o) + "</span></button>";
-      }).join("");
-      return '<article class="q"><div class="q-head"><div><p class="eyebrow">Pregunta ' + (qi + 1) +
-        " · " + esc(q.topic) + "</p><h3>" + esc(q.q) + "</h3></div>" + tag + '</div><div class="opts">' + opts + "</div>" +
-        (submitted ? '<div class="explain">' + esc(q.exp) + "</div>" : "") + "</article>";
-    }).join("");
-  }
-
-  function updateProgress() {
-    var done = answers.filter(function (a) { return a >= 0; }).length;
-    if (!submitted) {
-      $("#eval-progress").textContent = done + "/" + questions.length;
-      $("#eval-bar").style.width = (done / questions.length * 100) + "%";
-      $("#eval-submit").disabled = done < questions.length;
-    }
-  }
-
-  $("#eval-questions").addEventListener("click", function (e) {
-    var b = e.target.closest(".opt");
-    if (!b || submitted) return;
-    answers[Number(b.dataset.q)] = Number(b.dataset.o);
-    renderQuestions();
-    updateProgress();
-  });
-
-  $("#eval-foot").addEventListener("click", function (e) {
-    if (e.target.id === "eval-reset") {
-      submitted = false;
-      answers = questions.map(function () { return -1; });
-      $("#eval-foot").innerHTML = '<span class="soft">Completa todas las preguntas y envía tu evaluación.</span>' +
-        '<button class="btn primary" id="eval-submit" disabled>Ver resultados</button>';
-      $("#eval-progress-note").textContent = "Preguntas respondidas hasta ahora.";
-      renderQuestions();
-      updateProgress();
-      return;
-    }
-    if (e.target.id !== "eval-submit") return;
-    var btn = e.target;
-    btn.disabled = true;
-    btn.textContent = "Calificando...";
-    setTimeout(function () {
-      submitted = true;
-      var score = questions.reduce(function (n, q, i) { return n + (answers[i] === q.correct ? 1 : 0); }, 0);
-      var total = questions.length;
-      $("#eval-progress").textContent = score + "/" + total;
-      $("#eval-bar").style.width = (score / total * 100) + "%";
-      $("#eval-progress-note").textContent = "Resultado final de tu evaluación.";
-      var msg = score === total
-        ? "Muy buen nivel. Mantén estas prácticas y comparte el aprendizaje con tu equipo."
-        : score >= Math.ceil(total * 0.6)
-          ? "Vas bien, pero todavía hay puntos por reforzar. Revisa las explicaciones y vuelve a intentarlo."
-          : "Conviene reforzar conceptos básicos. Revisa las explicaciones y conversa sobre estos temas con el asistente.";
-      $("#eval-foot").innerHTML = '<div class="result"><h3>Obtuviste ' + score + " de " + total + "</h3>" +
-        '<p class="soft" style="margin:0">' + msg + "</p></div>" +
-        '<div class="controls"><button class="btn ghost" id="eval-reset">Reiniciar test</button>' +
-        '<button class="btn primary" data-go="chat">Volver al chat</button></div>';
-      renderQuestions();
-    }, 700);
-  });
-
-  renderQuestions();
-  updateProgress();
-
-  /* ───── Dashboard ───── */
-  var topics = [
-    ["Phishing e Ingeniería Social", 72],
-    ["Inteligencia Artificial y Nuevas Amenazas", 48],
-    ["Seguridad en Canales de Venta Digitales", 66],
-    ["Gestión de Contraseñas", 81],
-    ["Control de Accesos", 58],
-    ["Protección de la Información del Cliente (Ley N.° 29733)", 44],
-    ["Manejo de Datos Sensibles", 63],
-    ["Resiliencia con Recursos Mínimos", 55],
-  ];
-  $("#dash-topics").innerHTML = topics.map(function (t) {
-    var cls = t[1] >= 75 ? "hi" : t[1] >= 50 ? "mid" : "lo";
-    return '<div class="topic"><span class="name" title="' + esc(t[0]) + '">' + esc(t[0]) + "</span>" +
-      '<div class="bar"><span class="' + cls + '" style="width:' + t[1] + '%"></span></div>' +
-      '<b class="num">' + t[1] + " %</b></div>";
-  }).join("") +
-    '<div class="scale" aria-hidden="true"><span></span><span><span>0</span><span>50</span><span>100 %</span></span><span></span></div>';
-
-  var periods = {
-    week:    { level: "Nivel medio: el índice de la última semana es de 70 % con 5 evaluaciones registradas.",
-               progress: "Estable frente a la semana anterior (+1 punto). Pocos datos para una tendencia firme." },
-    month:   { level: "Nivel medio: el índice organizacional es de 68 % y el 64 % de los empleados está en zona de cumplimiento.",
-               progress: "Hay mejora: el promedio pasó de 61 % en el diagnóstico a 74 % en el post-test, 13 puntos más." },
-    quarter: { level: "Nivel medio en ascenso: el índice del trimestre es de 65 %, cuatro puntos sobre el trimestre previo.",
-               progress: "Mejora sostenida: tres ciclos consecutivos de evaluación recurrente con tendencia positiva." },
-    all:     { level: "Nivel medio: el índice histórico es de 63 % desde que la empresa se unió a la plataforma.",
-               progress: "El avance se concentra en contraseñas y phishing; la Ley N.° 29733 sigue rezagada." },
-  };
-  function regen(cached) {
-    var body = $("#sum-body");
-    var btn = $("#sum-regen");
-    body.classList.add("loading");
-    btn.disabled = true;
-    btn.textContent = "Generando…";
-    setTimeout(function () {
-      var p = periods[$("#sum-period").value];
-      $("#sum-level").textContent = p.level;
-      $("#sum-progress").textContent = p.progress;
-      $("#sum-when").textContent = cached ? "Generado hace 12 min" : "Generado ahora";
-      $("#sum-cache").textContent = cached ? "En caché · se renueva cada hora" : "Recién generado";
-      body.classList.remove("loading");
-      btn.disabled = false;
-      btn.textContent = "↻ Regenerar";
-    }, 900);
-  }
-  $("#sum-period").addEventListener("change", function () { regen(false); });
-  $("#sum-regen").addEventListener("click", function () { regen(false); });
-})();
-</script>
