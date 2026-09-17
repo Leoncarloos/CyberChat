@@ -1,0 +1,1301 @@
+<title>CyberChat Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600;9..144,800;9..144,900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+
+<style>
+  /* Tokens de CyberChat, copiados de app/globals.css. La app solo tiene tema claro:
+     el mockup lo respeta y pinta cada color de forma explícita. */
+  :root {
+    --ink: #1a1510;
+    --ink-soft: #5c5040;
+    --paper: #f5f0e8;
+    --paper-2: #ede8dc;
+    --paper-3: #e3ddd0;
+    --amber: #e8750a;
+    --amber-dim: #c4620a;
+    --amber-glow: #ff9a3c;
+    --teal: #0a7e7e;
+    --red: #c94040;
+    --green: #2e7d52;
+    --muted: #8a7d6a;
+    --border: #d4ccbc;
+    --stage: #d9d2c3;
+
+    --font-body: "Segoe UI", "Plus Jakarta Sans", "Trebuchet MS", Arial, sans-serif;
+    --font-display: Georgia, "Fraunces", "Times New Roman", serif;
+    --font-mono: Consolas, "DM Mono", "Courier New", monospace;
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--stage);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  /* ─────────── Barra de presentación ─────────── */
+  .shell {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--ink);
+    color: var(--paper);
+    border-bottom: 1px solid rgba(245, 240, 232, 0.08);
+  }
+  .shell-inner {
+    max-width: 1320px; margin: 0 auto;
+    padding: 14px 24px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px;
+  }
+  .shell-brand { display: flex; align-items: center; gap: 12px; }
+  .shell-brand small {
+    display: block;
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: rgba(245, 240, 232, 0.5);
+  }
+  .shell-brand strong { font-family: var(--font-display); font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+  .tab {
+    border: 1px solid transparent; background: transparent;
+    color: rgba(245, 240, 232, 0.66);
+    border-radius: 999px; padding: 7px 14px;
+    font-size: 13.5px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .tab:hover { color: var(--paper); background: rgba(245, 240, 232, 0.06); }
+  .tab[aria-selected="true"] {
+    color: var(--amber-glow);
+    background: rgba(232, 117, 10, 0.16);
+    border-color: rgba(232, 117, 10, 0.3);
+  }
+  .tab .n { font-family: var(--font-mono); font-size: 11px; opacity: 0.7; }
+  .sample-flag {
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: rgba(245, 240, 232, 0.55);
+    border: 1px dashed rgba(245, 240, 232, 0.25); border-radius: 999px; padding: 5px 11px;
+  }
+
+  main { max-width: 1320px; margin: 0 auto; padding: 28px 24px 64px; }
+  .screen-meta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 24px; margin: 0 0 14px; }
+  .screen-meta h1 {
+    margin: 0; font-family: var(--font-display); font-weight: 800;
+    font-size: 26px; letter-spacing: -0.02em; text-wrap: balance;
+  }
+  .screen-meta p { margin: 0; color: var(--ink-soft); font-size: 14px; max-width: 70ch; }
+  .route { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+
+  .stage { overflow-x: auto; border-radius: 18px; }
+  .device {
+    min-width: 1180px; height: 800px;
+    background: var(--paper);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 30px 70px rgba(26, 21, 16, 0.22), 0 0 0 1px rgba(26, 21, 16, 0.08);
+    position: relative;
+  }
+  .screen[hidden] { display: none !important; }
+
+  /* ─────────── Primitivas de la app ─────────── */
+  .brand-mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 13px; flex: none;
+    background: linear-gradient(135deg, var(--amber), var(--amber-dim));
+    color: #fff; font-weight: 800; font-size: 15px;
+    box-shadow: 0 10px 26px rgba(232, 117, 10, 0.35);
+  }
+  .brand-mark.sm { width: 36px; height: 36px; border-radius: 11px; font-size: 13px; box-shadow: none; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--muted); margin: 0;
+  }
+  .display { font-family: var(--font-display); letter-spacing: -0.04em; margin: 0; }
+  .muted { color: var(--muted); }
+  .soft { color: var(--ink-soft); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .field-label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 7px;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .field-label a { font-family: var(--font-body); text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 700; color: var(--amber-dim); text-decoration: none; }
+  .field-label a:hover { text-decoration: underline; }
+  .input {
+    width: 100%;
+    border: 1.5px solid var(--border); border-radius: 16px;
+    background: rgba(255, 255, 255, 0.82);
+    padding: 12px 15px; outline: none;
+    transition: border-color 0.18s, box-shadow 0.18s;
+  }
+  .input::placeholder { color: var(--muted); }
+  .input:focus { border-color: var(--amber); box-shadow: 0 0 0 4px rgba(232, 117, 10, 0.14); }
+  .input[aria-invalid="true"] { border-color: var(--red); }
+  .field-error { margin: 6px 0 0; font-size: 12px; color: var(--red); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border-radius: 999px; border: 1px solid transparent;
+    padding: 11px 20px; font-weight: 700; white-space: nowrap;
+    transition: transform 0.16s, box-shadow 0.16s, background 0.16s, border-color 0.16s, color 0.16s;
+  }
+  .btn.primary {
+    background: linear-gradient(135deg, var(--amber), var(--amber-dim)); color: #fff;
+    box-shadow: 0 12px 24px rgba(232, 117, 10, 0.26);
+  }
+  .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 16px 30px rgba(232, 117, 10, 0.32); }
+  .btn.primary:disabled { opacity: 0.45; transform: none; box-shadow: none; cursor: not-allowed; }
+  .btn.secondary { background: rgba(10, 126, 126, 0.08); border-color: rgba(10, 126, 126, 0.22); color: var(--teal); }
+  .btn.secondary:hover { background: rgba(10, 126, 126, 0.14); }
+  .btn.ghost { background: transparent; border-color: var(--border); color: var(--muted); }
+  .btn.ghost:hover { border-color: var(--amber); color: var(--amber-dim); }
+  .btn.sm { padding: 7px 13px; font-size: 13px; }
+  .btn.block { width: 100%; }
+
+  .banner { border-radius: 14px; padding: 11px 14px; font-size: 14px; line-height: 1.5; }
+  .banner.error { background: rgba(201, 64, 64, 0.08); border: 1px solid rgba(201, 64, 64, 0.2); color: #7a1a1a; }
+  .banner.success { background: rgba(46, 125, 82, 0.08); border: 1px solid rgba(46, 125, 82, 0.2); color: #1a4d32; }
+  .banner.info { background: rgba(10, 126, 126, 0.08); border: 1px solid rgba(10, 126, 126, 0.2); color: #0a4f4f; }
+
+  .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .badge.alto { background: rgba(201, 64, 64, 0.1); color: var(--red); }
+  .badge.medio { background: rgba(232, 117, 10, 0.13); color: var(--amber-dim); }
+  .badge.bajo { background: rgba(46, 125, 82, 0.12); color: var(--green); }
+  .badge.neutral { background: var(--paper-3); color: var(--ink-soft); }
+
+  /* ─────────── Autenticación ─────────── */
+  .auth { display: grid; grid-template-columns: minmax(0, 1.1fr) 500px; height: 100%; }
+  .auth-hero {
+    background: linear-gradient(160deg, rgba(26, 21, 16, 0.98), rgba(26, 21, 16, 0.9)), var(--ink);
+    color: var(--paper);
+    padding: 44px 48px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    position: relative; overflow: hidden;
+  }
+  .auth-hero::after {
+    content: ""; position: absolute; right: -120px; top: -120px;
+    width: 420px; height: 420px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(232, 117, 10, 0.2), transparent 65%);
+    pointer-events: none;
+  }
+  .auth-hero .eyebrow { color: rgba(245, 240, 232, 0.55); }
+  .hero-title { font-size: 56px; line-height: 1; font-weight: 900; max-width: 15ch; margin: 14px 0 18px; text-wrap: balance; }
+  .hero-title em { color: var(--amber-glow); font-style: normal; }
+  .hero-lead { color: rgba(245, 240, 232, 0.72); max-width: 46ch; font-size: 16px; line-height: 1.75; margin: 0; }
+  .features { display: grid; gap: 10px; max-width: 460px; }
+  .feature {
+    display: flex; gap: 14px; align-items: flex-start;
+    border: 1px solid rgba(245, 240, 232, 0.12); background: rgba(245, 240, 232, 0.05);
+    border-radius: 16px; padding: 13px 15px;
+  }
+  .feature .tag {
+    flex: none; font-family: var(--font-mono); font-size: 10.5px; font-weight: 500;
+    color: var(--amber-glow); background: rgba(232, 117, 10, 0.16);
+    border-radius: 8px; padding: 5px 7px; margin-top: 1px;
+  }
+  .feature b { display: block; font-size: 14px; color: rgba(245, 240, 232, 0.94); }
+  .feature span { font-size: 13px; color: rgba(245, 240, 232, 0.58); line-height: 1.5; }
+
+  .auth-panel { display: flex; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; }
+  .auth-card {
+    width: 100%; max-width: 420px;
+    border: 1px solid rgba(212, 204, 188, 0.95);
+    background: rgba(245, 240, 232, 0.88);
+    box-shadow: 0 22px 60px rgba(26, 21, 16, 0.2);
+    border-radius: 28px; padding: 34px 36px;
+    display: grid; gap: 22px;
+  }
+  .auth-card.wide { max-width: 460px; padding: 28px 32px; gap: 16px; }
+  .auth-card h2 { font-size: 38px; font-weight: 800; margin-top: 6px; }
+  .auth-form { display: grid; gap: 15px; }
+  .auth-foot {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding-top: 18px; border-top: 1px solid var(--border);
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .seg { display: inline-flex; gap: 4px; padding: 4px; background: var(--paper-2); border: 1px solid var(--border); border-radius: 999px; }
+  .seg button { border: 0; background: transparent; border-radius: 999px; padding: 7px 15px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+  .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 2px 8px rgba(26, 21, 16, 0.1); }
+
+  .strength { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; font-size: 12px; }
+  .strength li { color: var(--muted); }
+  .strength li.ok { color: var(--green); }
+
+  /* ─────────── App con barra lateral ─────────── */
+  .app { display: grid; grid-template-columns: 272px 1fr; height: 100%; }
+  .side {
+    background: var(--ink); color: var(--paper);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .side-head { padding: 20px 20px 18px; border-bottom: 1px solid rgba(245, 240, 232, 0.08); display: flex; gap: 11px; align-items: center; }
+  .side-head strong { display: block; font-family: var(--font-display); font-size: 22px; font-weight: 900; letter-spacing: -0.03em; line-height: 1; }
+  .side-head small { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(245, 240, 232, 0.5); }
+  .side-sec { padding: 16px 12px 4px; }
+  .side-sec > p {
+    margin: 0 8px 8px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: rgba(245, 240, 232, 0.42);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .nav {
+    display: flex; align-items: center; gap: 11px; width: 100%;
+    border-radius: 12px; padding: 10px 13px; margin-bottom: 3px;
+    border: 1px solid transparent; background: transparent; text-align: left;
+    font-size: 14px; font-weight: 600; color: rgba(245, 240, 232, 0.72);
+  }
+  .nav:hover { background: rgba(245, 240, 232, 0.06); }
+  .nav.active { background: rgba(232, 117, 10, 0.16); border-color: rgba(232, 117, 10, 0.28); color: var(--amber-glow); }
+  .nav .pill { margin-left: auto; background: var(--amber); color: #fff; font-size: 11px; font-weight: 800; border-radius: 999px; padding: 1px 7px; }
+  .mini {
+    font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: none;
+    color: rgba(245, 240, 232, 0.8); border: 1px solid rgba(245, 240, 232, 0.2);
+    background: transparent; border-radius: 999px; padding: 2px 10px;
+  }
+  .convs { padding: 0 12px; overflow-y: auto; flex: 1; min-height: 0; }
+  .conv {
+    display: block; width: 100%; text-align: left;
+    border: 1px solid transparent; background: transparent; color: rgba(245, 240, 232, 0.8);
+    border-radius: 12px; padding: 9px 12px; margin-bottom: 3px;
+  }
+  .conv:hover { background: rgba(245, 240, 232, 0.05); }
+  .conv.active { background: rgba(245, 240, 232, 0.08); border-color: rgba(245, 240, 232, 0.1); }
+  .conv b { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .conv span { font-size: 11px; color: rgba(245, 240, 232, 0.45); }
+  .side-foot { padding: 14px 16px 16px; border-top: 1px solid rgba(245, 240, 232, 0.08); display: grid; gap: 10px; margin-top: auto; }
+  .who { background: rgba(245, 240, 232, 0.05); border-radius: 12px; padding: 10px 12px; }
+  .who small { display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245, 240, 232, 0.38); }
+  .who span { font-size: 13px; color: rgba(245, 240, 232, 0.78); }
+  .side-row { display: flex; gap: 8px; }
+  .counter { flex: 1; background: rgba(245, 240, 232, 0.05); border-radius: 12px; padding: 8px; text-align: center; }
+  .counter b { display: block; font-family: var(--font-display); font-size: 22px; font-weight: 900; color: var(--amber-glow); line-height: 1.1; }
+  .counter small { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(245, 240, 232, 0.38); }
+  .out { flex: 1; border-radius: 12px; border: 1px solid rgba(245, 240, 232, 0.14); background: rgba(245, 240, 232, 0.04); color: rgba(245, 240, 232, 0.72); font-size: 12px; font-weight: 700; }
+  .out:hover { background: rgba(245, 240, 232, 0.1); color: var(--paper); }
+
+  .content { display: flex; flex-direction: column; min-height: 0; position: relative;
+    background-image: linear-gradient(rgba(26, 21, 16, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(26, 21, 16, 0.025) 1px, transparent 1px);
+    background-size: 32px 32px; }
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    padding: 15px 26px; border-bottom: 1px solid var(--border);
+    background: rgba(245, 240, 232, 0.9); backdrop-filter: blur(12px);
+  }
+  .topbar-title { display: flex; align-items: center; gap: 12px; }
+  .topbar-title .display { font-size: 23px; font-weight: 800; line-height: 1.1; }
+  .topbar-title .sub { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.16em; color: var(--ink-soft); }
+  .scroll { flex: 1; overflow-y: auto; min-height: 0; padding: 22px 26px; }
+
+  /* ─────────── Chat ─────────── */
+  .welcome { max-width: 820px; margin: 0 auto; display: grid; gap: 18px; }
+  .welcome-head .display { font-size: 38px; font-weight: 900; line-height: 1.05; margin-top: 8px; text-wrap: balance; }
+  .welcome-head p { margin: 10px 0 0; color: var(--ink-soft); max-width: 60ch; }
+  .prompts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .prompt {
+    text-align: left; border: 1px solid var(--border); background: rgba(255, 255, 255, 0.78);
+    border-radius: 18px; padding: 15px; display: grid; gap: 6px;
+    transition: border-color 0.16s, transform 0.16s, box-shadow 0.16s;
+  }
+  .prompt:hover { border-color: var(--amber); transform: translateY(-2px); box-shadow: 0 12px 26px rgba(26, 21, 16, 0.08); }
+  .prompt i { font-style: normal; font-size: 20px; }
+  .prompt b { font-size: 14px; }
+  .prompt span { font-size: 12.5px; color: var(--muted); }
+  .path { border: 1px solid var(--border); background: rgba(255, 255, 255, 0.6); border-radius: 18px; padding: 15px 16px; }
+  .path-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 11px; }
+  .path-head b { font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--border); background: #fff; border-radius: 999px;
+    padding: 6px 7px 6px 12px; font-size: 13px; font-weight: 600;
+  }
+  .chip:hover { border-color: var(--amber); }
+
+  .thread { max-width: 820px; margin: 0 auto; display: grid; gap: 14px; }
+  .msg { max-width: 78%; border-radius: 20px; padding: 13px 17px; font-size: 14.5px; line-height: 1.65; }
+  .msg.user { justify-self: end; background: var(--ink); color: var(--paper); border-bottom-right-radius: 6px; }
+  .msg.bot { justify-self: start; background: #fff; border: 1px solid var(--border); border-bottom-left-radius: 6px; }
+  .msg.bot .who-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber-dim); display: block; margin-bottom: 4px; }
+  .msg.bot ol { margin: 6px 0; padding-left: 20px; }
+  .msg.bot .alert { display: block; margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(201, 64, 64, 0.06); border-left: 3px solid var(--red); font-size: 13.5px; }
+  .sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .source { font-size: 11.5px; font-weight: 600; color: var(--teal); background: rgba(10, 126, 126, 0.08); border: 1px solid rgba(10, 126, 126, 0.18); border-radius: 999px; padding: 3px 9px; }
+  .typing { display: inline-flex; gap: 4px; }
+  .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+  .typing i:nth-child(2) { animation-delay: 0.2s; }
+  .typing i:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+
+  .composer { padding: 14px 26px 16px; border-top: 1px solid var(--border); background: rgba(245, 240, 232, 0.94); }
+  .composer-box {
+    max-width: 820px; margin: 0 auto;
+    display: flex; gap: 10px; align-items: flex-end;
+    border: 1.5px solid var(--border); background: #fff; border-radius: 22px; padding: 8px 8px 8px 16px;
+  }
+  .composer-box:focus-within { border-color: var(--amber); box-shadow: 0 0 0 4px rgba(232, 117, 10, 0.12); }
+  .composer textarea { flex: 1; border: 0; outline: none; resize: none; background: transparent; padding: 8px 0; min-height: 22px; max-height: 110px; line-height: 1.5; }
+  .composer-note { max-width: 820px; margin: 8px auto 0; text-align: center; font-size: 11.5px; color: var(--ink-soft); }
+
+  /* ─────────── Evaluación ─────────── */
+  .eval-top { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 14px; margin-bottom: 18px; }
+  .panel { border: 1px solid var(--border); background: rgba(255, 255, 255, 0.76); border-radius: 22px; padding: 20px 22px; }
+  .eval-top h2 { font-size: 36px; font-weight: 900; line-height: 1.05; margin: 8px 0 8px; }
+  .progress-num { font-family: var(--font-display); font-size: 52px; font-weight: 900; color: var(--amber-dim); line-height: 1; margin: 10px 0 8px; }
+  .bar { height: 8px; border-radius: 999px; background: var(--paper-3); overflow: hidden; }
+  .bar > span { display: block; height: 100%; border-radius: inherit; background: var(--amber); transition: width 0.35s ease; }
+  .questions { display: grid; gap: 14px; }
+  .q { border: 1px solid var(--border); background: rgba(255, 255, 255, 0.82); border-radius: 22px; padding: 18px 20px; }
+  .q-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 12px; }
+  .q-head h3 { font-family: var(--font-display); font-size: 21px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.25; margin: 5px 0 0; }
+  .opts { display: grid; gap: 8px; }
+  .opt {
+    display: flex; gap: 12px; align-items: center; text-align: left;
+    border: 1px solid var(--border); background: #fff; border-radius: 13px; padding: 10px 13px;
+    font-size: 14px; transition: border-color 0.14s, background 0.14s;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--amber); }
+  .opt:disabled { cursor: default; }
+  .opt .l { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border); display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+  .opt[aria-pressed="true"] { border-color: var(--amber); background: rgba(232, 117, 10, 0.08); }
+  .opt.correct { border-color: rgba(46, 125, 82, 0.4); background: rgba(46, 125, 82, 0.08); }
+  .opt.wrong { border-color: rgba(201, 64, 64, 0.4); background: rgba(201, 64, 64, 0.08); }
+  .explain { margin-top: 12px; border-radius: 13px; padding: 11px 14px; font-size: 13.5px; line-height: 1.6; background: rgba(10, 126, 126, 0.06); border: 1px solid rgba(10, 126, 126, 0.18); color: #0a4f4f; }
+  .eval-foot { margin-top: 14px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+  .result h3 { font-family: var(--font-display); font-size: 30px; font-weight: 900; margin: 0 0 6px; }
+
+  /* ─────────── Dashboard ─────────── */
+  .ruc-box { margin: 10px 16px 0; border: 1px solid rgba(245, 240, 232, 0.1); background: rgba(245, 240, 232, 0.05); border-radius: 12px; padding: 10px 13px; }
+  .ruc-box small { display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245, 240, 232, 0.42); }
+  .ruc-box b { font-size: 15px; color: rgba(245, 240, 232, 0.92); }
+  .dash { display: grid; gap: 14px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .select { border: 1.5px solid var(--border); background: #fff; border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 600; }
+  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .kpi { border: 1px solid var(--border); background: rgba(255, 255, 255, 0.7); border-radius: 18px; padding: 13px 14px; }
+  .kpi .eyebrow { font-size: 9.5px; letter-spacing: 0.14em; }
+  .kpi b { display: block; font-family: var(--font-display); font-size: 32px; font-weight: 900; line-height: 1.1; margin: 8px 0 3px; font-variant-numeric: tabular-nums; }
+  .kpi span { font-size: 12px; color: var(--ink-soft); }
+  .kpi.warn { border-color: rgba(232, 117, 10, 0.3); background: rgba(232, 117, 10, 0.05); }
+  .kpi.warn b { color: var(--amber-dim); }
+  .kpi.bad { border-color: rgba(201, 64, 64, 0.25); background: rgba(201, 64, 64, 0.04); }
+  .kpi.bad b { color: var(--red); }
+  .kpi.good b { color: var(--green); }
+
+  .summary {
+    border: 1px solid rgba(232, 117, 10, 0.3);
+    background: linear-gradient(135deg, rgba(232, 117, 10, 0.06), rgba(255, 255, 255, 0.72) 55%);
+    border-radius: 22px; padding: 18px 20px;
+  }
+  .summary-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 12px; }
+  .summary-head h2 { font-family: var(--font-display); font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0 0; }
+  .summary-meta { font-size: 12px; color: var(--ink-soft); display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
+  .summary-body { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 26px; font-size: 13.5px; line-height: 1.6; }
+  .summary-body h4 { margin: 0 0 2px; font-size: 13px; font-weight: 800; }
+  .summary-body p { margin: 0; color: var(--ink-soft); }
+  .summary-body .wide { grid-column: 1 / -1; }
+  .summary-body.loading { opacity: 0.4; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card-title { font-family: var(--font-display); font-size: 18px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 12px; }
+  .cmp { display: grid; gap: 12px; }
+  .cmp-row { display: grid; grid-template-columns: 130px 1fr 44px; gap: 10px; align-items: center; font-size: 13px; }
+  .cmp-row .bar { height: 12px; }
+  .cmp-row .bar > span.post { background: var(--teal); }
+  .delta { margin-top: 12px; font-size: 13px; color: var(--ink-soft); }
+  .delta b { color: var(--green); }
+  .stack { display: flex; height: 16px; border-radius: 999px; overflow: hidden; margin: 6px 0 12px; }
+  .stack span:nth-child(1) { background: var(--green); }
+  .stack span:nth-child(2) { background: var(--amber); }
+  .stack span:nth-child(3) { background: var(--red); }
+  .legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .legend div { border: 1px solid var(--border); background: #fff; border-radius: 12px; padding: 8px 10px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .legend b { display: block; font-family: var(--font-display); font-size: 24px; font-weight: 900; line-height: 1.15; }
+  .legend small { font-size: 12px; color: var(--ink-soft); }
+
+  .topics { display: grid; gap: 9px; }
+  .topic { display: grid; grid-template-columns: minmax(0, 1fr) 260px 42px; gap: 14px; align-items: center; font-size: 13px; }
+  .topic .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topic .bar { height: 10px; }
+  .topic .bar > span.lo { background: var(--red); }
+  .topic .bar > span.mid { background: var(--amber); }
+  .topic .bar > span.hi { background: var(--green); }
+  .scale { display: grid; grid-template-columns: minmax(0, 1fr) 260px 42px; gap: 14px; font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+  .scale span:nth-child(2) { display: flex; justify-content: space-between; }
+
+  .rec { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .rec .kpi b { font-size: 28px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 400; padding: 0 10px 9px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px; border-bottom: 1px solid rgba(212, 204, 188, 0.55); vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  td b { display: block; font-weight: 700; }
+  td small { color: var(--muted); }
+
+  /* ─────────── Toast ─────────── */
+  .toasts { position: fixed; right: 20px; bottom: 20px; display: grid; gap: 8px; z-index: 40; }
+  .toast {
+    background: var(--ink); color: var(--paper);
+    border-radius: 14px; padding: 11px 15px; max-width: 360px;
+    font-size: 13.5px; box-shadow: 0 16px 34px rgba(26, 21, 16, 0.3);
+    border-left: 3px solid var(--amber);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<header class="shell">
+  <div class="shell-inner">
+    <div class="shell-brand">
+      <span class="brand-mark sm">CG</span>
+      <div><small>Mockups funcionales</small><strong>CyberChat</strong></div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Pantallas">
+      <button class="tab" role="tab" data-screen="login"><span class="n">01</span>Inicio de sesión</button>
+      <button class="tab" role="tab" data-screen="register"><span class="n">02</span>Registro</button>
+      <button class="tab" role="tab" data-screen="chat"><span class="n">03</span>Chat con IA</button>
+      <button class="tab" role="tab" data-screen="eval"><span class="n">04</span>Evaluación</button>
+      <button class="tab" role="tab" data-screen="dash"><span class="n">05</span>Dashboard organizacional</button>
+    </nav>
+    <span class="sample-flag">Datos de ejemplo</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ═══════════ 01 · LOGIN ═══════════ -->
+  <section class="screen" id="screen-login" role="tabpanel">
+    <div class="screen-meta">
+      <h1>Inicio de sesión</h1>
+      <span class="route">/login</span>
+      <p>Mismo mensaje para correo inexistente y contraseña errónea, para no revelar qué cuentas existen.</p>
+    </div>
+    <div class="stage"><div class="device">
+      <div class="auth">
+        <aside class="auth-hero">
+          <div>
+            <span class="brand-mark">CG</span>
+            <p class="eyebrow" style="margin-top:24px">Warm Industrial Security</p>
+            <h2 class="display hero-title">Entra a tu centro de mando <em>CyberChat</em></h2>
+            <p class="hero-lead">Accede a tus conversaciones, documentos y respuestas guiadas para reforzar la concientización en ciberseguridad de tu equipo.</p>
+          </div>
+          <div>
+            <p class="eyebrow" style="margin-bottom:12px;color:rgba(245,240,232,0.42)">Capacidades activas</p>
+            <div class="features">
+              <div class="feature"><span class="tag">RAG</span><div><b>Consultas con contexto</b><span>Cruza tus preguntas con documentos internos para responder con más precisión.</span></div></div>
+              <div class="feature"><span class="tag">DOC</span><div><b>Base documental viva</b><span>Centraliza PDFs, DOCX y TXT para convertirlos en conocimiento utilizable.</span></div></div>
+              <div class="feature"><span class="tag">OPS</span><div><b>Ciberseguridad accionable</b><span>Diseñado para explicar riesgos y pasos concretos sin jerga innecesaria.</span></div></div>
+            </div>
+          </div>
+        </aside>
+        <div class="auth-panel">
+          <div class="auth-card">
+            <div>
+              <p class="eyebrow">Acceso seguro</p>
+              <h2 class="display">Iniciar sesión</h2>
+              <p class="soft" style="margin:8px 0 0;font-size:14px">Usa tu correo y contraseña para continuar al entorno de chat y administración.</p>
+            </div>
+            <form class="auth-form" id="login-form" novalidate>
+              <div>
+                <label class="field-label" for="login-email">Correo electrónico</label>
+                <input class="input" id="login-email" type="email" placeholder="equipo@empresa.com" autocomplete="off">
+              </div>
+              <div>
+                <label class="field-label" for="login-pass">Contraseña <a href="#" data-toast="Te enviaremos un enlace para restablecer tu contraseña si el correo está registrado.">¿Olvidaste tu contraseña?</a></label>
+                <input class="input" id="login-pass" type="password" placeholder="Tu clave segura">
+              </div>
+              <div class="banner error" id="login-error" hidden></div>
+              <button class="btn primary block" type="submit">Entrar al panel</button>
+              <p class="muted" style="margin:0;font-size:12px;text-align:center">Prueba: con cualquier correo válido y una contraseña entras al chat. Con <b>error@empresa.com</b> ves el mensaje de rechazo.</p>
+            </form>
+            <div class="auth-foot">
+              <span class="muted" style="font-size:14px">¿No tienes cuenta todavía?</span>
+              <button class="btn secondary sm" data-go="register">Crear cuenta</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ═══════════ 02 · REGISTRO ═══════════ -->
+  <section class="screen" id="screen-register" role="tabpanel" hidden>
+    <div class="screen-meta">
+      <h1>Registro</h1>
+      <span class="route" id="reg-route">/register/admin</span>
+      <p>La empresa se registra con su dueño; cada colaborador solicita acceso con el RUC y espera aprobación.</p>
+    </div>
+    <div class="stage"><div class="device">
+      <div class="auth">
+        <aside class="auth-hero">
+          <div>
+            <span class="brand-mark">CG</span>
+            <p class="eyebrow" style="margin-top:24px">Seguridad colaborativa</p>
+            <h2 class="display hero-title" id="reg-title">Únase a la red de <em>protección digital</em></h2>
+            <p class="hero-lead" id="reg-lead">Registre a su empresa y conviértase en su administrador. Después podrá aprobar a sus colaboradores y cargar los documentos que guiarán al asistente.</p>
+          </div>
+          <div class="features">
+            <div class="feature"><span class="tag">01</span><div><b id="reg-step1">Datos de la empresa</b><span id="reg-step1d">RUC válido de 11 dígitos y razón social.</span></div></div>
+            <div class="feature"><span class="tag">02</span><div><b id="reg-step2">Cuenta administradora</b><span id="reg-step2d">Usted gestiona empleados, documentos y métricas.</span></div></div>
+          </div>
+        </aside>
+        <div class="auth-panel">
+          <div class="auth-card wide">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+              <p class="eyebrow" id="reg-eyebrow">Registro de empresa</p>
+              <div class="seg" role="group" aria-label="Tipo de cuenta">
+                <button type="button" aria-pressed="true" data-mode="empresa">Empresa</button>
+                <button type="button" aria-pressed="false" data-mode="colaborador">Colaborador</button>
+              </div>
+            </div>
+            <form class="auth-form" id="reg-form" novalidate style="gap:11px">
+              <div class="grid-2">
+                <div>
+                  <label class="field-label" for="reg-ruc">Número de RUC</label>
+                  <input class="input" id="reg-ruc" inputmode="numeric" maxlength="11" placeholder="Ej. 20123456789">
+                  <p class="field-error" id="reg-ruc-err" hidden></p>
+                </div>
+                <div data-only="empresa">
+                  <label class="field-label" for="reg-razon">Razón social</label>
+                  <input class="input" id="reg-razon" placeholder="Ej. Mi Empresa SAC">
+                </div>
+                <div data-only="colaborador" hidden>
+                  <label class="field-label" for="reg-nombres">Nombres</label>
+                  <input class="input" id="reg-nombres" placeholder="Tus nombres">
+                </div>
+              </div>
+              <div data-only="empresa">
+                <label class="field-label" for="reg-owner">Nombres y apellidos completos</label>
+                <input class="input" id="reg-owner" placeholder="Ingrese sus nombres y apellidos">
+              </div>
+              <div data-only="colaborador" hidden>
+                <label class="field-label" for="reg-apellidos">Apellidos</label>
+                <input class="input" id="reg-apellidos" placeholder="Tus apellidos">
+              </div>
+              <div class="grid-2">
+                <div>
+                  <label class="field-label" for="reg-email">Correo</label>
+                  <input class="input" id="reg-email" type="email" placeholder="correo@empresa.com">
+                </div>
+                <div data-only="empresa">
+                  <label class="field-label" for="reg-phone">Número de celular</label>
+                  <input class="input" id="reg-phone" inputmode="numeric" placeholder="987 654 321">
+                </div>
+              </div>
+              <div>
+                <label class="field-label" for="reg-pass">Contraseña</label>
+                <input class="input" id="reg-pass" type="password" placeholder="Crea una contraseña segura">
+                <ul class="strength" id="reg-strength">
+                  <li data-rule="len">○ Al menos 8 caracteres</li>
+                  <li data-rule="up">○ Una letra mayúscula</li>
+                  <li data-rule="low">○ Una letra minúscula</li>
+                  <li data-rule="num">○ Un número</li>
+                  <li data-rule="sp">○ Un carácter especial (!@#$...)</li>
+                </ul>
+              </div>
+              <div class="banner success" id="reg-ok" hidden></div>
+              <button class="btn primary block" type="submit" id="reg-submit">Crear cuenta de empresa</button>
+            </form>
+            <div class="auth-foot">
+              <span class="muted" style="font-size:14px">¿Ya tienes una cuenta?</span>
+              <button class="btn ghost sm" data-go="login">Iniciar sesión</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ═══════════ 03 · CHAT ═══════════ -->
+  <section class="screen" id="screen-chat" role="tabpanel" hidden>
+    <div class="screen-meta">
+      <h1>Chat con IA</h1>
+      <span class="route">/chat</span>
+      <p>El asistente responde con los documentos que subió la empresa y avisa cuando usa conocimiento general.</p>
+    </div>
+    <div class="stage"><div class="device">
+      <div class="app">
+        <aside class="side">
+          <div class="side-head"><span class="brand-mark sm">C</span><div><strong>CyberChat</strong><small>Protección MYPE</small></div></div>
+          <div class="side-sec">
+            <button class="nav active">💬 <span>Chat de IA</span></button>
+            <button class="nav" data-go="eval">📝 <span>Evaluaciones</span></button>
+            <button class="nav" data-toast="En la app, Mi Dashboard muestra tu progreso personal.">📊 <span>Mi Dashboard</span></button>
+          </div>
+          <div class="side-sec"><p>Historial <button class="mini" id="chat-new">+ Nuevo</button></p></div>
+          <div class="convs" id="conv-list">
+            <button class="conv active"><b>Nueva conversación</b><span>Ahora</span></button>
+            <button class="conv"><b>Correo sospechoso de SUNAT</b><span>Ayer · 6 mensajes</span></button>
+            <button class="conv"><b>Contraseñas para el equipo de ventas</b><span>Lun · 4 mensajes</span></button>
+            <button class="conv"><b>Qué hacer ante un ransomware</b><span>12 sep · 8 mensajes</span></button>
+          </div>
+          <div class="side-foot">
+            <div class="who"><small>Usuario</small><span>maria.quispe@comercialandes.pe</span></div>
+            <div class="side-row">
+              <div class="counter"><b class="num" id="chat-count">0</b><small>Consultas</small></div>
+              <button class="out" data-go="login">Salir</button>
+            </div>
+          </div>
+        </aside>
+
+        <div class="content">
+          <div class="topbar">
+            <div class="topbar-title">
+              <span class="brand-mark sm">C</span>
+              <div><p class="display">Agente CyberChat</p><span class="sub">Especialista en ciberseguridad para MYPES</span></div>
+            </div>
+            <span class="badge bajo">● 2 documentos de tu empresa</span>
+          </div>
+          <div class="scroll" id="chat-scroll">
+            <div class="welcome" id="chat-welcome">
+              <div class="welcome-head">
+                <p class="eyebrow">Hola, María</p>
+                <p class="display">¿En qué te ayudo a proteger tu empresa hoy?</p>
+                <p>Pregunta en tus palabras o empieza por uno de estos temas.</p>
+              </div>
+              <div class="prompts">
+                <button class="prompt" data-prompt="¿Cuáles son las amenazas de ciberseguridad más comunes para una MYPE peruana?"><i>⚠️</i><b>Amenazas más comunes en MYPES</b><span>Phishing, ransomware, fraudes</span></button>
+                <button class="prompt" data-prompt="Dame un plan rápido de 5 pasos para mejorar la ciberseguridad de mi empresa."><i>🚀</i><b>Plan de seguridad exprés</b><span>5 pasos para empezar hoy</span></button>
+                <button class="prompt" data-prompt="¿Cómo saber si mi empresa ya fue hackeada sin darme cuenta?"><i>🔎</i><b>¿Fui hackeado sin saberlo?</b><span>Señales de alerta a detectar</span></button>
+              </div>
+              <div class="path">
+                <div class="path-head"><b>Tu ruta de aprendizaje</b><span class="muted" style="font-size:12px">Según tu diagnóstico inicial</span></div>
+                <div class="chips">
+                  <button class="chip" data-prompt="Explícame qué exige la Ley N.° 29733 a una MYPE sobre los datos de sus clientes.">🔐 Ley N.° 29733 <span class="badge alto">Nivel bajo</span></button>
+                  <button class="chip" data-prompt="¿Cómo usan los atacantes la inteligencia artificial para engañar a los empleados?">🤖 IA y nuevas amenazas <span class="badge alto">Nivel bajo</span></button>
+                  <button class="chip" data-prompt="¿Cómo controlo quién accede a los sistemas de mi empresa?">🗝️ Control de accesos <span class="badge medio">Nivel medio</span></button>
+                  <button class="chip" data-prompt="¿Qué hago si la computadora principal de mi negocio falla?">🛟 Resiliencia <span class="badge medio">Nivel medio</span></button>
+                </div>
+              </div>
+            </div>
+            <div class="thread" id="chat-thread" hidden></div>
+          </div>
+          <div class="composer">
+            <form class="composer-box" id="chat-form">
+              <textarea id="chat-input" rows="1" placeholder="Escribe tu mensaje o pregunta aquí..." aria-label="Mensaje"></textarea>
+              <button class="btn primary sm" type="submit">Enviar ➤</button>
+            </form>
+            <p class="composer-note">La IA puede cometer errores. Verifica la información sensible.</p>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ═══════════ 04 · EVALUACIÓN ═══════════ -->
+  <section class="screen" id="screen-eval" role="tabpanel" hidden>
+    <div class="screen-meta">
+      <h1>Evaluación</h1>
+      <span class="route">/chat · módulo Evaluaciones</span>
+      <p>La nota se calcula en el servidor: la respuesta correcta y su explicación llegan recién después de enviar.</p>
+    </div>
+    <div class="stage"><div class="device">
+      <div class="app">
+        <aside class="side">
+          <div class="side-head"><span class="brand-mark sm">C</span><div><strong>CyberChat</strong><small>Protección MYPE</small></div></div>
+          <div class="side-sec">
+            <button class="nav" data-go="chat">💬 <span>Chat de IA</span></button>
+            <button class="nav active">📝 <span>Evaluaciones</span></button>
+            <button class="nav" data-toast="En la app, Mi Dashboard muestra tu progreso personal.">📊 <span>Mi Dashboard</span></button>
+          </div>
+          <div class="side-sec"><p>Historial</p></div>
+          <div class="convs">
+            <button class="conv" data-go="chat"><b>Correo sospechoso de SUNAT</b><span>Ayer · 6 mensajes</span></button>
+            <button class="conv" data-go="chat"><b>Contraseñas para el equipo de ventas</b><span>Lun · 4 mensajes</span></button>
+          </div>
+          <div class="side-foot">
+            <div class="who"><small>Usuario</small><span>maria.quispe@comercialandes.pe</span></div>
+            <div class="side-row">
+              <div class="counter"><b class="num">14</b><small>Consultas</small></div>
+              <button class="out" data-go="login">Salir</button>
+            </div>
+          </div>
+        </aside>
+
+        <div class="content">
+          <div class="topbar">
+            <div class="topbar-title">
+              <span class="brand-mark sm">C</span>
+              <div><p class="display">Evaluaciones CyberChat</p><span class="sub">Test guiado para reforzar concientización</span></div>
+            </div>
+            <span class="badge medio">Evaluación recurrente · cada 5 días</span>
+          </div>
+          <div class="scroll">
+            <div class="eval-top">
+              <div class="panel">
+                <p class="eyebrow">Evaluación guiada</p>
+                <h2 class="display">Evaluación recurrente</h2>
+                <p class="soft" style="margin:0 0 12px">Evaluación periódica cada 5 días. Mide tu progreso continuo y detecta áreas críticas.</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <span class="badge neutral">Muestra de 4 preguntas</span>
+                  <span class="badge neutral">La real tiene 16: 2 por tema</span>
+                </div>
+              </div>
+              <div class="panel">
+                <p class="eyebrow">Progreso</p>
+                <p class="progress-num num" id="eval-progress">0/4</p>
+                <div class="bar"><span id="eval-bar" style="width:0%"></span></div>
+                <p class="soft" style="margin:10px 0 0;font-size:13px" id="eval-progress-note">Preguntas respondidas hasta ahora.</p>
+              </div>
+            </div>
+            <div class="questions" id="eval-questions"></div>
+            <div class="panel eval-foot" id="eval-foot">
+              <span class="soft">Completa todas las preguntas y envía tu evaluación.</span>
+              <button class="btn primary" id="eval-submit" disabled>Ver resultados</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ═══════════ 05 · DASHBOARD ═══════════ -->
+  <section class="screen" id="screen-dash" role="tabpanel" hidden>
+    <div class="screen-meta">
+      <h1>Dashboard organizacional</h1>
+      <span class="route">/org-dashboard</span>
+      <p>Solo el dueño lo ve. El resumen de IA se genera con datos agregados: nunca nombra a empleados.</p>
+    </div>
+    <div class="stage"><div class="device">
+      <div class="app">
+        <aside class="side">
+          <div class="side-head"><span class="brand-mark sm">C</span><div><strong>CyberChat</strong><small>Panel admin</small></div></div>
+          <div class="side-sec">
+            <p>Gestión</p>
+            <button class="nav" data-toast="En la app, Resumen muestra el conteo de empleados por estado.">📊 <span>Resumen</span></button>
+            <button class="nav" data-toast="En la app, aquí se aprueban o rechazan las solicitudes.">👥 <span>Empleados</span><span class="pill">2</span></button>
+          </div>
+          <div class="side-sec">
+            <p>Otros módulos</p>
+            <button class="nav active">📈 <span>Dashboard org.</span></button>
+            <button class="nav" data-toast="En la app, aquí se suben y eliminan los documentos de contexto.">📚 <span>Documentos RAG</span></button>
+            <button class="nav" data-go="chat">💬 <span>Ir al chat</span></button>
+          </div>
+          <div class="ruc-box"><small>RUC administrado</small><b class="num">20612345678</b></div>
+          <div class="side-foot">
+            <div class="who"><small>Administrador</small><span>gerencia@comercialandes.pe</span></div>
+            <div class="side-row"><button class="out" data-go="login" style="padding:9px">Cerrar sesión</button></div>
+          </div>
+        </aside>
+
+        <div class="content">
+          <div class="topbar">
+            <div class="topbar-title">
+              <div><p class="eyebrow">Comercial Los Andes SAC</p><p class="display">Dashboard organizacional</p></div>
+            </div>
+            <div class="controls">
+              <button class="btn ghost sm" data-toast="En la app esto descarga el resumen organizacional en CSV.">⬇ Exportar resumen</button>
+              <button class="btn ghost sm" data-toast="En la app esto descarga el detalle por empleado en CSV.">⬇ Exportar empleados</button>
+            </div>
+          </div>
+          <div class="scroll">
+            <div class="dash">
+              <div class="kpis">
+                <div class="kpi"><p class="eyebrow">Total empleados</p><b>14</b><span>12 activos</span></div>
+                <div class="kpi warn"><p class="eyebrow">Pendientes</p><b>2</b><span>Esperando aprobación</span></div>
+                <div class="kpi"><p class="eyebrow">Completaron diagnóstico</p><b>11</b><span>92 % de los activos</span></div>
+                <div class="kpi bad"><p class="eyebrow">Alto riesgo</p><b>3</b><span>Empleados críticos</span></div>
+                <div class="kpi"><p class="eyebrow">Promedio org.</p><b>61 %</b><span>Test inicial</span></div>
+                <div class="kpi"><p class="eyebrow">Consultas totales</p><b>238</b><span>Al chatbot</span></div>
+              </div>
+
+              <div class="summary">
+                <div class="summary-head">
+                  <div>
+                    <p class="eyebrow" style="color:var(--amber-dim)">✦ Resumen ejecutivo generado por IA</p>
+                    <h2>Resumen ejecutivo organizacional</h2>
+                    <div class="summary-meta">
+                      <span id="sum-when">Generado hace 12 min</span>
+                      <span class="badge neutral" id="sum-cache">En caché · se renueva cada hora</span>
+                    </div>
+                  </div>
+                  <div class="controls">
+                    <label class="eyebrow" for="sum-period" style="letter-spacing:.1em">Período del resumen</label>
+                    <select class="select" id="sum-period">
+                      <option value="week">Última semana</option>
+                      <option value="month" selected>Último mes</option>
+                      <option value="quarter">Último trimestre</option>
+                      <option value="all">Histórico</option>
+                    </select>
+                    <button class="btn secondary sm" id="sum-regen">↻ Regenerar</button>
+                  </div>
+                </div>
+                <div class="summary-body" id="sum-body">
+                  <div><h4>Nivel general de concientización</h4><p id="sum-level">Nivel medio: el índice organizacional es de 68 % y el 64 % de los empleados está en zona de cumplimiento.</p></div>
+                  <div><h4>Progreso organizacional</h4><p id="sum-progress">Hay mejora: el promedio pasó de 61 % en el diagnóstico a 74 % en el post-test, 13 puntos más.</p></div>
+                  <div><h4>Temas con mayor riesgo</h4><p>Protección de la información del cliente (44 %) e inteligencia artificial y nuevas amenazas (48 %). Un error en el primero puede derivar en sanciones por la Ley N.° 29733.</p></div>
+                  <div><h4>Grupos con mejor y peor desempeño</h4><p>4 empleados en riesgo bajo sostienen buenos hábitos; 3 en riesgo alto concentran los errores en manejo de datos de clientes.</p></div>
+                  <div class="wide"><h4>Recomendaciones</h4><p>1) Taller breve sobre la Ley N.° 29733 con casos del propio negocio. 2) Simulacro de fraude con voz clonada por IA. 3) Revisar accesos de quienes dejaron la empresa.</p></div>
+                </div>
+              </div>
+
+              <div class="row-2">
+                <div class="panel">
+                  <p class="card-title">Comparativa organizacional</p>
+                  <div class="cmp">
+                    <div class="cmp-row"><span>Promedio Test Inicial</span><div class="bar"><span style="width:61%"></span></div><b class="num">61 %</b></div>
+                    <div class="cmp-row"><span>Promedio Post-Test</span><div class="bar"><span class="post" style="width:74%"></span></div><b class="num">74 %</b></div>
+                  </div>
+                  <p class="delta">Mejora de <b class="num">+13 pp</b> entre el diagnóstico y el post-test.</p>
+                </div>
+                <div class="panel">
+                  <p class="card-title">Distribución de riesgo</p>
+                  <div class="stack" aria-label="4 bajo, 4 medio, 3 alto"><span style="width:36.4%"></span><span style="width:36.4%"></span><span style="width:27.2%"></span></div>
+                  <div class="legend">
+                    <div><small><i style="background:var(--green)"></i>Bajo</small><b class="num">4</b></div>
+                    <div><small><i style="background:var(--amber)"></i>Medio</small><b class="num">4</b></div>
+                    <div><small><i style="background:var(--red)"></i>Alto</small><b class="num">3</b></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <p class="card-title">Nivel de conocimiento por temática — promedio organizacional</p>
+                <div class="topics" id="dash-topics"></div>
+              </div>
+
+              <div class="panel">
+                <p class="card-title">Evaluación recurrente (cada 5 días)</p>
+                <div class="rec">
+                  <div class="kpi good"><p class="eyebrow">Promedio último test</p><b>76 %</b><span>Evaluaciones recurrentes</span></div>
+                  <div class="kpi good"><p class="eyebrow">Tendencia</p><b>+4 pp</b><span>vs. intento anterior</span></div>
+                  <div class="kpi"><p class="eyebrow">Al día</p><b>78 %</b><span>7 al día · 2 vencidas</span></div>
+                  <div class="kpi warn"><p class="eyebrow">Sin iniciar ciclo</p><b>2</b><span>Post-test pendiente</span></div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <p class="card-title">Tabla de atención prioritaria</p>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Empleado</th><th>Tema más débil</th><th>Riesgo</th><th>Diagnóstico / Post-Test</th><th>Última evaluación</th></tr></thead>
+                    <tbody>
+                      <tr><td><b>Jorge Huamán</b><small>jorge.huaman@comercialandes.pe</small></td><td>Protección de la información del cliente</td><td><span class="badge alto">Alto</span></td><td class="num">38 % → 44 %</td><td class="num">9 sep</td></tr>
+                      <tr><td><b>Lucía Paredes</b><small>lucia.paredes@comercialandes.pe</small></td><td>Inteligencia artificial y nuevas amenazas</td><td><span class="badge alto">Alto</span></td><td class="num">44 % → —</td><td class="num">2 sep</td></tr>
+                      <tr><td><b>Carlos Mendoza</b><small>carlos.mendoza@comercialandes.pe</small></td><td>Manejo de datos sensibles</td><td><span class="badge alto">Alto</span></td><td class="num">41 % → 48 %</td><td class="num">11 sep</td></tr>
+                      <tr><td><b>Ana Torres</b><small>ana.torres@comercialandes.pe</small></td><td>Control de accesos</td><td><span class="badge medio">Medio</span></td><td class="num">56 % → 69 %</td><td class="num">13 sep</td></tr>
+                      <tr><td><b>María Quispe</b><small>maria.quispe@comercialandes.pe</small></td><td>Resiliencia con recursos mínimos</td><td><span class="badge bajo">Bajo</span></td><td class="num">75 % → 88 %</td><td class="num">14 sep</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+</main>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+  function toast(msg) {
+    var t = document.createElement("div");
+    t.className = "toast";
+    t.textContent = msg;
+    $("#toasts").appendChild(t);
+    setTimeout(function () { t.remove(); }, 3600);
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* ───── Navegación entre pantallas ───── */
+  var screens = ["login", "register", "chat", "eval", "dash"];
+  function show(name) {
+    if (screens.indexOf(name) < 0) name = "login";
+    screens.forEach(function (s) { $("#screen-" + s).hidden = s !== name; });
+    $$(".tab").forEach(function (t) { t.setAttribute("aria-selected", String(t.dataset.screen === name)); });
+    try { localStorage.setItem("cc-mock-screen", name); } catch (e) {}
+    window.scrollTo(0, 0);
+  }
+  $$(".tab").forEach(function (t) { t.addEventListener("click", function () { show(t.dataset.screen); }); });
+  document.addEventListener("click", function (e) {
+    var go = e.target.closest("[data-go]");
+    if (go) { e.preventDefault(); show(go.dataset.go); return; }
+    var tt = e.target.closest("[data-toast]");
+    if (tt) { e.preventDefault(); toast(tt.dataset.toast); }
+  });
+  var start = "login";
+  try { start = localStorage.getItem("cc-mock-screen") || "login"; } catch (e) {}
+  show(start);
+
+  /* ───── Login ───── */
+  $("#login-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var email = $("#login-email").value.trim();
+    var pass = $("#login-pass").value;
+    var err = $("#login-error");
+    var valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    $("#login-email").setAttribute("aria-invalid", String(!valid));
+    if (!valid) { err.textContent = "Ingresa un correo electrónico válido."; err.hidden = false; return; }
+    if (!pass) { err.textContent = "La contraseña es obligatoria."; err.hidden = false; return; }
+    if (email.toLowerCase() === "error@empresa.com") {
+      err.textContent = "Correo o contraseña incorrectos.";
+      err.hidden = false;
+      return;
+    }
+    err.hidden = true;
+    toast("Sesión iniciada como empleado: te llevamos al chat.");
+    show("chat");
+  });
+
+  /* ───── Registro ───── */
+  var mode = "empresa";
+  var copy = {
+    empresa: {
+      route: "/register/admin", eyebrow: "Registro de empresa", submit: "Crear cuenta de empresa",
+      title: 'Únase a la red de <em>protección digital</em>',
+      lead: "Registre a su empresa y conviértase en su administrador. Después podrá aprobar a sus colaboradores y cargar los documentos que guiarán al asistente.",
+      s1: ["Datos de la empresa", "RUC válido de 11 dígitos y razón social."],
+      s2: ["Cuenta administradora", "Usted gestiona empleados, documentos y métricas."],
+      ok: "Cuenta administradora creada. Ahora inicia sesión con tus credenciales.",
+    },
+    colaborador: {
+      route: "/register/employee", eyebrow: "Solicitud de acceso", submit: "Solicitar acceso",
+      title: 'Únete a <em>tu empresa</em>',
+      lead: "Indica el RUC de la empresa donde trabajas. Tu cuenta quedará pendiente hasta que el administrador la apruebe.",
+      s1: ["RUC de tu empresa", "Debe estar registrada previamente por su dueño."],
+      s2: ["Aprobación del administrador", "Recibirás acceso cuando revise tu solicitud."],
+      ok: "Solicitud de empleado registrada. Podrás ingresar cuando tu administrador la apruebe.",
+    },
+  };
+  function setMode(m) {
+    mode = m;
+    var c = copy[m];
+    $$(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.mode === m)); });
+    $$("[data-only]").forEach(function (el) { el.hidden = el.dataset.only !== m; });
+    $("#reg-route").textContent = c.route;
+    $("#reg-eyebrow").textContent = c.eyebrow;
+    $("#reg-submit").textContent = c.submit;
+    $("#reg-title").innerHTML = c.title;
+    $("#reg-lead").textContent = c.lead;
+    $("#reg-step1").textContent = c.s1[0]; $("#reg-step1d").textContent = c.s1[1];
+    $("#reg-step2").textContent = c.s2[0]; $("#reg-step2d").textContent = c.s2[1];
+    $("#reg-ok").hidden = true;
+  }
+  $$(".seg button").forEach(function (b) { b.addEventListener("click", function () { setMode(b.dataset.mode); }); });
+
+  function rucError(v) {
+    if (!v) return "";
+    if (!/^\d{11}$/.test(v)) return "El RUC debe tener exactamente 11 dígitos";
+    if (["10", "15", "17", "20"].indexOf(v.slice(0, 2)) < 0) return "El RUC debe iniciar con 10, 15, 17 o 20";
+    return "";
+  }
+  // Mientras se escribe: el prefijo se avisa desde el 2.º dígito; la longitud, al completar 11.
+  $("#reg-ruc").addEventListener("input", function (e) {
+    var v = e.target.value.replace(/\D/g, "");
+    e.target.value = v;
+    var msg = "";
+    if (v.length >= 2 && ["10", "15", "17", "20"].indexOf(v.slice(0, 2)) < 0) msg = "El RUC debe iniciar con 10, 15, 17 o 20";
+    else if (v.length === 11) msg = rucError(v);
+    var el = $("#reg-ruc-err");
+    el.textContent = msg;
+    el.hidden = !msg;
+    e.target.setAttribute("aria-invalid", String(!!msg));
+  });
+
+  var rules = {
+    len: function (p) { return p.length >= 8; },
+    up: function (p) { return /[A-Z]/.test(p); },
+    low: function (p) { return /[a-z]/.test(p); },
+    num: function (p) { return /[0-9]/.test(p); },
+    sp: function (p) { return /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(p); },
+  };
+  $("#reg-pass").addEventListener("input", function (e) {
+    var p = e.target.value;
+    $$("#reg-strength li").forEach(function (li) {
+      var ok = rules[li.dataset.rule](p);
+      li.classList.toggle("ok", ok);
+      li.textContent = (ok ? "✓ " : "○ ") + li.textContent.slice(2);
+    });
+  });
+
+  $("#reg-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var ruc = $("#reg-ruc").value;
+    var err = rucError(ruc) || (!ruc ? "Ingresa el RUC" : "");
+    var p = $("#reg-pass").value;
+    var strong = Object.keys(rules).every(function (k) { return rules[k](p); });
+    if (err) {
+      $("#reg-ruc-err").textContent = err;
+      $("#reg-ruc-err").hidden = false;
+      $("#reg-ruc").setAttribute("aria-invalid", "true");
+      return;
+    }
+    if (!strong) { toast("La contraseña aún no cumple todos los requisitos."); return; }
+    var ok = $("#reg-ok");
+    ok.textContent = copy[mode].ok;
+    ok.hidden = false;
+  });
+
+  /* ───── Chat ───── */
+  var count = 0;
+  var replies = [
+    {
+      match: /amenaza|común|comun/i,
+      html: '<span class="who-tag">CyberChat</span>Según los documentos de tu empresa, las amenazas más frecuentes para una MYPE son:' +
+        '<ol><li><b>Phishing</b> por correo y WhatsApp que suplanta a SUNAT o a bancos.</li>' +
+        '<li><b>Fraude del proveedor</b>: piden cambiar la cuenta bancaria para el próximo pago.</li>' +
+        '<li><b>Ransomware</b> que cifra la información y exige un rescate.</li></ol>' +
+        '<span class="alert">ALERTA: nunca compartas el código OTP que llega por SMS, aunque digan ser del banco.</span>',
+      sources: ["Politica_seguridad_2026.pdf", "Ley_29733_resumen.txt"],
+    },
+    {
+      match: /plan|pasos/i,
+      html: '<span class="who-tag">CyberChat</span>Un plan de cinco pasos para empezar hoy:' +
+        '<ol><li>Activa la verificación en dos pasos en correo y banca.</li><li>Haz copias de seguridad semanales fuera de la oficina.</li>' +
+        '<li>Revisa quién tiene acceso a cada sistema.</li><li>Capacita al equipo para detectar phishing.</li><li>Define a quién avisar ante un incidente.</li></ol>' +
+        'Adicionalmente, en general, conviene mantener los equipos actualizados.',
+      sources: ["Politica_seguridad_2026.pdf"],
+    },
+  ];
+  var fallback = {
+    html: '<span class="who-tag">CyberChat</span>Buena pregunta. No encontré ese tema en los documentos de tu empresa, así que te respondo con conocimiento general de ciberseguridad para MYPES.' +
+      '<ol><li>Identifica qué información es crítica para tu negocio.</li><li>Limita quién puede acceder a ella.</li><li>Verifica siempre por un canal oficial antes de actuar.</li></ol>' +
+      'Consejo: tu administrador puede subir documentos propios para obtener respuestas basadas en las políticas de la empresa.',
+    sources: [],
+  };
+
+  function addMessage(role, html, sources) {
+    var thread = $("#chat-thread");
+    $("#chat-welcome").hidden = true;
+    thread.hidden = false;
+    var m = document.createElement("div");
+    m.className = "msg " + role;
+    m.innerHTML = html;
+    if (sources && sources.length) {
+      var s = document.createElement("div");
+      s.className = "sources";
+      s.innerHTML = sources.map(function (x) { return '<span class="source">📄 ' + esc(x) + "</span>"; }).join("");
+      m.appendChild(s);
+    }
+    thread.appendChild(m);
+    var sc = $("#chat-scroll");
+    sc.scrollTop = sc.scrollHeight;
+    return m;
+  }
+
+  function send(text) {
+    text = text.trim();
+    if (!text) { toast("Escribe una pregunta antes de enviar."); return; }
+    addMessage("user", esc(text));
+    count += 1;
+    $("#chat-count").textContent = String(count);
+    var conv = $("#conv-list .conv.active b");
+    if (conv && conv.textContent === "Nueva conversación") conv.textContent = text.slice(0, 40);
+    var typing = addMessage("bot", '<span class="typing" aria-label="Escribiendo"><i></i><i></i><i></i></span>');
+    var r = replies.find(function (x) { return x.match.test(text); }) || fallback;
+    setTimeout(function () {
+      typing.remove();
+      addMessage("bot", r.html, r.sources);
+    }, 900);
+  }
+
+  $("#chat-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var input = $("#chat-input");
+    send(input.value);
+    input.value = "";
+    input.style.height = "";
+  });
+  $("#chat-input").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#chat-form").requestSubmit(); }
+  });
+  $("#chat-input").addEventListener("input", function (e) {
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 110) + "px";
+  });
+  $$("[data-prompt]").forEach(function (b) {
+    b.addEventListener("click", function () { send(b.dataset.prompt); });
+  });
+  $("#chat-new").addEventListener("click", function () {
+    $$("#conv-list .conv").forEach(function (c) { c.classList.remove("active"); });
+    var btn = document.createElement("button");
+    btn.className = "conv active";
+    btn.innerHTML = "<b>Nueva conversación</b><span>Ahora</span>";
+    $("#conv-list").prepend(btn);
+    $("#chat-thread").innerHTML = "";
+    $("#chat-thread").hidden = true;
+    $("#chat-welcome").hidden = false;
+  });
+
+  /* ───── Evaluación ───── */
+  // Preguntas reales del banco posttest_questions, con la respuesta correcta en
+  // posiciones distintas. En la app, correct y exp llegan del servidor al enviar.
+  var questions = [
+    { topic: "Phishing e Ingeniería Social",
+      q: "¿Cuál de estas URLs es más probable que sea phishing dirigido a un banco peruano?",
+      o: ["www.bcp.gob.pe", "www.bcp-verificacion-cliente.com", "www.bcp.com.pe", "www.viabcp.com"],
+      correct: 1,
+      exp: "Los dominios largos con palabras añadidas («verificacion-cliente») y extensión distinta suelen ser señal de phishing." },
+    { topic: "Gestión de Contraseñas",
+      q: "¿Qué se entiende por «passphrase» como alternativa a una contraseña compleja de símbolos?",
+      o: ["Una sola palabra del diccionario", "Una contraseña de 4 dígitos",
+          "Una frase larga y memorable combinando varias palabras poco relacionadas, más fácil de recordar y difícil de adivinar",
+          "El nombre de la empresa seguido de un número"],
+      correct: 2,
+      exp: "Una passphrase (por ejemplo, «CaballoAzulLuna47!») puede ser tan segura como una contraseña compleja, pero más fácil de recordar." },
+    { topic: "Inteligencia Artificial y Nuevas Amenazas",
+      q: "¿Qué es un «agente autónomo de IA» malicioso en ciberseguridad?",
+      o: ["Un antivirus con inteligencia artificial", "Un sistema de facturación electrónica", "Un chatbot de atención al cliente",
+          "Un programa que usa IA para ejecutar ataques de forma automática, como buscar vulnerabilidades o enviar phishing a gran escala"],
+      correct: 3,
+      exp: "Estos agentes automatizan el reconocimiento de objetivos, la generación de phishing y la explotación de vulnerabilidades sin intervención humana constante." },
+    { topic: "Manejo de Datos Sensibles",
+      q: "¿Qué riesgo implica imprimir reportes con datos sensibles de clientes y dejarlos en la impresora compartida?",
+      o: ["Cualquier persona con acceso a la impresora puede ver información confidencial de clientes",
+          "Es una práctica recomendada de transparencia", "Mejora el tiempo de respuesta del área", "Ninguno si la oficina es pequeña"],
+      correct: 0,
+      exp: "Los documentos olvidados en impresoras compartidas exponen información confidencial a cualquiera que pase por el área." },
+  ];
+  var answers = questions.map(function () { return -1; });
+  var submitted = false;
+
+  function renderQuestions() {
+    var box = $("#eval-questions");
+    box.innerHTML = questions.map(function (q, qi) {
+      var tag = "";
+      if (submitted) {
+        tag = answers[qi] === q.correct
+          ? '<span class="badge bajo">Correcta</span>'
+          : '<span class="badge alto">Revisar</span>';
+      }
+      var opts = q.o.map(function (o, oi) {
+        var cls = "opt";
+        if (submitted && oi === q.correct) cls += " correct";
+        else if (submitted && oi === answers[qi]) cls += " wrong";
+        return '<button class="' + cls + '" data-q="' + qi + '" data-o="' + oi + '" aria-pressed="' +
+          (!submitted && answers[qi] === oi) + '"' + (submitted ? " disabled" : "") + '>' +
+          '<span class="l">' + "ABCD"[oi] + "</span><span>" + esc(o) + "</span></button>";
+      }).join("");
+      return '<article class="q"><div class="q-head"><div><p class="eyebrow">Pregunta ' + (qi + 1) +
+        " · " + esc(q.topic) + "</p><h3>" + esc(q.q) + "</h3></div>" + tag + '</div><div class="opts">' + opts + "</div>" +
+        (submitted ? '<div class="explain">' + esc(q.exp) + "</div>" : "") + "</article>";
+    }).join("");
+  }
+
+  function updateProgress() {
+    var done = answers.filter(function (a) { return a >= 0; }).length;
+    if (!submitted) {
+      $("#eval-progress").textContent = done + "/" + questions.length;
+      $("#eval-bar").style.width = (done / questions.length * 100) + "%";
+      $("#eval-submit").disabled = done < questions.length;
+    }
+  }
+
+  $("#eval-questions").addEventListener("click", function (e) {
+    var b = e.target.closest(".opt");
+    if (!b || submitted) return;
+    answers[Number(b.dataset.q)] = Number(b.dataset.o);
+    renderQuestions();
+    updateProgress();
+  });
+
+  $("#eval-foot").addEventListener("click", function (e) {
+    if (e.target.id === "eval-reset") {
+      submitted = false;
+      answers = questions.map(function () { return -1; });
+      $("#eval-foot").innerHTML = '<span class="soft">Completa todas las preguntas y envía tu evaluación.</span>' +
+        '<button class="btn primary" id="eval-submit" disabled>Ver resultados</button>';
+      $("#eval-progress-note").textContent = "Preguntas respondidas hasta ahora.";
+      renderQuestions();
+      updateProgress();
+      return;
+    }
+    if (e.target.id !== "eval-submit") return;
+    var btn = e.target;
+    btn.disabled = true;
+    btn.textContent = "Calificando...";
+    setTimeout(function () {
+      submitted = true;
+      var score = questions.reduce(function (n, q, i) { return n + (answers[i] === q.correct ? 1 : 0); }, 0);
+      var total = questions.length;
+      $("#eval-progress").textContent = score + "/" + total;
+      $("#eval-bar").style.width = (score / total * 100) + "%";
+      $("#eval-progress-note").textContent = "Resultado final de tu evaluación.";
+      var msg = score === total
+        ? "Muy buen nivel. Mantén estas prácticas y comparte el aprendizaje con tu equipo."
+        : score >= Math.ceil(total * 0.6)
+          ? "Vas bien, pero todavía hay puntos por reforzar. Revisa las explicaciones y vuelve a intentarlo."
+          : "Conviene reforzar conceptos básicos. Revisa las explicaciones y conversa sobre estos temas con el asistente.";
+      $("#eval-foot").innerHTML = '<div class="result"><h3>Obtuviste ' + score + " de " + total + "</h3>" +
+        '<p class="soft" style="margin:0">' + msg + "</p></div>" +
+        '<div class="controls"><button class="btn ghost" id="eval-reset">Reiniciar test</button>' +
+        '<button class="btn primary" data-go="chat">Volver al chat</button></div>';
+      renderQuestions();
+    }, 700);
+  });
+
+  renderQuestions();
+  updateProgress();
+
+  /* ───── Dashboard ───── */
+  var topics = [
+    ["Phishing e Ingeniería Social", 72],
+    ["Inteligencia Artificial y Nuevas Amenazas", 48],
+    ["Seguridad en Canales de Venta Digitales", 66],
+    ["Gestión de Contraseñas", 81],
+    ["Control de Accesos", 58],
+    ["Protección de la Información del Cliente (Ley N.° 29733)", 44],
+    ["Manejo de Datos Sensibles", 63],
+    ["Resiliencia con Recursos Mínimos", 55],
+  ];
+  $("#dash-topics").innerHTML = topics.map(function (t) {
+    var cls = t[1] >= 75 ? "hi" : t[1] >= 50 ? "mid" : "lo";
+    return '<div class="topic"><span class="name" title="' + esc(t[0]) + '">' + esc(t[0]) + "</span>" +
+      '<div class="bar"><span class="' + cls + '" style="width:' + t[1] + '%"></span></div>' +
+      '<b class="num">' + t[1] + " %</b></div>";
+  }).join("") +
+    '<div class="scale" aria-hidden="true"><span></span><span><span>0</span><span>50</span><span>100 %</span></span><span></span></div>';
+
+  var periods = {
+    week:    { level: "Nivel medio: el índice de la última semana es de 70 % con 5 evaluaciones registradas.",
+               progress: "Estable frente a la semana anterior (+1 punto). Pocos datos para una tendencia firme." },
+    month:   { level: "Nivel medio: el índice organizacional es de 68 % y el 64 % de los empleados está en zona de cumplimiento.",
+               progress: "Hay mejora: el promedio pasó de 61 % en el diagnóstico a 74 % en el post-test, 13 puntos más." },
+    quarter: { level: "Nivel medio en ascenso: el índice del trimestre es de 65 %, cuatro puntos sobre el trimestre previo.",
+               progress: "Mejora sostenida: tres ciclos consecutivos de evaluación recurrente con tendencia positiva." },
+    all:     { level: "Nivel medio: el índice histórico es de 63 % desde que la empresa se unió a la plataforma.",
+               progress: "El avance se concentra en contraseñas y phishing; la Ley N.° 29733 sigue rezagada." },
+  };
+  function regen(cached) {
+    var body = $("#sum-body");
+    var btn = $("#sum-regen");
+    body.classList.add("loading");
+    btn.disabled = true;
+    btn.textContent = "Generando…";
+    setTimeout(function () {
+      var p = periods[$("#sum-period").value];
+      $("#sum-level").textContent = p.level;
+      $("#sum-progress").textContent = p.progress;
+      $("#sum-when").textContent = cached ? "Generado hace 12 min" : "Generado ahora";
+      $("#sum-cache").textContent = cached ? "En caché · se renueva cada hora" : "Recién generado";
+      body.classList.remove("loading");
+      btn.disabled = false;
+      btn.textContent = "↻ Regenerar";
+    }, 900);
+  }
+  $("#sum-period").addEventListener("change", function () { regen(false); });
+  $("#sum-regen").addEventListener("click", function () { regen(false); });
+})();
+</script>
