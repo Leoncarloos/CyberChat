@@ -64,7 +64,7 @@ admin de su mismo RUC. Sin sesión requerida.
 ## Chat y RAG
 
 ### POST `/api/chat`
-Inferencia RAG + LLM (Groq `qwen/qwen3.8-27b`). Requiere sesión activa (cualquier rol).
+Inferencia RAG + LLM (Groq `openai/gpt-oss-20b`). Requiere sesión activa (cualquier rol).
 
 #### Request
 ```json
@@ -562,7 +562,7 @@ para el dashboard personal del empleado.
 `currentTopicsPerformance` y las áreas críticas (`strongTopics`/`weakTopics`) se
 calculan sobre el intento más reciente de `evaluation_attempts` que tenga
 `topics_performance`, con fallback al diagnóstico inicial si aún no hay ninguno.
-`recommendations` usa el LLM (`qwen/qwen3.8-27b`) — se genera en cada request, sin cache
+`recommendations` usa el LLM (`openai/gpt-oss-20b`) — se genera en cada request, sin cache
 (a diferencia de `/api/org-summary`, que sí cachea).
 
 | Status | Causa |

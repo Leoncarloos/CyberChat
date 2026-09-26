@@ -41,7 +41,7 @@
         <mxCell id="gIA" value="Servicios de IA externos" style="swimlane;rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;startSize=30;" vertex="1" parent="1">
           <mxGeometry x="720" y="440" width="440" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="groq" value="Groq Cloud&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;LLM qwen3.8-27b&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;" vertex="1" parent="gIA">
+        <mxCell id="groq" value="Groq Cloud&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;LLM gpt-oss-20b&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;" vertex="1" parent="gIA">
           <mxGeometry x="30" y="50" width="160" height="60" as="geometry" />
         </mxCell>
         <mxCell id="hf" value="Hugging Face Inference&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;paraphrase-multilingual-MiniLM-L12-v2&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;" vertex="1" parent="gIA">

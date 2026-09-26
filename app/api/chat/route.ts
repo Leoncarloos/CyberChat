@@ -174,7 +174,10 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "qwen/qwen3.8-27b",
+        model: "openai/gpt-oss-20b",
+        // gpt-oss razona antes de responder: sin "low" el razonamiento agota
+        // el presupuesto de tokens y el contenido llega vacio.
+        reasoning_effort: "low",
         temperature: 0.15,
         max_tokens: 900,
         messages: [system, ...messages],

@@ -48,7 +48,7 @@ NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
 HF_TOKEN          # HuggingFace — embeddings paraphrase-multilingual-MiniLM-L12-v2
-GROQ_API_KEY      # Groq — qwen/qwen3.8-27b
+GROQ_API_KEY      # Groq — openai/gpt-oss-20b
 ```
 
 ## Pipeline RAG
@@ -56,7 +56,7 @@ GROQ_API_KEY      # Groq — qwen/qwen3.8-27b
 2. Supabase RPC `match_document_chunks_scoped` → top-5 chunks (umbral 0.38),
    acotado a la empresa: se pasa el id del dueño (`lib/orgAdmin.ts`), no el del
    usuario, y se invoca con `supabaseAdmin` porque el RPC es SECURITY INVOKER
-3. Contexto + historial (últimos 12 mensajes) → Groq `qwen/qwen3.8-27b`
+3. Contexto + historial (últimos 12 mensajes) → Groq `openai/gpt-oss-20b`
 4. Respuesta + metadata de fuentes devuelta al cliente
 
 ## Supabase

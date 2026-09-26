@@ -22,7 +22,7 @@ flowchart LR
     end
 
     subgraph IA["Servicios de IA externos"]
-        GROQ["Groq Cloud<br/>LLM qwen3.8-27b"]
+        GROQ["Groq Cloud<br/>LLM gpt-oss-20b"]
         HF["Hugging Face Inference<br/>paraphrase-multilingual-MiniLM-L12-v2"]
     end
 

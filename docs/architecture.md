@@ -11,7 +11,7 @@ Browser
         │
         ├── supabaseServer()          → Supabase (Auth + Postgres + Storage)
         ├── HuggingFace Inference API → Embeddings paraphrase-multilingual-MiniLM-L12-v2 (384-dim)
-        └── Groq API                  → qwen/qwen3.8-27b (LLM)
+        └── Groq API                  → openai/gpt-oss-20b (LLM)
 ```
 
 ## Stack tecnológico
@@ -24,7 +24,7 @@ Browser
 | Auth | Supabase Auth (JWT + cookies SSR) |
 | Storage | Supabase Storage (bucket `documents`) |
 | Embeddings | HuggingFace Inference API — `paraphrase-multilingual-MiniLM-L12-v2` |
-| LLM | Groq — `qwen/qwen3.8-27b` |
+| LLM | Groq — `openai/gpt-oss-20b` |
 | Deploy | Vercel (inferido) |
 
 ## Flujo RAG detallado
@@ -50,14 +50,26 @@ POST { messages, document_id? }
   → RPC match_document_chunks_scoped(query_embedding, match_count=6, filter_user_id, filter_document_id)
   → Filtrar por umbral similaridad 0.25 → top-5 chunks
   → Construir system prompt con contexto
-  → Groq chat/completions (qwen/qwen3.8-27b, temp=0.15, últimos 12 mensajes)
+  → Groq chat/completions (openai/gpt-oss-20b, temp=0.15, últimos 12 mensajes)
   → Devolver { answer, matchesCount, bestSimilarity, usedContext, sources }
 ```
 
 ## Decisiones técnicas
 
-### Por qué Groq + qwen/qwen3.8-27b
-Latencia ultra-baja (Groq hardware especializado). `qwen3.8-27b` da buena calidad en español para Q&A de ciberseguridad con RAG bien construido, sin comportamiento de "reasoning" que consuma el presupuesto de tokens de la respuesta final (a diferencia de otros modelos del catálogo de Groq, como `openai/gpt-oss-20b`, que sí razonan antes de responder). `llama-3.1-8b-instant` fue retirado del catálogo de Groq — swap realizado el 2026-09-11.
+### Por qué Groq + openai/gpt-oss-20b
+Latencia ultra-baja (Groq usa hardware especializado). `gpt-oss-20b` cuesta $0.075 por millón de
+tokens de entrada y $0.30 de salida, frente a $0.80 y $4.00 de `qwen/qwen3.8-27b`: **13 veces más
+barato** y el doble de rápido (~1000 t/s), con calidad suficiente en español para Q&A de
+ciberseguridad apoyado en RAG.
+
+Es un modelo que razona antes de responder, y ese razonamiento consume el presupuesto de tokens de
+la respuesta: con `max_tokens: 300` y esfuerzo por defecto la respuesta llega **vacía** (verificado
+contra la API el 2026-09-26). Por eso las cuatro rutas que llaman a Groq envían
+`reasoning_effort: "low"`, con lo que el razonamiento baja a unas pocas decenas de caracteres, llega
+en un campo aparte y no toca el contenido.
+
+Historial de cambios de modelo: `llama-3.1-8b-instant` fue retirado del catálogo de Groq (swap a
+`qwen/qwen3.8-27b` el 2026-09-11); cambio a `openai/gpt-oss-20b` por costo el 2026-09-26.
 
 ### Por qué HuggingFace para embeddings
 `paraphrase-multilingual-MiniLM-L12-v2` es multilingüe (reemplazó a `all-MiniLM-L6-v2`, entrenado solo en inglés) y genera embeddings de 384 dimensiones. Gratuito con HF_TOKEN. Alternativa viable: OpenAI `text-embedding-3-small`.

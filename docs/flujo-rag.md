@@ -56,7 +56,7 @@ flowchart TB
 | Embeddings | Hugging Face Inference · `paraphrase-multilingual-MiniLM-L12-v2`, multilingüe, 384 dimensiones |
 | Almacenamiento de vectores | PostgreSQL 17 + `pgvector` en Supabase, índice HNSW con distancia coseno |
 | Búsqueda semántica | Función `match_document_chunks_scoped`: devuelve los 5 fragmentos más cercanos, solo de documentos de la empresa |
-| Generación | Groq · `qwen/qwen3.8-27b`, temperatura 0.15, máximo 900 tokens |
+| Generación | Groq · `openai/gpt-oss-20b`, temperatura 0.15, máximo 900 tokens |
 
 ## Por qué funciona así
 

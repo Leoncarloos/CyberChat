@@ -64,7 +64,10 @@ async function generateRecommendations(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "qwen/qwen3.8-27b",
+        model: "openai/gpt-oss-20b",
+        // gpt-oss razona antes de responder: sin "low" el razonamiento agota
+        // el presupuesto de tokens y el contenido llega vacio.
+        reasoning_effort: "low",
         temperature: 0.4,
         max_tokens: 300,
         messages: [{ role: "user", content: prompt }],

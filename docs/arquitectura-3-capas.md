@@ -33,7 +33,7 @@ flowchart TB
         direction LR
         S1[("Supabase<br/>PostgreSQL + pgvector<br/>Auth · Storage")]
         S2["Hugging Face<br/>multilingual MiniLM<br/>embeddings 384 dim"]
-        S3["Groq<br/>qwen3.8-27b<br/>generación de texto"]
+        S3["Groq<br/>gpt-oss-20b<br/>generación de texto"]
     end
 
     UI == "HTTPS · JSON" ==> BLL
@@ -63,8 +63,8 @@ flowchart TB
 | Servicio | Lo usa | Para qué |
 |---|---|---|
 | Hugging Face · `paraphrase-multilingual-MiniLM-L12-v2` | Asistente RAG · Aprendizaje y métricas | Convertir documentos, preguntas y temas débiles en vectores para la búsqueda semántica |
-| Groq · `qwen/qwen3.8-27b` | Asistente RAG | Responder preguntas con el contexto recuperado |
-| Groq · `qwen/qwen3.8-27b` | Aprendizaje y métricas | Recomendaciones personalizadas y resumen ejecutivo de la empresa |
+| Groq · `openai/gpt-oss-20b` | Asistente RAG | Responder preguntas con el contexto recuperado |
+| Groq · `openai/gpt-oss-20b` | Aprendizaje y métricas | Recomendaciones personalizadas y resumen ejecutivo de la empresa |
 
 ## Desviaciones del modelo en el código actual
 

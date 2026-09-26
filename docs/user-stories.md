@@ -537,7 +537,7 @@ corrupta.
 
 - Endpoints involucrados: `GET /api/dashboard` (campo `recommendations: string[]`, 3 líneas
   de texto sin estructura) y `GET /api/recommendations` (`RecommendationCard[]`, con RAG).
-  Ambos usan el modelo Groq `qwen/qwen3.8-27b`.
+  Ambos usan el modelo Groq `openai/gpt-oss-20b`.
 - `app/api/recommendations/route.ts`: obtiene el último `diagnostic_results` del usuario,
   ordena `diagnosticTopics` por `%` ascendente y toma los 4 más débiles, resuelve el admin de
   la misma `ruc` vía `auth.admin.listUsers`, y por tema hace `embedHF` + RPC
