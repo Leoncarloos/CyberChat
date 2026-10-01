@@ -11,6 +11,11 @@
 -- Entre A y el despliegue no aprobar ni rechazar empleados: el código anterior solo
 -- escribe user_metadata y ese cambio no llegaría a app_metadata.
 
+-- Nota 2026-09-30: 6 dueños registrados antes de que existiera approval_status quedaron
+-- sin estado y el código nuevo los trataba como pendientes. Se corrigió con:
+--   update auth.users set raw_app_meta_data = raw_app_meta_data || '{"approval_status":"active"}'
+--   where raw_app_meta_data->>'role' = 'admin' and raw_app_meta_data->>'approval_status' is null;
+
 -- ── Revisión previa (solo lectura) ─────────────────────────────────────────────
 -- Cada RUC debe tener un único dueño. Si aparece un RUC con 2 o más, revisar esas
 -- cuentas antes de migrar: pudo ser un empleado que se asignó role = 'admin'.

@@ -19,6 +19,12 @@ quedan en `user_metadata`, que el propio usuario puede modificar con
 ruta de la aplicación consulta una tabla `employees` ni `profiles` — el filtrado por
 empresa se hace en memoria, iterando `listUsers()` y comparando `app_metadata.ruc`.
 
+**2026-09-30:** además de las rutas `/api`, las políticas RLS de `conversations`, `messages`,
+`learning_progress`, `diagnostic_results`, `quiz_results`, `evaluation_attempts`, `documents`
+y `document_chunks` exigen `private.is_active_user()` (estado vigente en `auth.users`), y se
+eliminaron las políticas "Service role inserta" de `diagnostic_results` y `quiz_results`, que
+permitían a cualquiera insertar resultados (`docs/sql/rls_active_users.sql`).
+
 **2026-09-29:** rol, RUC, estado y `diagnostic_done` estaban en `user_metadata`, lo que
 permitía a un empleado auto-aprobarse o asignarse `role: "admin"`. Se movieron a
 `app_metadata` (migración en `docs/sql/migrate_app_metadata.sql`) y todas las rutas
@@ -111,7 +117,7 @@ en `lib/diagnosticQuestions.ts`, 8 temas × 2 — más info en `docs/user-storie
 | `topics_performance` | jsonb | `{ [topicKey]: { correct: number, total: number } }` |
 | `completed_at` | timestamptz | Momento de finalización |
 
-RLS: políticas `Usuario ve su resultado` (SELECT), `Service role inserta` (INSERT).
+RLS: política `Usuario ve su resultado` (SELECT). Insert solo vía service_role.
 
 Completar el diagnóstico marca `app_metadata.diagnostic_done = true` en `auth.users`
 vía `auth.admin.updateUserById()` (service_role). El middleware verifica este flag para
@@ -132,7 +138,7 @@ compatibilidad; desde HU19/HU20 cada intento se escribe **también** en
 | `total` | int | Total de preguntas del intento |
 | `taken_at` | timestamptz | Momento de realización |
 
-RLS: políticas `Usuario ve sus resultados` (SELECT), `Service role inserta` (INSERT).
+RLS: política `Usuario ve sus resultados` (SELECT). Insert solo vía service_role.
 
 ---
 
