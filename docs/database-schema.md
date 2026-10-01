@@ -42,7 +42,9 @@ ningún rastro de identidad de usuario fuera de `auth.users` (hoy en `app_metada
 | `created_at` | timestamptz | Fecha de creación |
 
 RLS: políticas `conversations_select_own`, `conversations_insert_own`,
-`conversations_update_own` (usuario solo ve/crea/actualiza las suyas).
+`conversations_update_own` y `conversations_delete_own` (usuario solo ve/crea/actualiza/borra
+las suyas). La de borrado se agregó el 2026-09-30 (`docs/sql/chat_delete_policies.sql`):
+sin ella el DELETE afectaba 0 filas sin error y la conversación "eliminada" reaparecía.
 
 ---
 
@@ -55,8 +57,8 @@ RLS: políticas `conversations_select_own`, `conversations_insert_own`,
 | `content` | text | Contenido del mensaje |
 | `created_at` | timestamptz | Timestamp |
 
-RLS: políticas `messages_select_own`, `messages_insert_own` (vía pertenencia de la
-conversación al usuario).
+RLS: políticas `messages_select_own`, `messages_insert_own` y `messages_delete_own` (vía
+pertenencia de la conversación al usuario).
 
 ---
 
