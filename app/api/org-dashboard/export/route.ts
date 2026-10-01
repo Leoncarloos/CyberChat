@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireAdmin } from "@/lib/authz";
 import { computeOrgMetrics } from "@/lib/orgMetrics";
 import { toCsv } from "@/lib/csv";
 import { diagnosticTopics } from "@/lib/diagnosticTopics";
@@ -21,21 +21,9 @@ const RISK_LABEL: Record<string, string> = {
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await supabaseServer();
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-
-    if (authErr || !user) {
-      return NextResponse.json({ error: "No auth" }, { status: 401 });
-    }
-
-    const meta = user.user_metadata ?? {};
-    if (meta.role !== "admin") {
-      return NextResponse.json({ error: "Solo administradores" }, { status: 403 });
-    }
-    const adminRuc: string = meta.ruc ?? "";
-    if (!adminRuc) {
-      return NextResponse.json({ error: "Administrador sin RUC configurado" }, { status: 400 });
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.response;
+    const adminRuc = auth.claims.ruc;
 
     const type = req.nextUrl.searchParams.get("type");
     if (type !== "summary" && type !== "employees") {

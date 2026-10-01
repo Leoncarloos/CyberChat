@@ -16,7 +16,8 @@ erDiagram
     auth_users {
         uuid id PK "Gestionado por Supabase Auth"
         text email UK
-        jsonb raw_user_meta_data "rol, RUC, nombre y estado de aprobación"
+        jsonb raw_app_meta_data "rol, RUC, estado de aprobación y diagnostic_done"
+        jsonb raw_user_meta_data "nombre, teléfono y razón social"
     }
 
     conversations {
@@ -170,7 +171,7 @@ declararlos porque afectan la integridad de los datos.
 
 **1 · No existe una tabla de empresas.** La empresa es el eje de todo el sistema —el aislamiento entre
 organizaciones depende de ella—, pero no está modelada: el RUC vive como texto dentro de
-`auth_users.raw_user_meta_data` y se repite como texto en `org_summaries.ruc`. El gestor no puede
+`auth_users.raw_app_meta_data` y se repite como texto en `org_summaries.ruc`. El gestor no puede
 garantizar que esos valores coincidan ni que correspondan a una empresa existente; esa consistencia
 queda enteramente en manos del código de la aplicación.
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
 import { loginSchema } from "@/lib/validators/auth";
+import { PENDING_MESSAGE, REJECTED_MESSAGE, readAccessClaims } from "@/lib/accessClaims";
 
 const features = [
   {
@@ -26,14 +27,21 @@ const features = [
 type LoginClientProps = {
   registered?: string;
   reset?: string;
+  blocked?: string;
 };
 
-export default function LoginClient({ registered, reset }: LoginClientProps) {
+function blockedMessage(blocked?: string) {
+  if (blocked === "rejected") return REJECTED_MESSAGE;
+  if (blocked === "pending") return PENDING_MESSAGE;
+  return null;
+}
+
+export default function LoginClient({ registered, reset, blocked }: LoginClientProps) {
   const router = useRouter();
   const supabase = supabaseBrowser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(() => blockedMessage(blocked));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const helperMessage = useMemo(() => {
@@ -67,27 +75,16 @@ export default function LoginClient({ registered, reset }: LoginClientProps) {
     setIsSubmitting(false);
     if (error) return setMsg("Correo o contraseña incorrectos.");
 
-    const role =
-      typeof data.user?.user_metadata?.role === "string" ? data.user.user_metadata.role : "";
-    const approvalStatus =
-      typeof data.user?.user_metadata?.approval_status === "string"
-        ? data.user.user_metadata.approval_status
-        : "";
+    const { role, approvalStatus } = readAccessClaims(data.user);
 
     if (role === "admin") {
       router.push("/manage");
       return;
     }
 
-    if (role === "employee" && approvalStatus !== "active") {
+    if (approvalStatus !== "active") {
       await supabase.auth.signOut();
-
-      if (approvalStatus === "rejected") {
-        setMsg("Tu acceso fue rechazado por el administrador de tu empresa. Contáctalo para revisar tu solicitud.");
-        return;
-      }
-
-      setMsg("Tu acceso todavía no ha sido aprobado por el administrador de tu empresa.");
+      setMsg(blockedMessage(approvalStatus));
       return;
     }
 

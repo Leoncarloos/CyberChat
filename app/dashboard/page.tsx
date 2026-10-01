@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { diagnosticTopics } from "@/lib/diagnosticTopics";
+import { readAccessClaims } from "@/lib/accessClaims";
 
 type TopicPerf = { correct: number; total: number };
 
@@ -131,7 +132,7 @@ export default function DashboardPage() {
         return;
       }
       setEmail(authData.user.email ?? "");
-      setRole(typeof authData.user.user_metadata?.role === "string" ? authData.user.user_metadata.role : "");
+      setRole(readAccessClaims(authData.user).role ?? "");
 
       const res = await fetch("/api/dashboard");
       const json = (await res.json()) as DashboardData;

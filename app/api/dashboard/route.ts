@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireActiveUser } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { diagnosticTopics } from "@/lib/diagnosticTopics";
 
@@ -92,12 +92,9 @@ async function generateRecommendations(
 
 export async function GET() {
   try {
-    const supabase = await supabaseServer();
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-
-    if (authErr || !user) {
-      return NextResponse.json({ error: "No auth" }, { status: 401 });
-    }
+    const auth = await requireActiveUser();
+    if (!auth.ok) return auth.response;
+    const { user } = auth;
 
     const admin = supabaseAdmin();
     const userId = user.id;

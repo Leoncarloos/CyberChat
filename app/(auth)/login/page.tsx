@@ -12,6 +12,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const registered = firstValue(resolvedSearchParams.registered);
   const reset = firstValue(resolvedSearchParams.reset);
+  const blocked = firstValue(resolvedSearchParams.blocked);
 
-  return <LoginClient registered={registered} reset={reset} />;
+  return <LoginClient registered={registered} reset={reset} blocked={blocked} />;
 }

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { readAccessClaims } from "@/lib/accessClaims";
 import { diagnosticTopics } from "@/lib/diagnosticTopics";
 
 export type RiskLevel = "low" | "medium" | "high";
@@ -217,17 +218,15 @@ export async function computeOrgMetrics(
   type EmpUser = { id: string; email: string; fullName: string; status: PriorityEmployee["status"] };
   const employees: EmpUser[] = allUsers
     .filter((u) => {
-      const m = u.user_metadata ?? {};
-      return m.role === "employee" && m.ruc === adminRuc;
+      const claims = readAccessClaims(u);
+      return claims.role === "employee" && claims.ruc === adminRuc;
     })
     .map((u) => {
       const m = u.user_metadata ?? {};
       const firstName = String(m.first_name ?? "").trim();
       const lastName = String(m.last_name ?? "").trim();
       const fullName = String(m.full_name ?? "").trim() || `${firstName} ${lastName}`.trim() || "Sin nombre";
-      const rawStatus = m.approval_status;
-      const status: EmpUser["status"] =
-        rawStatus === "active" || rawStatus === "rejected" ? rawStatus : "pending";
+      const status: EmpUser["status"] = readAccessClaims(u).approvalStatus;
       return { id: u.id, email: u.email ?? "", fullName, status };
     });
 

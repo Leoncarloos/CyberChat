@@ -60,8 +60,12 @@ GROQ_API_KEY      # Groq — openai/gpt-oss-20b
 4. Respuesta + metadata de fuentes devuelta al cliente
 
 ## Supabase
-- Identidad de usuario: no hay tabla `employees`/`profiles`. Rol, RUC, nombre y estado de
-  aprobación viven en `auth.users.user_metadata`, gestionados vía `supabaseAdmin().auth.admin.*`.
+- Identidad de usuario: no hay tabla `employees`/`profiles`. Rol, RUC, estado de aprobación y
+  `diagnostic_done` viven en `auth.users.app_metadata` (solo la service_role los escribe; leer con
+  `readAccessClaims` de `lib/accessClaims.ts`). Nombre, teléfono y razón social quedan en
+  `user_metadata`, que el propio usuario puede editar: nunca decidir permisos con él.
+- Autorización en API routes: `requireActiveUser()` / `requireAdmin()` de `lib/authz.ts`
+  (sesión + cuenta aprobada + rol). Migración de usuarios: `docs/sql/migrate_app_metadata.sql`.
 - `diagnostic_results` — resultados del diagnóstico inicial (score, topics_performance, completed_at)
 - `quiz_results` — resultados de evaluaciones en /chat (score, total, taken_at) — legacy, se mantiene con doble escritura
 - `posttest_questions` — banco fijo de 200 preguntas para post-test/recurrentes (25 por tema × 8 temas) — HU21. SQL en `docs/sql/posttest_questions.sql` + seed en `docs/sql/posttest_questions_seed.sql`

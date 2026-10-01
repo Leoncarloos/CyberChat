@@ -11,6 +11,7 @@ import {
   listMessages,
   renameConversation,
 } from "@/lib/db";
+import { readAccessClaims } from "@/lib/accessClaims";
 
 type Conversation = { id: string; title: string; created_at: string; user_id: string };
 type StoredMessage = { id: string; role: "user" | "assistant"; content: string; created_at: string };
@@ -271,7 +272,7 @@ function ChatPageInner() {
 
       setUserId(user.id);
       setEmail(user.email ?? "");
-      setRole(typeof user.user_metadata?.role === "string" ? user.user_metadata.role : "");
+      setRole(readAccessClaims(user).role ?? "");
 
       const convRes = await listConversations(user.id);
       if (convRes.error) {

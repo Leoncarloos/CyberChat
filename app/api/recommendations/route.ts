@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireActiveUser } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { diagnosticTopics } from "@/lib/diagnosticTopics";
 import { embedHF } from "@/lib/embedHF";
@@ -25,15 +25,10 @@ export type RecommendationCard = {
 
 export async function GET() {
   try {
-    const supabase = await supabaseServer();
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-    if (error || !user) return NextResponse.json({ error: "No auth" }, { status: 401 });
+    const auth = await requireActiveUser();
+    if (!auth.ok) return auth.response;
+    const { user, claims } = auth;
 
-    const meta = user.user_metadata ?? {};
-    const userRuc: string = meta.ruc ?? "";
 
     const admin = supabaseAdmin();
 
@@ -66,7 +61,7 @@ export async function GET() {
       .sort((a, b) => a.pct - b.pct)
       .slice(0, 4);
 
-    const adminUserId = await resolveOrgAdminId(userRuc);
+    const adminUserId = await resolveOrgAdminId(claims.ruc);
 
     // RAG per topic
     type TopicContext = { key: string; label: string; pct: number; context: string };

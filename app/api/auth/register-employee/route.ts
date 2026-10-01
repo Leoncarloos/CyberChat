@@ -5,16 +5,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { registerEmployeeSchema, flattenFieldErrors } from "@/lib/validators/auth";
 import { translateAuthError } from "@/lib/authErrors";
-
-type UserMetadata = {
-  role?: string;
-  ruc?: string;
-};
-
-function parseMetadata(value: unknown): UserMetadata {
-  if (!value || typeof value !== "object") return {};
-  return value as UserMetadata;
-}
+import { readAccessClaims } from "@/lib/accessClaims";
 
 export async function POST(req: Request) {
   try {
@@ -40,8 +31,8 @@ export async function POST(req: Request) {
     }
 
     const hasAdminForRuc = (usersResult.data.users ?? []).some((user) => {
-      const metadata = parseMetadata(user.user_metadata);
-      return metadata.role === "admin" && metadata.ruc === ruc;
+      const claims = readAccessClaims(user);
+      return claims.role === "admin" && claims.ruc === ruc;
     });
 
     if (!hasAdminForRuc) {
@@ -55,11 +46,9 @@ export async function POST(req: Request) {
       email,
       password,
       email_confirm: true,
+      app_metadata: { role: "employee", ruc, approval_status: "pending" },
       user_metadata: {
-        role: "employee",
         account_type: "company_employee",
-        approval_status: "pending",
-        ruc,
         first_name: firstName,
         last_name: lastName,
         full_name: `${firstName} ${lastName}`.trim(),

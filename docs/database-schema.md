@@ -10,19 +10,26 @@ Supabase (PostgreSQL 17 + extensión pgvector)
 
 ## Identidad de usuario — no hay tabla `employees`/`profiles`
 
-El rol (`admin`/`employee`), el RUC de la empresa, el nombre, el estado de aprobación
-(`active`/`pending`/`rejected`) y demás datos del usuario **viven en
-`auth.users.user_metadata`**, gestionados vía `supabaseAdmin().auth.admin.*`
-(`createUser`, `updateUserById`, `listUsers`). Ninguna ruta de la aplicación consulta
-una tabla `employees` ni `profiles` — el filtrado por empresa se hace en memoria,
-iterando `listUsers()` y comparando `user_metadata.ruc`.
+El rol (`admin`/`employee`), el RUC de la empresa, el estado de aprobación
+(`active`/`pending`/`rejected`) y `diagnostic_done` **viven en `auth.users.app_metadata`**,
+que solo la service_role puede escribir, gestionados vía `supabaseAdmin().auth.admin.*`
+(`createUser`, `updateUserById`, `listUsers`). El nombre, el teléfono y la razón social
+quedan en `user_metadata`, que el propio usuario puede modificar con
+`supabase.auth.updateUser({ data })`; por eso ningún permiso se decide con él. Ninguna
+ruta de la aplicación consulta una tabla `employees` ni `profiles` — el filtrado por
+empresa se hace en memoria, iterando `listUsers()` y comparando `app_metadata.ruc`.
+
+**2026-09-29:** rol, RUC, estado y `diagnostic_done` estaban en `user_metadata`, lo que
+permitía a un empleado auto-aprobarse o asignarse `role: "admin"`. Se movieron a
+`app_metadata` (migración en `docs/sql/migrate_app_metadata.sql`) y todas las rutas
+`/api` validan sesión, cuenta aprobada y rol con `lib/authz.ts`.
 
 **2026-09-12 (issue #16):** existía una tabla `profiles` (`id`, `email`, `role`,
 `created_at`) con un trigger (`on_auth_user_created` → `handle_new_user()`) que
 insertaba una fila en cada registro nuevo con `role` **hardcodeado a `'user'`**, nunca
 sincronizado con el rol real (`admin`/`employee`) de `user_metadata`. Ningún código del
 repositorio la consultaba. Se eliminó la tabla, el trigger y la función — no queda
-ningún rastro de identidad de usuario fuera de `auth.users.user_metadata`.
+ningún rastro de identidad de usuario fuera de `auth.users` (hoy en `app_metadata`).
 
 ## Tablas
 
@@ -104,7 +111,7 @@ en `lib/diagnosticQuestions.ts`, 8 temas × 2 — más info en `docs/user-storie
 
 RLS: políticas `Usuario ve su resultado` (SELECT), `Service role inserta` (INSERT).
 
-Completar el diagnóstico marca `user_metadata.diagnostic_done = true` en `auth.users`
+Completar el diagnóstico marca `app_metadata.diagnostic_done = true` en `auth.users`
 vía `auth.admin.updateUserById()` (service_role). El middleware verifica este flag para
 bloquear el acceso a rutas protegidas.
 

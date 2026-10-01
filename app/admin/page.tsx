@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
+import { readAccessClaims } from "@/lib/accessClaims";
 
 type UploadResponse = {
   document_id?: string;
@@ -78,7 +79,7 @@ export default function AdminPage() {
       const user = data.user;
 
       if (!user) return router.push("/login");
-      if (user.user_metadata?.role !== "admin") return router.push("/chat");
+      if (readAccessClaims(user).role !== "admin") return router.push("/chat");
 
       setUserId(user.id);
       setUserEmail(user.email ?? "");

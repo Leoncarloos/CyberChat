@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireAdmin } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { computeOrgMetrics, type OrgMetrics, type Period } from "@/lib/orgMetrics";
 
@@ -16,26 +16,6 @@ const PERIOD_LABEL: Record<Period, string> = {
   quarter: "último trimestre",
   all: "histórico completo",
 };
-
-type AdminCtx = { userId: string; ruc: string };
-type AuthFail = { status: number; error: string };
-
-async function authorizeAdmin(): Promise<AdminCtx | AuthFail> {
-  const supabase = await supabaseServer();
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) return { status: 401, error: "No auth" };
-
-  const meta = user.user_metadata ?? {};
-  if (meta.role !== "admin") return { status: 403, error: "Solo administradores" };
-  const ruc: string = meta.ruc ?? "";
-  if (!ruc) return { status: 400, error: "Administrador sin RUC configurado" };
-
-  return { userId: user.id, ruc };
-}
-
-function isAuthFail(v: AdminCtx | AuthFail): v is AuthFail {
-  return "error" in v;
-}
 
 // Verifica que haya datos mínimos para un resumen confiable (Escenario 3).
 function checkSufficiency(metrics: OrgMetrics): string[] {
@@ -191,10 +171,9 @@ function parsePeriod(value: string | null): Period {
 // GET — devuelve cache fresca (< 1h) o genera automáticamente al cargar el dashboard.
 export async function GET(req: Request) {
   try {
-    const ctx = await authorizeAdmin();
-    if (isAuthFail(ctx)) {
-      return NextResponse.json({ error: ctx.error }, { status: ctx.status });
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.response;
+    const ctx = { userId: auth.user.id, ruc: auth.claims.ruc };
 
     const period = parsePeriod(new URL(req.url).searchParams.get("period"));
 
@@ -221,10 +200,9 @@ export async function GET(req: Request) {
 // POST — regeneración bajo demanda con datos actualizados (ignora la cache).
 export async function POST(req: Request) {
   try {
-    const ctx = await authorizeAdmin();
-    if (isAuthFail(ctx)) {
-      return NextResponse.json({ error: ctx.error }, { status: ctx.status });
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.response;
+    const ctx = { userId: auth.user.id, ruc: auth.claims.ruc };
 
     let period: Period = "month";
     try {

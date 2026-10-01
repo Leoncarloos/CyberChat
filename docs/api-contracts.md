@@ -5,6 +5,11 @@ vía `supabaseServer().auth.getUser()` en cada handler — nunca se confía en e
 identidad. Los errores devuelven `{ "error": "mensaje" }`; los que validan con Zod
 (marcados abajo) agregan además `{ "fieldErrors": { "<campo>": "mensaje" } }` en 400.
 
+Desde 2026-09-29, todas las rutas salvo las de registro pasan por `requireActiveUser()` o
+`requireAdmin()` (`lib/authz.ts`): además del 401 sin sesión, responden **403** si la cuenta
+no está aprobada (“Tu acceso todavía no ha sido aprobado…” / “Tu acceso fue rechazado…”) o
+si no tiene rol. Rol, RUC y estado se leen de `app_metadata`, nunca de `user_metadata`.
+
 > Actualizado 2026-09-11. `docs/user-stories.md` tiene el detalle de negocio de cada HU;
 > este documento es el contrato técnico exacto de cada ruta contra el código real.
 
@@ -319,7 +324,7 @@ completo, así que se valida el set exacto y no solo la cantidad.
 ```
 
 **Efectos colaterales:** INSERT en `diagnostic_results` + `auth.admin.updateUserById`
-→ `user_metadata.diagnostic_done = true`. El middleware desbloquea rutas protegidas en
+→ `app_metadata.diagnostic_done = true`. El middleware desbloquea rutas protegidas en
 la siguiente request.
 
 | Status | Causa |
@@ -575,8 +580,8 @@ calculan sobre el intento más reciente de `evaluation_attempts` que tenga
 ## Administración de empleados
 
 ### GET `/api/admin/employees`
-Lista los empleados con `user_metadata.ruc` igual al del admin autenticado. Requiere
-rol `admin` con RUC configurado en su metadata.
+Lista los empleados con `app_metadata.ruc` igual al del admin autenticado. Requiere
+rol `admin`, cuenta activa y RUC configurado en su `app_metadata`.
 
 #### Response 200
 ```json

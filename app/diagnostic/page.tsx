@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { diagnosticTopics, totalQuestions } from "@/lib/diagnosticTopics";
+import { readAccessClaims } from "@/lib/accessClaims";
 
 type Step = "intro" | number | "results";
 
@@ -38,7 +39,7 @@ export default function DiagnosticPage() {
         router.push("/login");
         return;
       }
-      if (data.user.user_metadata?.diagnostic_done === true) {
+      if (readAccessClaims(data.user).diagnosticDone) {
         router.push("/chat");
         return;
       }

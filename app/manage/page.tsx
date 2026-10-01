@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { readAccessClaims } from "@/lib/accessClaims";
 
 type EmployeeStatus = "active" | "pending" | "rejected";
 type ToastTone = "success" | "error" | "info";
@@ -109,8 +110,7 @@ export default function ManagePage() {
         return;
       }
 
-      const role =
-        typeof user.user_metadata?.role === "string" ? user.user_metadata.role : "";
+      const { role } = readAccessClaims(user);
 
       if (role !== "admin") {
         router.push("/chat");

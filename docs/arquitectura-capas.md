@@ -61,7 +61,7 @@ flowchart TB
 
     subgraph C6["CAPA 6 · PERSISTENCIA — Supabase · PostgreSQL 17 + pgvector · 11 tablas"]
         direction LR
-        DB_AUTH["Identidad<br/>Supabase Auth · auth.users<br/>user_metadata: rol · RUC · aprobación"]
+        DB_AUTH["Identidad<br/>Supabase Auth · auth.users<br/>app_metadata: rol · RUC · aprobación"]
         DB_EVAL["Evaluaciones y progreso<br/>diagnostic_results · quiz_results<br/>evaluation_attempts · posttest_questions<br/>seen_questions · learning_progress<br/>org_summaries · conversations · messages"]
         DB_RAG["Base documental<br/>documents · document_chunks<br/>vector 384 · índice HNSW<br/>RPC match_document_chunks_scoped<br/>Storage · bucket documents"]
         DB_OLD["RPC match_document_chunks<br/>sin uso en el código"]

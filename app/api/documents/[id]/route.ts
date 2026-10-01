@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireAdmin } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -17,14 +17,8 @@ export async function DELETE(
       return NextResponse.json({ error: "id inválido" }, { status: 400 });
     }
 
-    const supabase = await supabaseServer();
-    const { data: auth, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !auth?.user) {
-      return NextResponse.json({ error: "No auth" }, { status: 401 });
-    }
-    if (auth.user.user_metadata?.role !== "admin") {
-      return NextResponse.json({ error: "Solo admins" }, { status: 403 });
-    }
+    const auth = await requireAdmin({ forbiddenMessage: "Solo admins", requireRuc: false });
+    if (!auth.ok) return auth.response;
 
     const admin = supabaseAdmin();
 

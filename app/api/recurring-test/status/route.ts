@@ -2,24 +2,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireActiveUser } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const RECURRENCE_DAYS = 5;
 
 export async function GET() {
   try {
-    const supabase = await supabaseServer();
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-    if (error || !user) return NextResponse.json({ error: "No auth" }, { status: 401 });
+    const auth = await requireActiveUser();
+    if (!auth.ok) return auth.response;
+    const { user, claims } = auth;
 
-    const meta = user.user_metadata ?? {};
-    const role = typeof meta.role === "string" ? meta.role : "employee";
-
-    if (!meta.diagnostic_done) {
+    if (!claims.diagnosticDone) {
       return NextResponse.json({ due: false, reason: "diagnostic_pending" });
     }
 
@@ -63,7 +57,7 @@ export async function GET() {
 
     return NextResponse.json({
       due,
-      blocking: due && role === "employee",
+      blocking: due && claims.role === "employee",
       daysSince,
       lastCompletedAt: lastCompleted,
       nextDueAt,

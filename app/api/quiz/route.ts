@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireActiveUser } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { quizBodySchema } from "@/lib/validators/evaluation";
 import { flattenFieldErrors } from "@/lib/validators/shared";
@@ -17,11 +17,14 @@ type BankRow = {
 };
 
 export async function POST(req: Request) {
-  const supabase = await supabaseServer();
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
+  const auth = await requireActiveUser();
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
-  if (authErr || !user) {
-    return NextResponse.json({ error: "No auth" }, { status: 401 });
+  // Igual que GET /api/posttest: sin diagnóstico no hay línea base contra la cual
+  // medir la mejora, así que tampoco se acepta un resultado de evaluación.
+  if (!auth.claims.diagnosticDone) {
+    return NextResponse.json({ error: "Completa el diagnóstico primero" }, { status: 403 });
   }
 
   const rawBody = await req.json();

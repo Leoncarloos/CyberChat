@@ -5,16 +5,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { registerAdminSchema, flattenFieldErrors } from "@/lib/validators/auth";
 import { translateAuthError } from "@/lib/authErrors";
-
-type UserMetadata = {
-  role?: string;
-  ruc?: string;
-};
-
-function parseMetadata(value: unknown): UserMetadata {
-  if (!value || typeof value !== "object") return {};
-  return value as UserMetadata;
-}
+import { readAccessClaims } from "@/lib/accessClaims";
 
 export async function POST(req: Request) {
   try {
@@ -40,8 +31,8 @@ export async function POST(req: Request) {
     }
 
     const duplicatedRuc = (usersResult.data.users ?? []).some((user) => {
-      const metadata = parseMetadata(user.user_metadata);
-      return metadata.role === "admin" && metadata.ruc === ruc;
+      const claims = readAccessClaims(user);
+      return claims.role === "admin" && claims.ruc === ruc;
     });
 
     if (duplicatedRuc) {
@@ -55,11 +46,9 @@ export async function POST(req: Request) {
       email,
       password,
       email_confirm: true,
+      app_metadata: { role: "admin", ruc, approval_status: "active" },
       user_metadata: {
-        role: "admin",
         account_type: "company_admin",
-        approval_status: "active",
-        ruc,
         business_name: businessName,
         trade_name: tradeName,
         owner_name: ownerName,

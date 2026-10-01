@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { readAccessClaims } from "@/lib/accessClaims";
 
 type RiskLevel = "low" | "medium" | "high";
 
@@ -301,7 +302,7 @@ export default function OrgDashboardPage() {
     void (async () => {
       const { data: authData } = await supabase.auth.getUser();
       if (!authData.user) { router.push("/login"); return; }
-      if (authData.user.user_metadata?.role !== "admin") { router.push("/chat"); return; }
+      if (readAccessClaims(authData.user).role !== "admin") { router.push("/chat"); return; }
       setEmail(authData.user.email ?? "");
 
       const res = await fetch("/api/org-dashboard");

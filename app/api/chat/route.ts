@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireActiveUser } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { embedHF } from "@/lib/embedHF";
 import { resolveOrgAdminId } from "@/lib/orgAdmin";
@@ -110,10 +110,8 @@ export async function POST(req: Request) {
       return processingError("GROQ_API_KEY no configurada", null);
     }
 
-    const supabase = await supabaseServer();
-    const { data: auth, error: authErr } = await supabase.auth.getUser();
-    if (authErr) return NextResponse.json({ error: authErr.message }, { status: 401 });
-    if (!auth?.user) return NextResponse.json({ error: "No auth" }, { status: 401 });
+    const auth = await requireActiveUser();
+    if (!auth.ok) return auth.response;
 
     const lastUserMsg =
       [...incoming].reverse().find((m) => m.role === "user")?.content?.trim() ?? "";
@@ -128,9 +126,7 @@ export async function POST(req: Request) {
     // (documents.uploaded_by = admin) y la consultan todos sus empleados (HU23).
     // El RUC sale de la sesión, nunca del body, y el RPC sigue acotando por
     // uploaded_by, así que un document_id de otra empresa no devuelve nada.
-    const metadata = (auth.user.user_metadata ?? {}) as { ruc?: string };
-    const scopeUserId =
-      (await resolveOrgAdminId(metadata.ruc ?? "")) ?? auth.user.id;
+    const scopeUserId = (await resolveOrgAdminId(auth.claims.ruc)) ?? auth.user.id;
 
     // supabaseAdmin: el RPC es SECURITY INVOKER y la política documents_select_own
     // limitaría al empleado a sus propios documentos, anulando el scope de empresa.

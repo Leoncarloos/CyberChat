@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireActiveUser } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { diagnosticBodySchema } from "@/lib/validators/evaluation";
 import { flattenFieldErrors } from "@/lib/validators/shared";
@@ -18,29 +18,20 @@ const BANK = new Map<string, Entry>(
 );
 
 export async function GET() {
-  const supabase = await supabaseServer();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const auth = await requireActiveUser();
+  if (!auth.ok) return auth.response;
 
-  if (error || !user) {
-    return NextResponse.json({ error: "No auth" }, { status: 401 });
-  }
-
-  return NextResponse.json({
-    completed: user.user_metadata?.diagnostic_done === true,
-  });
+  return NextResponse.json({ completed: auth.claims.diagnosticDone });
 }
 
 export async function POST(req: Request) {
-  const supabase = await supabaseServer();
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-
-  if (authErr || !user) {
-    return NextResponse.json({ error: "No auth" }, { status: 401 });
-  }
+  const auth = await requireActiveUser();
+  if (!auth.ok) return auth.response;
+  const { user } = auth;
 
   // El diagnóstico se rinde una sola vez (HU12-1). Sin esto, un empleado podría
   // repetirlo respondiendo mal a propósito para inflar su porcentaje de mejora.
-  if (user.user_metadata?.diagnostic_done === true) {
+  if (auth.claims.diagnosticDone) {
     return NextResponse.json(
       { error: "Ya completaste el diagnóstico inicial" },
       { status: 409 }
@@ -121,7 +112,7 @@ export async function POST(req: Request) {
   }
 
   const { error: updateErr } = await admin.auth.admin.updateUserById(user.id, {
-    user_metadata: { ...user.user_metadata, diagnostic_done: true },
+    app_metadata: { ...user.app_metadata, diagnostic_done: true },
   });
 
   if (updateErr) {

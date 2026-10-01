@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireActiveUser } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { diagnosticTopics } from "@/lib/diagnosticTopics";
 import { QUESTIONS_PER_TOPIC } from "@/lib/evaluationConfig";
@@ -27,15 +27,11 @@ function shuffle<T>(arr: T[]): T[] {
 
 export async function GET() {
   try {
-    const supabase = await supabaseServer();
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-    if (error || !user) return NextResponse.json({ error: "No auth" }, { status: 401 });
+    const auth = await requireActiveUser();
+    if (!auth.ok) return auth.response;
+    const { user, claims } = auth;
 
-    const meta = user.user_metadata ?? {};
-    if (!meta.diagnostic_done) {
+    if (!claims.diagnosticDone) {
       return NextResponse.json({ error: "Completa el diagnóstico primero" }, { status: 403 });
     }
 

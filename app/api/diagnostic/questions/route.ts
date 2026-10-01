@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireActiveUser } from "@/lib/authz";
 import { diagnosticBank } from "@/lib/diagnosticBank";
 import { diagnosticTopics, totalQuestions } from "@/lib/diagnosticTopics";
 
@@ -11,14 +11,10 @@ const LABEL_BY_KEY = new Map(diagnosticTopics.map((t) => [t.key, t.label]));
 // Sin correctIndex ni explanation: la respuesta correcta no sale del servidor
 // hasta que el usuario envía la suya a POST /api/diagnostic, que es quien califica.
 export async function GET() {
-  const supabase = await supabaseServer();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const auth = await requireActiveUser();
+  if (!auth.ok) return auth.response;
 
-  if (error || !user) {
-    return NextResponse.json({ error: "No auth" }, { status: 401 });
-  }
-
-  if (user.user_metadata?.diagnostic_done === true) {
+  if (auth.claims.diagnosticDone) {
     return NextResponse.json({ error: "Ya completaste el diagnóstico" }, { status: 409 });
   }
 

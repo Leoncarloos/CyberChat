@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireActiveUser } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   learningTopics,
@@ -48,11 +48,9 @@ async function fetchProgress(userId: string): Promise<Map<string, ProgressStatus
 
 export async function GET() {
   try {
-    const supabase = await supabaseServer();
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !user) {
-      return NextResponse.json({ error: "No auth" }, { status: 401 });
-    }
+    const auth = await requireActiveUser();
+    if (!auth.ok) return auth.response;
+    const { user } = auth;
 
     const admin = supabaseAdmin();
     const [diagRes, progress] = await Promise.all([
@@ -110,11 +108,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await supabaseServer();
-    const { data: { user }, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !user) {
-      return NextResponse.json({ error: "No auth" }, { status: 401 });
-    }
+    const auth = await requireActiveUser();
+    if (!auth.ok) return auth.response;
+    const { user } = auth;
 
     const rawBody = await req.json();
     const parsed = learningPathBodySchema.safeParse(rawBody);

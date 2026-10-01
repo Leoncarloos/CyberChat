@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { requireAdmin } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { embedHF } from "@/lib/embedHF";
 
@@ -59,16 +59,10 @@ async function extractText(ext: string, buffer: Buffer): Promise<string> {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await supabaseServer();
-    const { data: auth, error: authErr } = await supabase.auth.getUser();
-    if (authErr || !auth?.user) {
-      return NextResponse.json({ error: "No auth" }, { status: 401 });
-    }
     // La base documental es de la empresa y la consultan todos sus empleados
     // (ver lib/orgAdmin.ts), así que solo el dueño puede alimentarla.
-    if (auth.user.user_metadata?.role !== "admin") {
-      return NextResponse.json({ error: "Solo admins" }, { status: 403 });
-    }
+    const auth = await requireAdmin({ forbiddenMessage: "Solo admins", requireRuc: false });
+    if (!auth.ok) return auth.response;
     const userId = auth.user.id;
 
     const admin = supabaseAdmin();
