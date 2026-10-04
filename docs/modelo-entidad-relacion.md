@@ -10,6 +10,18 @@ El modelo se extrajo directamente del catálogo del gestor (`information_schema.
 
 ## 1. Diagrama
 
+![Modelo entidad-relación de CyberChat](img/modelo-entidad-relacion.es.png)
+
+| | Español | English |
+|---|---|---|
+| Editable (draw.io) | [modelo-entidad-relacion.drawio](modelo-entidad-relacion.drawio) | [modelo-entidad-relacion.en.drawio](modelo-entidad-relacion.en.drawio) |
+| Imagen | [PNG](img/modelo-entidad-relacion.es.png) · [SVG](img/modelo-entidad-relacion.es.svg) | [PNG](img/modelo-entidad-relacion.en.png) · [SVG](img/modelo-entidad-relacion.en.svg) |
+
+Las cuatro salidas se generan desde una sola definición con `node docs/tools/generar-diagramas.mjs`.
+
+El mismo modelo en Mermaid, con el detalle de cada columna:
+
+
 ```mermaid
 %%{init: {'er': {'layoutDirection': 'LR'}}}%%
 erDiagram
@@ -151,7 +163,7 @@ no puede registrarse dos veces para el mismo usuario.
 
 | Tabla | Contenido | Volumen actual |
 |---|---|---|
-| `auth_users` | Identidad, credenciales y metadatos: rol, RUC, nombre y estado de aprobación | — |
+| `auth_users` | Identidad y credenciales. `app_metadata` guarda rol, RUC, estado de aprobación y `diagnostic_done` (solo lo escribe el servidor); `user_metadata` guarda los datos de perfil | — |
 | `conversations` · `messages` | Historial del asistente virtual, una conversación con sus mensajes | — |
 | `diagnostic_results` | Resultado del diagnóstico inicial, uno por usuario | — |
 | `quiz_results` | Resultados de evaluaciones. Tabla heredada: se mantiene con doble escritura | — |

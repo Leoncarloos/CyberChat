@@ -2,53 +2,16 @@
 
 Vista clásica en tres capas: **UI** (presentación), **BLL** (lógica de negocio) y **DAL** (acceso a
 datos). Los servicios de IA se tratan como una fuente externa más: la BLL decide cuándo usarlos y
-la DAL se encarga de llamarlos. Versión editable: [arquitectura-3-capas.drawio](arquitectura-3-capas.drawio).
+la DAL se encarga de llamarlos.
 
-```mermaid
-flowchart TB
-    subgraph UI["UI · Capa de presentación — navegador, React 19 + Tailwind 4"]
-        direction LR
-        U1["Acceso<br/>login · registro<br/>recuperar contraseña"]
-        U2["Empleado<br/>diagnóstico · chat con IA<br/>evaluaciones · dashboard"]
-        U3["Administrador<br/>empleados · documentos<br/>dashboard organizacional"]
-    end
+![Arquitectura en 3 capas de CyberChat](img/arquitectura-3-capas.es.png)
 
-    subgraph BLL["BLL · Capa de lógica de negocio — rutas /api de Next.js"]
-        direction LR
-        L1["Usuarios y acceso<br/>registro · aprobación · roles<br/>validación de datos"]
-        L2["Asistente RAG<br/>indexar documentos<br/>buscar contexto · armar prompt"]
-        L3["Evaluaciones<br/>diagnóstico · post-test · recurrente<br/>calificación en el servidor"]
-        L4["Aprendizaje y métricas<br/>ruta de aprendizaje · recomendaciones<br/>métricas y resumen IA de la empresa"]
-    end
+| | Español | English |
+|---|---|---|
+| Editable (draw.io) | [arquitectura-3-capas.drawio](arquitectura-3-capas.drawio) | [arquitectura-3-capas.en.drawio](arquitectura-3-capas.en.drawio) |
+| Imagen | [PNG](img/arquitectura-3-capas.es.png) · [SVG](img/arquitectura-3-capas.es.svg) | [PNG](img/arquitectura-3-capas.en.png) · [SVG](img/arquitectura-3-capas.en.svg) |
 
-    subgraph DAL["DAL · Capa de acceso a datos"]
-        direction LR
-        D1["Clientes Supabase<br/>sesión · servidor · administrador"]
-        D2["Historial del chat<br/>lib/db.ts"]
-        D3["Cliente de embeddings<br/>lib/embedHF.ts"]
-        D4["Cliente del LLM<br/>API de Groq"]
-    end
-
-    subgraph EXT["Fuentes de datos y servicios de IA"]
-        direction LR
-        S1[("Supabase<br/>PostgreSQL + pgvector<br/>Auth · Storage")]
-        S2["Hugging Face<br/>multilingual MiniLM<br/>embeddings 384 dim"]
-        S3["Groq<br/>gpt-oss-20b<br/>generación de texto"]
-    end
-
-    UI == "HTTPS · JSON" ==> BLL
-    BLL ==> DAL
-    DAL ==> EXT
-
-    classDef ui fill:#dae8fc,stroke:#6c8ebf,color:#1a1a1a
-    classDef bll fill:#d5e8d4,stroke:#82b366,color:#1a1a1a
-    classDef dal fill:#fff2cc,stroke:#d6b656,color:#1a1a1a
-    classDef ia fill:#ffe6cc,stroke:#d79b00,color:#1a1a1a
-    class U1,U2,U3 ui
-    class L1,L2,L3,L4 bll
-    class D1,D2,S1 dal
-    class D3,D4,S2,S3 ia
-```
+Las cuatro salidas se generan desde una sola definición con `node docs/tools/generar-diagramas.mjs`.
 
 ## Responsabilidad de cada capa
 

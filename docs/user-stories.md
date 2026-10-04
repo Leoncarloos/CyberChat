@@ -689,7 +689,7 @@ corrupta.
 
 ## Contexto / Problema que resolvió (estado previo a esta HU, ya superado)
 
-- El diagnóstico inicial (`lib/diagnosticQuestions.ts`) es un banco **fijo y hardcodeado** de 8 temas × 2 preguntas = **16 preguntas totales**. Sigue siendo así.
+- El diagnóstico inicial (`lib/diagnosticBank.ts`, server-only; temas en `lib/diagnosticTopics.ts`) es un banco **fijo y hardcodeado** de 8 temas × 2 preguntas = **16 preguntas totales**. Sigue siendo así.
 - El post-test **generaba 10 preguntas nuevas en cada intento** vía Groq (`llama-3.1-8b-instant`), en tiempo real, sin persistir el banco. Eso rompía la comparabilidad: cantidad distinta (10 vs 16), preguntas distintas cada vez, y sin garantía de cubrir los mismos temas del diagnóstico. **Resuelto:** hoy lee del banco fijo `posttest_questions`.
 - `quiz_results` guardaba `score` y `total` por intento, pero no el detalle por pregunta/tema, así que no se podía comparar el avance tema por tema contra el diagnóstico. **Resuelto** con `evaluation_attempts.topics_performance` (HU22).
 

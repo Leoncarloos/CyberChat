@@ -5,11 +5,14 @@
 ```
 Browser
   │
-  ├── /chat, /admin, /manage          → Next.js App Router (client components)
+  ├── /chat, /dashboard, /diagnostic,
+  │   /manage, /admin, /org-dashboard  → Next.js App Router (client components)
+  │   middleware.ts                    → refresca sesión, bloquea cuentas no activas, fuerza diagnóstico
   │
   └── /api/*                          → Next.js Route Handlers (Node.js runtime)
         │
-        ├── supabaseServer()          → Supabase (Auth + Postgres + Storage)
+        ├── requireActiveUser()/requireAdmin() → autorización por rol y estado vigente
+        ├── supabaseServer() / supabaseAdmin() → Supabase (Auth + Postgres + Storage)
         ├── HuggingFace Inference API → Embeddings paraphrase-multilingual-MiniLM-L12-v2 (384-dim)
         └── Groq API                  → openai/gpt-oss-20b (LLM)
 ```
@@ -25,33 +28,40 @@ Browser
 | Storage | Supabase Storage (bucket `documents`) |
 | Embeddings | HuggingFace Inference API — `paraphrase-multilingual-MiniLM-L12-v2` |
 | LLM | Groq — `openai/gpt-oss-20b` |
-| Deploy | Vercel (inferido) |
+| Deploy | Vercel |
 
 ## Flujo RAG detallado
 
 ### Ingesta (admin → `/api/documents/upload-and-process`)
 ```
-File upload (PDF/DOCX/TXT)
-  → Supabase Storage (bucket: documents, path: {user_id}/{uuid}.ext)
-  → INSERT into documents
-  → DELETE old document_chunks for document_id
-  → Extracción de texto (pdf-extraction / mammoth)
-  → Chunking (tamaño fijo con overlap)
+File upload (PDF/DOCX/TXT, máx. 10 MB) — solo rol admin
+  → Extracción de texto (pdf-extraction / mammoth / UTF-8) y limpieza de espacios
+  → Chunking por oraciones (máx. 800 caracteres, 1 oración de solapamiento)
   → Embedding por chunk (HF API → float[384])
-  → INSERT into document_chunks (content, embedding, document_id, user_id)
+  → Supabase Storage (bucket: documents, path: {admin_id}/{uuid}.ext)
+  → INSERT into documents (name, storage_path, uploaded_by = admin)
+  → INSERT into document_chunks (document_id, chunk_index, content, embedding)
 ```
+Todas las validaciones (formato, tamaño, texto legible, chunks aprovechables) y los
+embeddings se resuelven antes de escribir; si falla una escritura se revierte el archivo
+y el documento.
 
 ### Inferencia (usuario → `/api/chat`)
 ```
-POST { messages, document_id? }
-  → Validar sesión (supabaseServer + getUser)
+POST { messages, conversation_id, document_id? }
+  → requireActiveUser() (sesión + cuenta aprobada)
+  → Verificar que conversation_id pertenece al usuario
   → Extraer último mensaje de usuario
   → Embedding del query (HF API)
-  → RPC match_document_chunks_scoped(query_embedding, match_count=6, filter_user_id, filter_document_id)
-  → Filtrar por umbral similaridad 0.25 → top-5 chunks
-  → Construir system prompt con contexto
-  → Groq chat/completions (openai/gpt-oss-20b, temp=0.15, últimos 12 mensajes)
-  → Devolver { answer, matchesCount, bestSimilarity, usedContext, sources }
+  → resolveOrgAdminId(RUC de la sesión) → id del dueño de la empresa
+  → RPC match_document_chunks_scoped(query_embedding, match_count=5, filter_user_id=dueño, filter_document_id)
+     (vía supabaseAdmin: el RPC es SECURITY INVOKER)
+  → Deduplicar y filtrar por umbral de similitud 0.38 → hasta 5 chunks
+  → System prompt con contexto documental, o de conocimiento general si no quedan chunks
+  → Groq chat/completions (openai/gpt-oss-20b, reasoning_effort=low, temp=0.15,
+     max_tokens=900, últimos 12 mensajes)
+  → Guardar respuesta del asistente en messages (supabaseAdmin)
+  → Devolver { answer, message, matchesCount, bestSimilarity, usedContext, sources }
 ```
 
 ## Decisiones técnicas
@@ -81,8 +91,7 @@ Auth + Postgres + pgvector + Storage en una sola plataforma. El RLS (Row Level S
 SSR nativo para Supabase SSR con cookies. API Routes en el mismo repo. No necesitamos backend separado para este scope.
 
 ## Limitaciones actuales
-- Protección de rutas solo client-side (middleware no bloquea server-side)
-- Quiz hardcodeado en cliente — no escala a múltiples evaluaciones
-- `document_id` en `/api/chat` aceptado pero no enviado desde frontend
-- Sin streaming de respuestas — el LLM espera full response antes de devolver
+- Sin streaming de respuestas — el LLM espera la respuesta completa antes de devolver
 - Sin límite de rate en `/api/chat` — riesgo de abuso de créditos HF/Groq
+- `document_id` en `/api/chat` aceptado pero no enviado desde el frontend
+- La llamada a Groq está repetida en cuatro rutas (chat, dashboard, recommendations, org-summary), sin un cliente LLM centralizado

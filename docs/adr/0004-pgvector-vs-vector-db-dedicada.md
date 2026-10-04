@@ -6,7 +6,8 @@
 ## Contexto
 
 El pipeline RAG de CyberChat necesita búsqueda por similitud sobre embeddings de 384
-dimensiones (HuggingFace `all-MiniLM-L6-v2`) generados a partir de los documentos que
+dimensiones (HuggingFace; originalmente `all-MiniLM-L6-v2`, hoy
+`paraphrase-multilingual-MiniLM-L12-v2`, también de 384 dimensiones) generados a partir de los documentos que
 cada administrador sube para su empresa, con aislamiento estricto: un empleado solo
 debe recuperar contexto de los documentos de su propia organización.
 

@@ -13,7 +13,10 @@
 - `useMemo` para instancias de Supabase en client components — evitar re-crear en cada render
 
 ## Seguridad
-- **Nunca** confiar en `user_id` del request body para operaciones de escritura — siempre obtener de `supabase.auth.getUser()`
+- **Nunca** confiar en `user_id`, rol ni RUC del request body — autorizar con `requireActiveUser()` / `requireAdmin()` (`lib/authz.ts`), que leen la sesión y el estado vigente
+- Rol, RUC, estado de aprobación y `diagnostic_done` se leen de `app_metadata` con `readAccessClaims()`; nunca decidir permisos con `user_metadata` (lo edita el propio usuario)
+- Escrituras de resultados de evaluación y respuestas del asistente: solo con `supabaseAdmin` en API routes
+- Las respuestas correctas de los bancos de preguntas nunca salen al cliente antes de calificar (`lib/diagnosticBank.ts` es `server-only`)
 - `supabaseAdmin` (service_role) solo en API routes server-side — nunca en client components
 - Siempre `escapeHtml()` antes de `dangerouslySetInnerHTML`
 - Validar tipo y formato de embeddings antes de insertar en BD (longitud 384)
@@ -32,19 +35,19 @@
 
 ## Manejo de errores
 - API routes: siempre devolver `{ error: string }` con status HTTP apropiado
-- Client: `alert()` solo para MVP — migrar a UI de errores inline en iteraciones futuras
+- Client: errores inline con toasts; no usar `alert()`
 - `try/catch` en fetches — no asumir que `res.ok` implica JSON válido
 
 ## Supabase
 - Usar `supabaseBrowser()` en client components (lib/supabaseBrowser.ts)
-- Usar `supabaseServer()` en API routes que leen sesión (lib/supabaseServer.ts)
+- Usar `supabaseServer()` en API routes que leen sesión (lib/supabaseServer.ts) — normalmente vía `requireActiveUser()`
 - Usar `supabaseAdmin()` en API routes que necesitan service_role (lib/supabaseAdmin.ts)
 - Nunca mezclar clientes — cada uno tiene scope y permisos distintos
 
 ## Embeddings
-- Siempre pasar por `normalizeHFEmbedding()` antes de usar
-- Validar longitud === 384 antes de cualquier operación vectorial
-- Umbral de similaridad mínimo: 0.25 (ajustable, documentar si se cambia)
+- Generar siempre con `embedHF()` (`lib/embedHF.ts`), que normaliza la respuesta de HF a `number[]` de 384 dimensiones (mean pooling si llega por token)
+- Validar longitud === 384 (`EMBED_DIM`) antes de cualquier operación vectorial
+- Umbral de similitud mínimo en el chat: 0.38 (ajustable, documentar si se cambia)
 
 ## Formateo
 - ESLint config en `eslint.config.mjs` — pasar lint antes de commit

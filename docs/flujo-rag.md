@@ -8,55 +8,25 @@ en las políticas reales de cada empresa y no solo en el conocimiento general de
 El flujo tiene dos fases: la **indexación**, cuando el administrador sube un documento, y la
 **consulta**, cada vez que alguien le pregunta algo al asistente.
 
-```mermaid
-flowchart TB
-    subgraph F1["Fase 1 · Indexación (administrador)"]
-        direction LR
-        A1["Sube documento<br/>PDF, DOCX o TXT · máx. 10 MB"]
-        A2["Extrae y limpia<br/>el texto"]
-        A3["Fragmenta por oraciones<br/>máx. 800 caracteres<br/>solapa 1 oración"]
-        A4["Genera un embedding<br/>por fragmento<br/>vector de 384 dimensiones"]
-        A5[("Guarda archivo, documento<br/>y fragmentos con su vector<br/>índice HNSW")]
-        A1 --> A2 --> A3 --> A4 --> A5
-    end
+![Flujo RAG de CyberChat](img/flujo-rag.es.png)
 
-    subgraph F2["Fase 2 · Consulta (cualquier usuario de la empresa)"]
-        direction LR
-        B1["Usuario pregunta<br/>en el chat"]
-        B2["Genera el embedding<br/>de la pregunta<br/>mismo modelo"]
-        B3["Identifica la empresa<br/>RUC de la sesión"]
-        B4["Búsqueda semántica<br/>similitud coseno<br/>top 5 de su empresa"]
-        B5["Quita duplicados y<br/>descarta similitud < 0.38"]
-        B6{"¿Quedan<br/>fragmentos?"}
-        B7["Prompt con los fragmentos<br/>como contexto documental"]
-        B8["Prompt de conocimiento<br/>general + sugerencia de<br/>subir documentos"]
-        B9["LLM genera la respuesta<br/>+ últimos 12 mensajes<br/>temperatura 0.15"]
-        B10["Respuesta y fuentes<br/>con su % de similitud"]
-        B1 --> B2 --> B3 --> B4 --> B5 --> B6
-        B6 -- "Sí" --> B7 --> B9
-        B6 -- "No" --> B8 --> B9
-        B9 --> B10
-    end
+| | Español | English |
+|---|---|---|
+| Editable (draw.io) | [flujo-rag.drawio](flujo-rag.drawio) | [flujo-rag.en.drawio](flujo-rag.en.drawio) |
+| Imagen | [PNG](img/flujo-rag.es.png) · [SVG](img/flujo-rag.es.svg) | [PNG](img/flujo-rag.en.png) · [SVG](img/flujo-rag.en.svg) |
 
-    F1 == "base de conocimiento de la empresa" ==> F2
-
-    classDef idx fill:#dae8fc,stroke:#6c8ebf,color:#1a1a1a
-    classDef qry fill:#d5e8d4,stroke:#82b366,color:#1a1a1a
-    classDef ia fill:#ffe6cc,stroke:#d79b00,color:#1a1a1a
-    class A1,A2,A3,A5 idx
-    class B1,B3,B5,B6,B7,B8,B10 qry
-    class A4,B2,B4,B9 ia
-```
+Las cuatro salidas se generan desde una sola definición con `node docs/tools/generar-diagramas.mjs`.
 
 ## Tecnologías en cada paso
 
 | Paso | Tecnología |
 |---|---|
-| Extracción de texto | `pdf-extraction` (PDF) y `mammoth` (DOCX) |
-| Embeddings | Hugging Face Inference · `paraphrase-multilingual-MiniLM-L12-v2`, multilingüe, 384 dimensiones |
+| Extracción de texto | `pdf-extraction` (PDF), `mammoth` (DOCX) y decodificación UTF-8 (TXT). No hay OCR: un PDF escaneado sin texto se rechaza |
+| Fragmentación | Por oraciones, máximo 800 caracteres por fragmento, con 1 oración de solapamiento |
+| Embeddings | Hugging Face Inference · `paraphrase-multilingual-MiniLM-L12-v2`, multilingüe, 384 dimensiones. Solo se envían los primeros 512 caracteres de cada texto |
 | Almacenamiento de vectores | PostgreSQL 17 + `pgvector` en Supabase, índice HNSW con distancia coseno |
-| Búsqueda semántica | Función `match_document_chunks_scoped`: devuelve los 5 fragmentos más cercanos, solo de documentos de la empresa |
-| Generación | Groq · `openai/gpt-oss-20b`, temperatura 0.15, máximo 900 tokens |
+| Búsqueda semántica | Función `match_document_chunks_scoped`: devuelve los 5 fragmentos más cercanos, solo de documentos de la empresa. Luego se quitan duplicados (mismos primeros 100 caracteres) y los de similitud menor a 0.38, sin reponer candidatos |
+| Generación | Groq · `openai/gpt-oss-20b`, temperatura 0.15, máximo 900 tokens, con los últimos 12 mensajes de la conversación |
 
 ## Por qué funciona así
 
@@ -64,8 +34,11 @@ flowchart TB
   mismo modelo; solo así la distancia entre ellos mide qué tan parecido es su significado.
 - **Fragmentos por oraciones.** Cortar por oraciones completas, con una de solapamiento, evita
   partir ideas a la mitad y conserva el contexto entre fragmentos vecinos.
-- **Aislamiento por empresa.** La empresa sale de la sesión del usuario, nunca de lo que envía el
-  navegador, así que un usuario no puede recuperar documentos de otra empresa.
+- **Aislamiento por empresa.** El RUC sale de `app_metadata` en la sesión del usuario, nunca de lo que
+  envía el navegador, y con él se busca al administrador dueño de los documentos. Si no existe, se usa
+  el id del propio usuario, así que nunca se recuperan documentos de otra empresa.
+- **Solo el último mensaje busca.** El servidor recibe el historial, pero el embedding de consulta se
+  genera únicamente con el último mensaje del usuario.
 - **Umbral de 0.38.** Los fragmentos poco parecidos se descartan para que no desvíen la respuesta.
   Si no queda ninguno, el asistente responde con conocimiento general y lo indica.
 - **Alcance limitado.** El prompt de sistema restringe al asistente a temas de ciberseguridad,

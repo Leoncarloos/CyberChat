@@ -16,7 +16,7 @@ npm run lint     # ESLint
 |------|-------------|
 | `/` | Landing / redirect |
 | `/login` | Autenticación |
-| `/register` | Registro de empleado |
+| `/register` | Elección de registro: `/register/admin` (dueño + empresa) o `/register/employee` (solicitud de empleado) |
 | `/chat` | Chatbot RAG (todos los usuarios) |
 | `/admin` | Upload de documentos RAG (solo admin) |
 | `/manage` | Gestión de empleados (solo admin) |
@@ -27,7 +27,7 @@ npm run lint     # ESLint
 | `/api/quiz` | POST — guarda resultado de evaluación (post-test/recurrente) en `quiz_results` + `evaluation_attempts` + marca preguntas vistas (HU19/HU20) |
 | `/api/posttest` | GET — arma evaluación de 16 preguntas (2×8 temas) desde banco fijo `posttest_questions`, excluyendo preguntas ya vistas (HU19/HU20) |
 | `/api/recurring-test/status` | GET — indica si corresponde evaluación recurrente (≥5 días desde la última; bloqueante para employee, omitible para admin) (HU20) |
-| `/api/chat` | POST — inferencia RAG + Groq |
+| `/api/chat` | POST — inferencia RAG + Groq; recibe `conversation_id` y guarda la respuesta del asistente en `messages` (service_role) |
 | `/api/admin/employees` | GET/PATCH — CRUD empleados |
 | `/api/documents/upload-and-process` | POST — pipeline ingesta documentos |
 | `/api/learning-path` | GET — ruta de aprendizaje (nivel por tema + atajos) · POST — persiste progreso por tema (HU11) |
@@ -36,11 +36,19 @@ npm run lint     # ESLint
 | `/api/org-summary` | GET — resumen ejecutivo IA (cache TTL 1h, auto-genera) · POST — regenera bajo demanda (HU17) |
 
 ## Roles
-- `employee` — acceso solo a `/chat`
-- `admin` — acceso a `/chat`, `/manage`, `/admin`
+- `employee` — `/chat` y `/dashboard`; requiere aprobación del dueño (`approval_status: active`)
+- `admin` (dueño de empresa) — además `/manage`, `/admin` y `/org-dashboard`
 
-La protección de rutas es **client-side** en cada `page.tsx` via `supabase.auth.getUser()`.
-El middleware (`middleware.ts`) solo refresca cookies de sesión, no bloquea.
+Autorización en tres capas, todas con el estado vigente (no el del JWT):
+1. **API routes:** `requireActiveUser()` / `requireAdmin()` de `lib/authz.ts` (401 sin sesión,
+   403 si la cuenta no está activa o el rol no corresponde). Es la protección real.
+2. **RLS:** las tablas con acceso directo desde el navegador exigen dato propio y
+   `private.is_active_user()`. El navegador solo inserta mensajes con `role = 'user'`.
+3. **Middleware:** refresca la sesión, cierra la de empleados no activos (`/login?blocked=…`)
+   y redirige a `/diagnostic` si falta el diagnóstico. Las páginas además redirigen por rol
+   en el cliente (solo navegación).
+
+Los dueños se registran sin verificación de correo (decisión del equipo).
 
 ## Variables de entorno (`.env.local`)
 ```
@@ -88,7 +96,8 @@ Clientes:
 - `void` para promises flotantes en event handlers
 - Siempre `escapeHtml` antes de `dangerouslySetInnerHTML`
 - Embeddings: normalizar siempre a `number[]` 384-dim antes de insertar
-- API routes: validar sesión con `supabaseServer()` + `getUser()` — nunca confiar en body
+- API routes: autorizar con `requireActiveUser()` / `requireAdmin()` — nunca confiar en body
+- Escrituras de resultados y respuestas del asistente: solo con `supabaseAdmin` en API routes
 
 ## Documentación en `/docs`
 | Archivo | Contenido |
