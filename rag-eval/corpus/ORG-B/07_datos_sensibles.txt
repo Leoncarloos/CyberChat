@@ -1,0 +1,11 @@
+Clínica Dental Sonrisa S.A.C. — Manejo de datos sensibles
+
+Son datos sensibles las historias clínicas, las radiografías, los resultados de exámenes, los tratamientos y la información de salud en general. Se guardan solo en el sistema de historias clínicas y en el servidor local cifrado de radiografías.
+
+Está prohibido tomar fotos de pacientes o de radiografías con el celular personal. Para fotos clínicas se usa la cámara de la clínica, y las imágenes se pasan al servidor y se borran de la tarjeta el mismo día.
+
+Las historias clínicas solo se imprimen con autorización de la gerente y cuando el paciente las solicita por escrito. La clínica conserva las historias clínicas durante 15 años como política interna.
+
+No se usan memorias USB personales en los equipos. Para entregar una radiografía al paciente se usa un enlace de descarga con clave enviado a su correo registrado, nunca un adjunto sin protección.
+
+Los papeles con datos de pacientes, como fichas de contingencia, se destruyen con trituradora al terminar el día.

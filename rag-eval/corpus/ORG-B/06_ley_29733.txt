@@ -1,0 +1,11 @@
+Clínica Dental Sonrisa S.A.C. — Protección de datos personales de pacientes (Ley N.° 29733)
+
+La clínica trata datos personales de sus pacientes y, además, datos de salud, que la Ley N.° 29733, Ley de Protección de Datos Personales, considera datos sensibles. La responsable interna es la Dra. Carla Quispe.
+
+Para tratar datos de salud se necesita el consentimiento del paciente por escrito. El paciente firma el formulario de consentimiento informado en su primera cita, y una copia queda en su ficha. Los datos se usan para su atención, y no para otra finalidad sin un nuevo consentimiento.
+
+El paciente puede ejercer sus derechos de acceso, rectificación, cancelación y oposición en recepción o escribiendo a privacidad@clinicasonrisa.example. La clínica se compromete a responder en un máximo de 5 días hábiles.
+
+Las cámaras de vigilancia se instalan solo en pasillos y en la entrada, nunca dentro del consultorio, y hay un aviso visible de que la zona está videovigilada.
+
+Si se pierde un equipo con datos de pacientes, se avisa de inmediato a la Dra. Carla Quispe.

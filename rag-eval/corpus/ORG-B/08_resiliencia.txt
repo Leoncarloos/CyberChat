@@ -1,0 +1,11 @@
+Clínica Dental Sonrisa S.A.C. — Respaldo y recuperación ante incidentes
+
+El sistema de historias clínicas se respalda cada 6 horas durante el horario de atención y se envía una copia cifrada a la nube cada noche. Las radiografías se respaldan a diario en un segundo servidor.
+
+La restauración de una copia se prueba cada trimestre, junto con la revisión de accesos. SoporteSur realiza la prueba y entrega un acta a la gerente.
+
+Si el sistema cae o un equipo muestra un mensaje de secuestro de archivos (ransomware), apaga la conexión de red del equipo, no pagues nada y llama a SoporteSur por el anexo 210. La decisión sobre cualquier rescate la toma solo la Dra. Carla Quispe.
+
+El sistema de historias clínicas debe estar recuperado en un máximo de 2 horas. Mientras tanto, la clínica usa fichas de contingencia en papel, que se digitan al volver el sistema y luego se destruyen.
+
+La clínica tiene un botiquín de contingencia con una laptop sin conexión, con la agenda del día impresa cada mañana, para no suspender las citas.

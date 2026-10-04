@@ -1,0 +1,11 @@
+Ferretería Andina S.A.C. — Respaldo y recuperación ante incidentes
+
+La empresa hace una copia de respaldo diaria del sistema de facturación y del inventario a las 11:00 p. m., en un disco externo, y una copia semanal en la nube. Se aplica la regla 3-2-1: tres copias, en dos tipos de medio, una de ellas fuera de la tienda.
+
+El primer lunes de cada mes, Marco Salas prueba la restauración de una copia. Una copia que no se ha probado no se considera válida.
+
+Si un equipo muestra un mensaje de secuestro de archivos (ransomware), desconéctalo de la red y del wifi de inmediato, no lo apagues y llama a Marco Salas al anexo 105. La empresa no paga rescates sin la decisión de gerencia.
+
+El sistema de facturación debe estar de nuevo operativo en un máximo de 4 horas. Mientras tanto, caja emite boletas manuales de la libreta de contingencia y las digita al recuperarse el sistema.
+
+Después de cada incidente, Marco Salas redacta un informe breve de lo ocurrido y de las mejoras para evitar que se repita.

@@ -1,0 +1,11 @@
+Ferretería Andina S.A.C. — Manejo de datos sensibles
+
+La información de la empresa se clasifica en tres niveles: pública, interna y confidencial. Son confidenciales los precios de costo, los contratos con proveedores, la lista de clientes, las planillas y los datos bancarios.
+
+Los datos de tarjetas de clientes no se almacenan en ningún sistema ni se anotan en papel. El DNI de un cliente solo se guarda en el sistema de facturación, no en hojas de Excel sueltas ni en el celular personal.
+
+Está prohibido usar memorias USB personales en los equipos de la empresa. Los documentos confidenciales impresos se destruyen en la trituradora de oficina y no se botan enteros a la basura.
+
+Un archivo confidencial enviado por correo debe ir comprimido con clave, y la clave se envía por otro canal, por ejemplo una llamada. Nunca se envía en el mismo correo.
+
+Los comprobantes de venta se conservan 5 años en el archivo. Pasado ese plazo, el archivo físico se destruye con acta firmada por Lucía Paredes.

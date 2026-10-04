@@ -1,0 +1,11 @@
+Ferretería Andina S.A.C. — Política de correo sospechoso y phishing
+
+Esta política aplica a los 12 colaboradores de Ferretería Andina, en tienda y en almacén. Un correo es sospechoso si pide una contraseña, un pago urgente, un cambio de cuenta bancaria o que se abra un archivo que nadie esperaba.
+
+Si recibes un correo sospechoso no hagas clic en ningún enlace, no descargues adjuntos y no lo reenvíes a tus compañeros. Repórtalo con el botón "Reportar" de tu correo o escribiendo a seguridad@ferreteriaandina.example dentro de las 2 horas siguientes a recibirlo.
+
+Si ya hiciste clic en un enlace o abriste un adjunto, desconecta el equipo de la red de inmediato y avisa a Marco Salas, responsable de TI, al anexo 105. No apagues el equipo ni borres el correo, porque Marco lo necesita para revisarlo.
+
+Los pedidos de cambio de cuenta bancaria de un proveedor solo se aceptan después de confirmarlos por llamada telefónica al número que figura en el registro de proveedores, nunca al número que aparece en el correo.
+
+Cada trimestre la empresa envía un simulacro de phishing. Quien lo reporta correctamente suma un punto en el tablero de seguridad; quien hace clic recibe una capacitación breve de 15 minutos, sin sanción.

@@ -1,0 +1,11 @@
+Clínica Dental Sonrisa S.A.C. — Control de accesos
+
+Cada odontólogo solo puede ver en el sistema de historias clínicas las fichas de sus propios pacientes. Recepción solo ve datos administrativos, como nombre, teléfono y citas, y no ve el contenido clínico.
+
+Cuando una persona deja la clínica, sus accesos se revocan en un máximo de 4 horas desde la salida. La gerente firma el formulario de baja el mismo día.
+
+Cada trimestre, la Dra. Carla Quispe revisa junto con SoporteSur la lista de accesos y retira los que no corresponden. El sistema de historias clínicas guarda un registro de quién abrió cada ficha, y esos registros se conservan 2 años.
+
+La pantalla de los equipos se bloquea automáticamente a los 2 minutos de inactividad, porque en el consultorio y en recepción hay pacientes cerca.
+
+Los proveedores de mantenimiento entran al consultorio solo acompañados por una asistente, y no tienen acceso a la red de la clínica. El wifi de la sala de espera es una red aparte.

@@ -1,0 +1,11 @@
+Clínica Dental Sonrisa S.A.C. — Política de correo sospechoso y phishing
+
+Esta política aplica a los 9 colaboradores de la clínica, entre odontólogos, asistentes y recepción. Un correo es sospechoso si dice ser de un laboratorio, un banco o la SUNAT y pide un pago, una clave o abrir un archivo adjunto que no se esperaba.
+
+Si recibes un correo sospechoso no hagas clic ni respondas. Repórtalo en el grupo interno de WhatsApp "Alerta TI" dentro de la hora siguiente a recibirlo. No lo reenvíes por correo a nadie.
+
+Si ya abriste el enlace o el adjunto, apaga el equipo con el botón de encendido y avisa a la Dra. Carla Quispe, gerente de la clínica, o a SoporteSur, el proveedor externo de TI, por el anexo 210.
+
+Los laboratorios y proveedores que cambien su cuenta de pago deben confirmarlo por llamada al número que la clínica tiene registrado en su agenda de proveedores.
+
+La clínica hace un simulacro de phishing cada semestre. Quien hace clic en el simulacro repite el curso de seguridad de 30 minutos.

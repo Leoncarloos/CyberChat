@@ -1,0 +1,11 @@
+Ferretería Andina S.A.C. — Política de contraseñas
+
+Toda contraseña debe tener al menos 12 caracteres. Se recomienda una frase larga fácil de recordar en lugar de una palabra corta con símbolos.
+
+La empresa usa el gestor de contraseñas Bitwarden. Cada colaborador guarda ahí sus claves y no las anota en papel ni en hojas de Excel. Está prohibido reutilizar la misma contraseña en dos servicios distintos.
+
+Las contraseñas no se cambian por calendario. Se cambian cada 180 días solo en las cuentas compartidas, y de inmediato ante cualquier sospecha de filtración o cuando una persona con acceso deja la empresa.
+
+La verificación en dos pasos es obligatoria en el correo corporativo y en la banca por internet de la empresa.
+
+Una contraseña nunca se comparte por WhatsApp, por correo ni por teléfono, ni siquiera con TI. Marco Salas, responsable de TI, nunca la pedirá. Después de 5 intentos fallidos la cuenta se bloquea y el desbloqueo lo solicita el jefe directo a TI.
