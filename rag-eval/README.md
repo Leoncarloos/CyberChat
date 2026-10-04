@@ -133,3 +133,25 @@ Cómo se comporta:
   espera que indica el proveedor; `retries` queda en el registro.
 - **`baseline.json` (E0) debe coincidir con producción.** Si alguien cambia una constante del chat y
   no la configuración, `collect.ts` se niega a correr.
+
+## 6. Base de desarrollo y corpus sintético
+
+La evaluación usa un corpus ficticio ([corpus/README.md](corpus/README.md)) sembrado en un proyecto
+de Supabase **de desarrollo**, no en producción. Las ramas de Supabase requieren plan Pro, así que
+es un proyecto aparte (`cyberchat-rag-eval-dev`, plan gratuito). Su esquema está en
+[dev-schema.sql](dev-schema.sql): las migraciones de producción no incluyen las tablas de
+documentos, así que hay que aplicarlo a mano en un proyecto nuevo.
+
+1. Crea `.env.rag-eval.local` en la raíz (ignorado por git) con `NEXT_PUBLIC_SUPABASE_URL`
+   (`https://<ref>.supabase.co`), `SUPABASE_SERVICE_ROLE_KEY` (Dashboard → Settings → API Keys),
+   `HF_TOKEN`, `GROQ_API_KEY` y `RAG_EVAL_DEV_PROJECT_REF=<ref>`.
+2. Siembra los documentos y escribe el mapeo **fuera del repositorio**:
+
+```bash
+npx tsx --env-file=.env.rag-eval.local rag-eval/runner/seedCorpus.ts --org-map-out ../org-map.json
+```
+
+   Crea un administrador de prueba por organización y sube sus 8 documentos con la misma
+   fragmentación y los mismos embeddings que el endpoint de subida. Es idempotente; `--reset`
+   borra y vuelve a subir. Se niega a ejecutarse si la URL o el ref apuntan a producción.
+3. Usa el mapeo: `RAG_EVAL_ORG_MAP=../org-map.json` en el mismo archivo `.env.rag-eval.local`.
