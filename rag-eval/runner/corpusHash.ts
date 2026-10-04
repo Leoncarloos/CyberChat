@@ -9,9 +9,9 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { adminRef, loadOrgMap } from "./orgMap";
+import { adminRef, loadOrgMap, type OrgMap } from "./orgMap";
 
 const RESULTS = join(dirname(fileURLToPath(import.meta.url)), "..", "results");
 const PAGE = 1000;
@@ -69,8 +69,7 @@ async function listAdmins() {
   }
 }
 
-async function hashCorpus() {
-  const orgMap = loadOrgMap();
+export async function computeCorpus(orgMap: OrgMap) {
   const aliasByAdmin = new Map(Object.entries(orgMap).map(([alias, id]) => [id, alias]));
   const docs = await fetchAll<DocRow>("documents", "id, uploaded_by, created_at", {
     column: "uploaded_by",
@@ -119,9 +118,8 @@ async function hashCorpus() {
       };
     });
 
-  const corpusHash = sha256(contentLines.join("\n"));
-  const result = {
-    corpus_hash: corpusHash,
+  return {
+    corpus_hash: sha256(contentLines.join("\n")),
     index_hash: sha256(indexLines.join("\n")),
     computed_at: new Date().toISOString(),
     organizations: Object.keys(orgMap)
@@ -133,6 +131,11 @@ async function hashCorpus() {
       })),
     documents,
   };
+}
+
+async function hashCorpus() {
+  const result = await computeCorpus(loadOrgMap());
+  const corpusHash = result.corpus_hash;
 
   mkdirSync(RESULTS, { recursive: true });
   const file = join(RESULTS, `corpus_${corpusHash.slice(0, 12)}.json`);
@@ -145,7 +148,12 @@ async function hashCorpus() {
   console.log(`Guardado en ${file}`);
 }
 
-(process.argv.includes("--list") ? listAdmins() : hashCorpus()).catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+const invokedDirectly =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (invokedDirectly) {
+  (process.argv.includes("--list") ? listAdmins() : hashCorpus()).catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}
