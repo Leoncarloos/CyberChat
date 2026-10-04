@@ -1,6 +1,6 @@
 // Multilingual sentence-transformer — 384-dim, compatible con pgvector existente.
 // Reemplaza all-MiniLM-L6-v2 (inglés) para mayor precisión en español.
-const EMBED_MODEL =
+export const EMBED_MODEL =
   "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2";
 export const EMBED_DIM = 384;
 
