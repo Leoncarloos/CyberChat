@@ -53,3 +53,6 @@ rag-eval/org-map*.json
 !rag-eval/org-map.example.json
 !rag-eval/.env.example
 .venv/
+
+# Borrador del conjunto (salidas del generador)
+rag-eval/dataset/draft_raw/
