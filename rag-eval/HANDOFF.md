@@ -1,0 +1,74 @@
+# Traspaso — evaluación del RAG (rag-eval)
+
+Estado al 2026-10-04, para retomar en una sesión nueva sin reexplicar nada. Léelo completo antes de
+tocar código. El protocolo y su mapeo al paper están en [docs/rag-eval/PROTOCOLO.md](../docs/rag-eval/PROTOCOLO.md);
+los comandos, en [README.md](README.md).
+
+## Qué se quiere
+Un arnés reproducible que implemente la sección 5.C del paper (Faithfulness, Answer Relevancy,
+Context Recall y Context Precision, más recuperación y aislamiento) sobre el RAG de CyberChat. El
+encargo original es el prompt `prompt-claude-code-evaluacion-rag.md` (en Descargas del usuario);
+este archivo resume lo vigente.
+
+## Reglas que siguen vigentes
+- **Producción solo en lectura.** Los experimentos que reindexan (E4) van en el proyecto de desarrollo.
+- **No ejecutar llamadas pagadas sin confirmación**, y **estimar el costo antes** (tabla de llamadas).
+- **Nada de datos de empresas ni claves en git.** `rag-eval/results/`, los JSONL, los XLSX y el mapeo están ignorados.
+- **Parada A** (costos, juez, organizaciones) y **Parada B** (resultados de E0 y aislamiento antes de E1–E6): esperar al usuario.
+- No inventar resultados; lo no ejecutado se dice y la tabla queda con el hueco.
+- El usuario prefiere respuestas cortas y que se vaya al grano.
+
+## Dónde está cada cosa
+| Qué | Dónde |
+|---|---|
+| Rama de trabajo | `feat/rag-eval` (en GitHub, hasta el commit `cb728ce`) |
+| `main` | **2 commits locales sin subir** (`ef45878`, `488b944`); el push fue bloqueado porque despliega a producción. Lo decide el usuario |
+| Proyecto Supabase de **desarrollo** | `cyberchat-rag-eval-dev`, ref `prgipedtijbryajvvenj`, plan gratuito ($0), región us-west-1 |
+| Producción (solo lectura) | `wyzzrjeeuwjiqzseclob` |
+| Entorno del arnés | `.env.rag-eval.local` en la raíz (ignorado). Tiene URL y service_role del proyecto de desarrollo, `HF_TOKEN`, `GROQ_API_KEY` |
+| Mapeo organización → administrador | `C:\ProyectosClaudeCode\org-map.json`, **fuera del repo**. Variable `RAG_EVAL_ORG_MAP` |
+| Corpus sintético | `rag-eval/corpus/ORG-A` y `ORG-B` (8 documentos cada una); sembrado: 16 documentos, 32 fragmentos |
+| Hash del corpus sembrado | `corpus_hash 02c01b93223d16f2…` |
+| Pruebas | `npm run test:rag-eval` → **68 pasan** |
+
+## Hecho
+1. **Tarea 1:** `dataset/xlsx_to_jsonl.py` (convierte y valida la plantilla), `runner/corpusHash.ts` (`corpus_hash` e `index_hash`), `runner/orgMap.ts`.
+2. **Extracción pura** a `lib/ragPipeline.ts`; `/api/chat` lo importa. `runner/equivalence.test.ts` compara la ruta anterior (copia congelada del commit `488b944`) con la actual en 10 consultas y 18 fallos. Se sembraron 5 errores a propósito y los detectó todos.
+3. **Recolector** `runner/collect.ts` + `configs/baseline.json` (E0). Rechaza E0 si deja de coincidir con las constantes de producción. **Nunca se ejecutó contra servicios reales**; solo con simulaciones.
+4. **Corpus sintético** y `runner/seedCorpus.ts` (se niega a correr contra producción). Sembrado y comprobado con embeddings reales: cada empresa recupera su propia regla (12 vs 14 caracteres) y el filtro por documento ajeno devuelve 0 filas.
+5. **Conjunto de evaluación:** `dataset/draft_questions.py` generó el borrador (gpt-oss-120b, distinto del generador del chat). Los 10 casos de **aislamiento se escribieron a mano** (`dataset/isolation_cases.py`, verificados contra el corpus) porque los del LLM se apoyaban en temas que ambas empresas cubren.
+6. **Verificación de la revisión:** `dataset/verify_review.py` → `docs/rag-eval/INFORME_VERIFICACION_REVISION.md` y `dataset/hoja_verificacion_revisores.xlsx`.
+
+## Hallazgos que importan
+- **Revisión no demostrada.** El archivo `conjunto_evaluacion_revisado.xlsx` marca «Sí» en las 110 filas, con **0 cambios** respecto al borrador y la misma nota en todas. No se debe afirmar «referencias revisadas por especialistas» en el paper hasta que los revisores devuelvan la hoja de verificación con decisiones explícitas. Mientras tanto el conjunto no está fijado.
+- **El problema de los 512 caracteres:** 688 de 698 fragmentos (98,6 %) de producción superan 512 caracteres, y en el corpus sintético también. El modelo de embeddings `paraphrase-multilingual-MiniLM-L12-v2` tiene `max_seq_length: 128` tokens (≈ 450–550 caracteres, verificado en su tarjeta). El recorte de `embedHF` está alineado con el modelo: el defecto es indexar fragmentos de hasta 800 caracteres y vectorizar solo ~500. La solución propuesta (E4) son fragmentos ≤ ~450 caracteres con reindexación en desarrollo; hay que recalibrar el umbral 0,38 después (E1).
+- **La búsqueda filtra por empresa después del índice HNSW (aproximado):** una empresa pequeña podría recibir menos de 5 fragmentos. `collect.ts` lo mide (`top_matches_candidates`).
+- **Las ramas de Supabase requieren plan Pro**; por eso el desarrollo es un proyecto aparte. Las migraciones de producción no incluyen las tablas de documentos: el esquema mínimo está en `dev-schema.sql`.
+- Corpus de producción (solo conteos): 4 administradores con documentos, 698 fragmentos. **No usar con juez externo sin autorización.**
+
+## Pendiente (en este orden)
+1. **Parada A, falta la elección del juez de RAGAS.** Presentar 2–3 candidatos (distinto de `gpt-oss-20b`, temperatura 0, instrucciones en español) con costo estimado; el gasto grande son unas 2 000 llamadas. Fijar versión de RAGAS y verificar nombres y firmas de la API instalada.
+2. **Cerrar la revisión del conjunto:** los dos revisores trabajan por separado en `hoja_verificacion_revisores.xlsx`; pasar las correcciones al conjunto, volver a correr `xlsx_to_jsonl.py` y `verify_review.py`, y entonces fijar el hash del conjunto.
+3. **Línea base de recuperación** (`collect.ts --no-generate`, casi sin costo): hit@k, MRR, impacto de los 512 caracteres. Puede hacerse antes de cerrar la revisión, como prueba del arnés, y avisando que el conjunto aún no está validado.
+4. **Tareas 3 a 8, sin empezar:** `retrieval_metrics.py`, `ragas_metrics.py`, `isolation_check.py`, `compare_configs.py` (E1–E6, Wilcoxon/McNemar con corrección de Holm, bootstrap), `human_review.py` (muestra de 40, kappa ponderado), `report.py` (paleta gris y azul `#1F3A5F`). Faltan también `configs/e1…e6`.
+5. **Parada B:** mostrar E0 y aislamiento antes de los experimentos.
+
+## Pendientes fuera de rag-eval
+- `git push origin main` (2 commits): el usuario decide cuándo, porque despliega a producción.
+- Después del despliegue, aplicar `docs/sql/messages_insert_user_only.sql` en producción. **Aplicarlo antes rompe el guardado de respuestas del chat.**
+- Archivos sin seguimiento que **no** se suben: `docs/plan-gestion-proyecto.md` (el usuario pidió no subirlo), y `docs/cyberchat-contexto-plataforma.md` (nada lo referencia; preguntar).
+- Los Excel corregidos de HU y CP están en Descargas; los `Espinoza_Leon_*` no llevan las correcciones (la oferta de pasarlas sigue abierta).
+
+## Comandos útiles
+```bash
+npm run test:rag-eval
+python rag-eval/dataset/xlsx_to_jsonl.py --xlsx ruta/revisado.xlsx
+python rag-eval/dataset/verify_review.py --reviewed ruta/revisado.xlsx --draft rag-eval/dataset/conjunto_borrador.xlsx
+RAG_EVAL_ORG_MAP=../org-map.json npx tsx --env-file=.env.rag-eval.local rag-eval/runner/corpusHash.ts
+npx tsx --env-file=.env.rag-eval.local rag-eval/runner/seedCorpus.ts --org-map-out ../org-map.json
+```
+
+## Notas de entorno
+- Windows, shell Bash/PowerShell. `python` es 3.14; para imprimir tildes usa `PYTHONIOENCODING=utf-8`.
+- El generador del chat es `openai/gpt-oss-20b` con `reasoning_effort: "low"` (sin eso devuelve contenido vacío con pocos tokens).
+- El contexto de la sesión anterior llegó a ~550 000 tokens y consumía rápido el límite: conviene trabajar en sesiones nuevas.
