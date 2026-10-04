@@ -42,3 +42,14 @@ next-env.d.ts
 
 # Python
 __pycache__/
+
+# Evaluación del RAG: resultados con fragmentos de documentos de las empresas,
+# conjunto convertido y mapeo de organizaciones (nunca al repositorio)
+rag-eval/results/
+rag-eval/dataset/*.jsonl
+rag-eval/dataset/validacion.json
+rag-eval/dataset/*.xlsx
+rag-eval/org-map*.json
+!rag-eval/org-map.example.json
+!rag-eval/.env.example
+.venv/
