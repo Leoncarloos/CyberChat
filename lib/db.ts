@@ -1,8 +1,6 @@
 // /lib/db.ts
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 
-type Role = "user" | "assistant";
-
 export async function listConversations(user_id: string) {
   const supabase = supabaseBrowser();
   return supabase
@@ -30,11 +28,13 @@ export async function listMessages(conversation_id: string) {
     .order("created_at", { ascending: true });
 }
 
-export async function addMessage(conversation_id: string, role: Role, content: string) {
+// Solo mensajes del usuario: la respuesta del asistente la guarda /api/chat (RLS
+// rechaza role 'assistant' desde el navegador).
+export async function addUserMessage(conversation_id: string, content: string) {
   const supabase = supabaseBrowser();
   return supabase
     .from("messages")
-    .insert({ conversation_id, role, content })
+    .insert({ conversation_id, role: "user", content })
     .select("*")
     .single();
 }

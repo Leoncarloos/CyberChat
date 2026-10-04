@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import {
-  addMessage,
+  addUserMessage,
   createConversation,
   deleteConversation,
   listConversations,
@@ -27,6 +27,7 @@ type UiMessage = StoredMessage & {
 };
 type ChatApiResponse = {
   answer?: string;
+  message?: StoredMessage;
   matchesCount?: number;
   bestSimilarity?: number;
   usedContext?: boolean;
@@ -454,7 +455,7 @@ function ChatPageInner() {
     setIsSending(true);
     setActiveModule("chat");
 
-    const userMsgRes = await addMessage(conversationId, "user", text);
+    const userMsgRes = await addUserMessage(conversationId, text);
     if (userMsgRes.error) {
       setIsSending(false);
       toast("error", userMsgRes.error.message);
@@ -473,7 +474,7 @@ function ChatPageInner() {
     const apiRes = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: historyForApi }),
+      body: JSON.stringify({ messages: historyForApi, conversation_id: conversationId }),
     });
 
     const raw = await apiRes.text();
@@ -488,7 +489,6 @@ function ChatPageInner() {
       return;
     }
 
-    const reply = String(data?.answer ?? "");
     const assistantMeta: AssistantMeta = {
       matchesCount: Number(data?.matchesCount ?? 0),
       bestSimilarity: Number(data?.bestSimilarity ?? 0),
@@ -496,16 +496,15 @@ function ChatPageInner() {
       sources: Array.isArray(data?.sources) ? data.sources : [],
     };
 
-    const asstMsgRes = await addMessage(conversationId, "assistant", reply);
     setIsSending(false);
 
-    if (asstMsgRes.error) {
-      toast("error", asstMsgRes.error.message);
+    if (!data?.message) {
+      toast("error", "Error al procesar la consulta, intente nuevamente.");
       return;
     }
 
     const assistantMessage = {
-      ...(asstMsgRes.data as StoredMessage),
+      ...data.message,
       meta: assistantMeta,
     };
 

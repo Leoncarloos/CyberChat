@@ -97,12 +97,20 @@ function buildSystemPrompt(context: string, chunkCount: number): string {
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as { messages?: ChatMsg[]; document_id?: string };
+    const body = (await req.json()) as {
+      messages?: ChatMsg[];
+      document_id?: string;
+      conversation_id?: string;
+    };
     const incoming = body.messages;
     const document_id = body.document_id ? String(body.document_id) : null;
+    const conversationId = body.conversation_id ? String(body.conversation_id) : "";
 
     if (!Array.isArray(incoming) || incoming.length === 0) {
       return NextResponse.json({ error: "messages requerido" }, { status: 400 });
+    }
+    if (!conversationId) {
+      return NextResponse.json({ error: "conversation_id requerido" }, { status: 400 });
     }
 
     const groqKey = process.env.GROQ_API_KEY;
@@ -112,6 +120,18 @@ export async function POST(req: Request) {
 
     const auth = await requireActiveUser();
     if (!auth.ok) return auth.response;
+
+    // La respuesta del asistente la guarda el servidor: RLS solo deja al usuario
+    // insertar mensajes con role 'user', para que no pueda fabricar respuestas.
+    const { data: conversation } = await supabaseAdmin()
+      .from("conversations")
+      .select("id")
+      .eq("id", conversationId)
+      .eq("user_id", auth.user.id)
+      .maybeSingle();
+    if (!conversation) {
+      return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
+    }
 
     const lastUserMsg =
       [...incoming].reverse().find((m) => m.role === "user")?.content?.trim() ?? "";
@@ -198,8 +218,16 @@ export async function POST(req: Request) {
     const answer =
       groqData?.choices?.[0]?.message?.content ?? "No pude generar respuesta.";
 
+    const { data: message, error: saveErr } = await supabaseAdmin()
+      .from("messages")
+      .insert({ conversation_id: conversationId, role: "assistant", content: answer })
+      .select("*")
+      .single();
+    if (saveErr) return processingError("no se pudo guardar la respuesta", saveErr);
+
     return NextResponse.json({
       answer,
+      message,
       matchesCount: top.length,
       bestSimilarity: bestSim,
       usedContext: top.length > 0,
