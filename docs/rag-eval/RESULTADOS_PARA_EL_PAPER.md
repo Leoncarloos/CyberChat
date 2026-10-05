@@ -39,6 +39,16 @@ por pruebas múltiples la diferencia no alcanza significancia (p corregido 0,078
 **5. Context Recall y Context Precision (RAGAS, E0).** 0,85 y 0,79 en conjunto (0,89 y 0,83 en documentales;
 0,64 y 0,53 en seguimiento). Un juez, una ejecución.
 
+**6. Fidelidad validada por revisión humana (E0, 40 respuestas).** Dos revisores (Fabian Astrada Contreras y
+Javier Mamani Salinas), trabajando por separado, calificaron la fidelidad de las respuestas contra los fragmentos
+recuperados en escala 0/1/2. Acuerdo exacto 0,85 y kappa ponderado cuadrático 0,79 (acuerdo sustancial). La
+correlación entre la media humana y el puntaje de Faithfulness del juez fue Spearman 0,76. Por nivel humano, el
+juez dio en promedio 0,28 (nivel 0, n=5), 0,48 (nivel 1, n=20) y 0,90 (nivel 2, n=15): el juez ordena las respuestas
+como los humanos. Hallazgo sobre el sistema: solo 30–38 % de las respuestas se calificó totalmente fiel (2); 55–60 %
+mezcla lo respaldado con afirmaciones que no están en los fragmentos (1) y 8–10 % contradice o inventa lo central (0).
+Esto respalda usar Faithfulness (≈0,56 en E0) como medida, y la brecha seguimiento–documental (0,31 frente a 0,60)
+como resultado del sistema.
+
 ## Hallazgo técnico para discutir
 Cuando el fragmento relevante tiene su cita fuera de los primeros 512 caracteres, la recuperación empeora:
 hit@1 0,32 (19 consultas) frente a 0,77 (60 consultas). El modelo de embeddings solo vectoriza ~512 caracteres y el
@@ -46,9 +56,11 @@ sistema indexa fragmentos de hasta 800. Es una **asociación observada**, sin co
 la corrección (fragmentos más cortos).
 
 ## Lo que NO se debe afirmar
-- **Faithfulness (0,56) y Answer Relevancy (0,79) como medidas de calidad.** No se validaron contra revisión humana.
-  La hoja (`rag-eval/results/revision_humana.xlsx`) está pendiente de los dos revisores. Hasta entonces, no hay base
-  para decir si el 0,56 es un defecto del sistema o un juez estricto.
+- **Answer Relevancy (0,79) como medida de calidad.** La revisión humana no la valida: los revisores calificaron
+  39 de 40 respuestas como relevantes (casi sin variación), así que el kappa de 1,00 no informa y la correlación
+  con el juez es baja (Spearman 0,27). El juez parece subestimar la relevancia. No usarla como resultado.
+- **Que Faithfulness mide la calidad real sin matices.** La validación es sobre 40 respuestas de E0 y dos revisores;
+  declarar ese tamaño.
 - **«Referencias revisadas por especialistas» para el conjunto completo.** Dos revisores verificaron 35 de las
   110 filas; las otras 75 no tienen revisión explícita. Si se cita, decir «una muestra de 35 filas».
 - **Que E1 (umbral 0,30) mejora algo.** Solo aumentó la proporción con contexto; no mejoró fidelidad ni relevancia.
