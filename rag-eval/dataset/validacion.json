@@ -1,0 +1,40 @@
+{
+  "generado": "2026-10-04T22:41:27+00:00",
+  "xlsx": "revisado_v2.xlsx",
+  "xlsx_sha256": "fff2d7af01373e06c0a7a813cb07d076223e373080eef7bd1900debafc5b6020",
+  "valido": true,
+  "conjunto": {
+    "filas": 80,
+    "completas": 80,
+    "revision": {
+      "validadas_por_ambos": 80,
+      "con_alguna_revision": 80,
+      "total": 80
+    },
+    "organizaciones": [
+      "ORG-A",
+      "ORG-B"
+    ]
+  },
+  "bateria": {
+    "filas": 30,
+    "completas": 30,
+    "revision": {
+      "validadas_por_ambos": 30,
+      "con_alguna_revision": 30,
+      "total": 30
+    }
+  },
+  "salida": {
+    "conjunto.jsonl": {
+      "registros": 80,
+      "sha256": "7f939bc55e619f24ba1a3d155e962d03e297270952944b0bb8549f213e070d54"
+    },
+    "bateria.jsonl": {
+      "registros": 30,
+      "sha256": "2522611ea35364d9633544191360786258cd919d5703833b0e0deeea4d41825d"
+    }
+  },
+  "errores": [],
+  "avisos": []
+}

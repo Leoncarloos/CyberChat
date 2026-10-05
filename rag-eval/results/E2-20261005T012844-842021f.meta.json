@@ -1,0 +1,68 @@
+{
+  "run_id": "E2-20261005T012844-842021f",
+  "started_at": "2026-10-05T01:28:44.423Z",
+  "finished_at": "2026-10-05T01:29:36.950Z",
+  "config": {
+    "config_id": "E2",
+    "description": "Confirmación de E2: mismas 16 consultas de seguimiento, 3 repeticiones. Replica sobre el ruido del generador; no son datos nuevos.",
+    "retrieval": {
+      "threshold": 0.38,
+      "max_chunks": 5,
+      "match_count": 5,
+      "candidates": 20,
+      "rewrite_query": {
+        "enabled": true,
+        "params": {
+          "model": "openai/gpt-oss-20b",
+          "reasoning_effort": "low",
+          "temperature": 0,
+          "max_tokens": 400
+        }
+      }
+    },
+    "generator": {
+      "model": "openai/gpt-oss-20b",
+      "reasoning_effort": "low",
+      "temperature": 0.15,
+      "max_tokens": 900
+    },
+    "history": {
+      "max_history": 12
+    },
+    "repetitions": 3
+  },
+  "generate_responses": true,
+  "queries": 16,
+  "records": 48,
+  "records_with_error": 3,
+  "dataset_sha256": {
+    "conjunto": "7f939bc55e619f24ba1a3d155e962d03e297270952944b0bb8549f213e070d54"
+  },
+  "git_commit": "842021f187dc56eac0d100d0f6893d0263e32dd1",
+  "git_dirty": false,
+  "corpus_hash": "02c01b93223d16f206e2a5bb3eee0ef7d514bb8d76c2d30389abad5346848d0c",
+  "index_hash": "c8d6cf4bcd4fef2ff3eab0f158f0f35543077f52ec6c9d3f12d8fbe1ba7f31d1",
+  "organizations": [
+    {
+      "org_alias": "ORG-A",
+      "documents": 8,
+      "chunks": 16
+    },
+    {
+      "org_alias": "ORG-B",
+      "documents": 8,
+      "chunks": 16
+    }
+  ],
+  "embedding": {
+    "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "dimensions": 384,
+    "max_input_chars": 512
+  },
+  "versions": {
+    "node": "v24.12.0",
+    "next": "16.1.6",
+    "@supabase/supabase-js": "2.95.3",
+    "tsx": "4.23.15"
+  }
+}

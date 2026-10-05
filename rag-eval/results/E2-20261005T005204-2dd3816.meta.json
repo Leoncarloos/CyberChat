@@ -1,0 +1,69 @@
+{
+  "run_id": "E2-20261005T005204-2dd3816",
+  "started_at": "2026-10-05T00:52:04.900Z",
+  "finished_at": "2026-10-05T00:54:38.144Z",
+  "config": {
+    "config_id": "E2",
+    "description": "Reescritura de la consulta con el historial antes de buscar (solo si hay historial). Umbral y demás igual a E0. El generador recibe la conversación original.",
+    "retrieval": {
+      "threshold": 0.38,
+      "max_chunks": 5,
+      "match_count": 5,
+      "candidates": 20,
+      "rewrite_query": {
+        "enabled": true,
+        "params": {
+          "model": "openai/gpt-oss-20b",
+          "reasoning_effort": "low",
+          "temperature": 0,
+          "max_tokens": 400
+        }
+      }
+    },
+    "generator": {
+      "model": "openai/gpt-oss-20b",
+      "reasoning_effort": "low",
+      "temperature": 0.15,
+      "max_tokens": 900
+    },
+    "history": {
+      "max_history": 12
+    },
+    "repetitions": 1
+  },
+  "generate_responses": true,
+  "queries": 110,
+  "records": 110,
+  "records_with_error": 0,
+  "dataset_sha256": {
+    "conjunto": "7f939bc55e619f24ba1a3d155e962d03e297270952944b0bb8549f213e070d54",
+    "bateria": "2522611ea35364d9633544191360786258cd919d5703833b0e0deeea4d41825d"
+  },
+  "git_commit": "2dd3816cb3c1f5ab16990409750ba957feccfabc",
+  "git_dirty": false,
+  "corpus_hash": "02c01b93223d16f206e2a5bb3eee0ef7d514bb8d76c2d30389abad5346848d0c",
+  "index_hash": "c8d6cf4bcd4fef2ff3eab0f158f0f35543077f52ec6c9d3f12d8fbe1ba7f31d1",
+  "organizations": [
+    {
+      "org_alias": "ORG-A",
+      "documents": 8,
+      "chunks": 16
+    },
+    {
+      "org_alias": "ORG-B",
+      "documents": 8,
+      "chunks": 16
+    }
+  ],
+  "embedding": {
+    "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "dimensions": 384,
+    "max_input_chars": 512
+  },
+  "versions": {
+    "node": "v24.12.0",
+    "next": "16.1.6",
+    "@supabase/supabase-js": "2.95.3",
+    "tsx": "4.23.15"
+  }
+}

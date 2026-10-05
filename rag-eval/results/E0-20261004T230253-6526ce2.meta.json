@@ -1,0 +1,60 @@
+{
+  "run_id": "E0-20261004T230253-6526ce2",
+  "started_at": "2026-10-04T23:02:53.226Z",
+  "finished_at": "2026-10-04T23:07:46.961Z",
+  "config": {
+    "config_id": "E0",
+    "description": "Línea base: los parámetros que corren en producción (lib/ragPipeline.ts). collect.ts rechaza este archivo si deja de coincidir con ellos.",
+    "retrieval": {
+      "threshold": 0.38,
+      "max_chunks": 5,
+      "match_count": 5,
+      "candidates": 20
+    },
+    "generator": {
+      "model": "openai/gpt-oss-20b",
+      "reasoning_effort": "low",
+      "temperature": 0.15,
+      "max_tokens": 900
+    },
+    "history": {
+      "max_history": 12
+    },
+    "repetitions": 3
+  },
+  "generate_responses": true,
+  "queries": 110,
+  "records": 330,
+  "records_with_error": 7,
+  "dataset_sha256": {
+    "conjunto": "7f939bc55e619f24ba1a3d155e962d03e297270952944b0bb8549f213e070d54",
+    "bateria": "2522611ea35364d9633544191360786258cd919d5703833b0e0deeea4d41825d"
+  },
+  "git_commit": "6526ce28671c401cc294cc06787906f30073014c",
+  "git_dirty": true,
+  "corpus_hash": "02c01b93223d16f206e2a5bb3eee0ef7d514bb8d76c2d30389abad5346848d0c",
+  "index_hash": "c8d6cf4bcd4fef2ff3eab0f158f0f35543077f52ec6c9d3f12d8fbe1ba7f31d1",
+  "organizations": [
+    {
+      "org_alias": "ORG-A",
+      "documents": 8,
+      "chunks": 16
+    },
+    {
+      "org_alias": "ORG-B",
+      "documents": 8,
+      "chunks": 16
+    }
+  ],
+  "embedding": {
+    "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "dimensions": 384,
+    "max_input_chars": 512
+  },
+  "versions": {
+    "node": "v24.12.0",
+    "next": "16.1.6",
+    "@supabase/supabase-js": "2.95.3",
+    "tsx": "4.23.15"
+  }
+}
