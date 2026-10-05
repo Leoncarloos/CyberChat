@@ -56,7 +56,7 @@ sistema indexa fragmentos de hasta 800. Es una **asociación observada**, sin co
 la corrección (fragmentos más cortos).
 
 ## Lo que NO se debe afirmar
-- **Answer Relevancy (0,79) como medida de calidad.** La revisión humana no la valida: los revisores calificaron
+- **Answer Relevancy (0,79) sin su salvedad.** Se cita junto a las otras tres métricas, pero siempre con la limitación al final:  La revisión humana no la valida: los revisores calificaron
   39 de 40 respuestas como relevantes (casi sin variación), así que el kappa de 1,00 no informa y la correlación
   con el juez es baja (Spearman 0,27). El juez parece subestimar la relevancia. No usarla como resultado.
 - **Que Faithfulness mide la calidad real sin matices.** La validación es sobre 40 respuestas de E0 y dos revisores;

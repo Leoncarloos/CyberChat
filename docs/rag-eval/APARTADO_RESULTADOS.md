@@ -64,8 +64,9 @@ sección 4), pero ninguna filtró datos de la otra empresa.
 | Context Recall | 0,85 | 0,89 | 0,64 |
 | Context Precision | 0,78 | 0,83 | 0,53 |
 | Faithfulness | 0,56 | 0,60 | 0,31 |
+| Answer Relevancy | 0,79 | 0,81 | 0,70 |
 
-Context Recall y Context Precision se calcularon sobre 70 consultas y Faithfulness sobre 206 respuestas; el resto
+Context Recall y Context Precision se calcularon sobre 70 consultas, y Faithfulness y Answer Relevancy sobre 206 respuestas; el resto
 no se puntuó por falta de contexto recuperado o por error del sistema, y ese denominador se reporta aparte.
 
 **Validación humana de Faithfulness.** Dos revisores calificaron por separado, en una escala de 0 a 2, la fidelidad
@@ -79,9 +80,9 @@ el 60 % combinó contenido respaldado con afirmaciones ausentes de los fragmento
 o inventó lo central. La diferencia entre consultas documentales y de seguimiento (0,60 frente a 0,31) coincide con
 el patrón observado en la recuperación.
 
-**Answer Relevancy** (0,79) no se interpreta como resultado: los revisores calificaron 39 de 40 respuestas como
-relevantes, de modo que la escala no discriminó (kappa de 1,00 sin información) y la correlación con el juez fue baja
-(0,27), lo que sugiere que el juez subestima esta dimensión.
+**Answer Relevancy.** El juez asignó 0,79 en promedio (0,81 en documentales y 0,70 en seguimiento), lo que indica que
+las respuestas atienden en general lo preguntado, con menor ajuste en las consultas de seguimiento. La validación
+humana de esta dimensión tiene una limitación que se detalla en la sección 6.
 
 ## 5. Mitigaciones exploradas
 
@@ -109,3 +110,9 @@ por configuración (E0 con tres repeticiones; E1 y E2 con una). El conjunto de e
 revisores en una muestra de 35 de sus 110 elementos; los 75 restantes no tuvieron revisión explícita. Siete registros
 de E0 fallaron por errores del servicio (cuatro del generador y tres de embeddings) y se contaron en los
 denominadores. La validación humana de Faithfulness se basa en 40 respuestas y dos revisores.
+
+Respecto de Answer Relevancy, la revisión humana no permitió validar el juez: los dos revisores calificaron como
+relevantes 39 de las 40 respuestas, de modo que la escala casi no varió, el kappa de 1,00 no aporta información y la
+correlación con el juez fue baja (Spearman de 0,27). Esto sugiere que el juez tiende a asignar puntajes menores a los
+de un lector humano en esta dimensión, por lo que 0,79 debe leerse como una cota inferior no validada y no como una
+medida calibrada de relevancia.
