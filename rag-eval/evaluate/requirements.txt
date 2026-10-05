@@ -1,3 +1,15 @@
 # Versiones fijadas. Cada tarea agrega aquí sus dependencias al implementarse
 # (ragas, pandas, scipy, matplotlib…), con la versión verificada en ese momento.
 openpyxl==3.1.5
+# Juez de RAGAS (ragas_metrics.py). Verificado con Python 3.14: scikit-network no compila y no se usa
+# en estas métricas, así que ragas se instala con --no-deps y estas dependencias a mano.
+ragas==0.4.3
+openai==1.109.1
+httpx==0.28.1
+instructor==1.3.2
+datasets==5.0.1
+numpy==2.5.3
+langchain==0.3.30
+langchain-core==0.3.86
+langchain-community==0.3.31
+langchain-openai==0.3.35

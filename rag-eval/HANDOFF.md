@@ -48,7 +48,7 @@ este archivo resume lo vigente.
 
 ## Pendiente (en este orden)
 1. **Parada A, falta la elección del juez de RAGAS.** Presentar 2–3 candidatos (distinto de `gpt-oss-20b`, temperatura 0, instrucciones en español) con costo estimado; el gasto grande son unas 2 000 llamadas. Fijar versión de RAGAS y verificar nombres y firmas de la API instalada.
-2. **Cerrar la revisión del conjunto:** los dos revisores trabajan por separado en `hoja_verificacion_revisores.xlsx`; pasar las correcciones al conjunto, volver a correr `xlsx_to_jsonl.py` y `verify_review.py`, y entonces fijar el hash del conjunto.
+2. **Revisión del conjunto — hecha el 2026-10-04** por Fabian Astrada Contreras (A) y Javier Mamani Salinas (B) sobre 35 de 110 filas; 7 discrepancias resueltas y aplicadas en `dataset/revisado_v2.xlsx` (Q15, Q28, Q69, Q70 reformuladas; B08 y B09 reemplazadas por preguntas sin respuesta en el corpus; Q77 se mantuvo). Las 75 filas restantes siguen sin revisión explícita. Antes: **cerrar la revisión del conjunto:** los dos revisores trabajan por separado en `hoja_verificacion_revisores.xlsx`; pasar las correcciones al conjunto, volver a correr `xlsx_to_jsonl.py` y `verify_review.py`, y entonces fijar el hash del conjunto.
 3. **Línea base de recuperación** (`collect.ts --no-generate`, casi sin costo): hit@k, MRR, impacto de los 512 caracteres. Puede hacerse antes de cerrar la revisión, como prueba del arnés, y avisando que el conjunto aún no está validado.
 4. **Tareas 3 a 8, sin empezar:** `retrieval_metrics.py`, `ragas_metrics.py`, `isolation_check.py`, `compare_configs.py` (E1–E6, Wilcoxon/McNemar con corrección de Holm, bootstrap), `human_review.py` (muestra de 40, kappa ponderado), `report.py` (paleta gris y azul `#1F3A5F`). Faltan también `configs/e1…e6`.
 5. **Parada B:** mostrar E0 y aislamiento antes de los experimentos.
@@ -72,3 +72,12 @@ npx tsx --env-file=.env.rag-eval.local rag-eval/runner/seedCorpus.ts --org-map-o
 - Windows, shell Bash/PowerShell. `python` es 3.14; para imprimir tildes usa `PYTHONIOENCODING=utf-8`.
 - El generador del chat es `openai/gpt-oss-20b` con `reasoning_effort: "low"` (sin eso devuelve contenido vacío con pocos tokens).
 - El contexto de la sesión anterior llegó a ~550 000 tokens y consumía rápido el límite: conviene trabajar en sesiones nuevas.
+
+## Actualización 2026-10-05 — E0 ejecutada (Parada B)
+- Juez: `qwen/qwen3.8-27b` (Groq, temperatura 0, instrucción en español), RAGAS 0.4.3 en `rag-eval/.venv` (con `langchain<1`; `scikit-network` no compila en Python 3.14 y no se usa). Gasto ≈ $2,55 de un tope de $6.
+- `evaluate/ragas_metrics.py` (reanudable, con tope de presupuesto) e `evaluate/isolation_check.py` listos. Resultados en `rag-eval/results/E0-20261004T230253-6526ce2*.jsonl` (ignorados por git).
+- E0: recall 0,85 · precisión 0,79 · faithfulness 0,56 · relevancia 0,79; 9 de 80 consultas sin contexto; 7 registros con error del sistema (Q20, Q49, Q70 HTTP 400; Q36 embeddings, repetible). Faithfulness sin validar contra la revisión humana.
+- Aislamiento: 0 fragmentos ajenos en los contextos y en los 20 candidatos (30 registros); 0 fugas reales de texto.
+- Falta: `human_review.py`, `retrieval_metrics.py`, `compare_configs.py`, `report.py`, `configs/e1…e6`. Esperar al usuario antes de E1–E6.
+- `evaluate/retrieval_metrics.py` listo. E0: hit@1 0,66 · hit@5 0,90 · MRR 0,76 · llega al prompt 0,76; cita dentro de la ventana de 512 caracteres hit@1 0,77 (n=60) vs 0,32 si queda parcial/fuera (n=19). Corpus de solo 16 fragmentos por empresa: hit@10 es casi trivial.
+- `evaluate/human_review.py` listo (modos `muestra` y `analizar`). Hoja de 40 respuestas en `rag-eval/results/revision_humana.xlsx` (ignorada por git); falta que Fabian y Javier la completen por separado. El modo `analizar` se probó solo con calificaciones aleatorias de prueba, no con datos reales.

@@ -15,8 +15,8 @@ paper. Se completa a medida que se implementa cada tarea.
 | Identificador de ejecución fijado | `run_id`, con el commit y las huellas del corpus y del conjunto en `<run_id>.meta.json` | Implementado, sin ejecutar |
 | Consultas sin contexto o con fallo, reportadas con su denominador | `runner/collect.ts` registra los fallos sin descartarlos; el denominador lo reporta `evaluate/report.py` | Recolección implementada; informe pendiente |
 | El arnés mide el sistema real | `lib/ragPipeline.ts` compartido con `/api/chat` y `runner/equivalence.test.ts` | Implementado y verificado |
-| Versión de RAGAS, modelo juez e instrucciones en español fijados | `evaluate/ragas_metrics.py`, `evaluate/requirements.txt` | Pendiente |
-| Revisión independiente de una muestra de respuestas | `evaluate/human_review.py` | Pendiente |
+| Versión de RAGAS, modelo juez e instrucciones en español fijados | `evaluate/ragas_metrics.py` (`qwen/qwen3.8-27b`, temperatura 0), `evaluate/requirements.txt` (ragas 0.4.3) | Implementado; E0 ejecutada |
+| Revisión independiente de una muestra de respuestas | `evaluate/human_review.py` | Implementado; falta que los revisores completen la hoja |
 
 ## Decisiones tomadas en la Tarea 1
 
