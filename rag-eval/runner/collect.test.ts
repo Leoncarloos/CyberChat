@@ -257,6 +257,64 @@ describe("collectQuery", () => {
   });
 });
 
+describe("reescritura de la consulta (E2)", () => {
+  const seguimiento: DatasetItem = {
+    ...item,
+    tipo: "seguimiento",
+    user_input: "¿Y en ese caso?",
+    history: [
+      { role: "user", content: "¿Qué es el phishing?" },
+      { role: "assistant", content: "Un engaño por correo." },
+    ],
+  };
+  const e2: Config = {
+    ...baseline,
+    config_id: "E2",
+    repetitions: 1,
+    retrieval: {
+      ...baseline.retrieval,
+      rewrite_query: { enabled: true, params: { ...baseline.generator, temperature: 0, max_tokens: 400 } },
+    },
+  };
+
+  it("busca con la pregunta reescrita y deja la conversación original para el generador", async () => {
+    const pedidos: string[][] = [];
+    const { d, llamadas } = deps({
+      generate: async (messages) => {
+        pedidos.push(messages.map((m) => m.content));
+        return { ok: true, answer: "¿Qué hago si ya hice clic en el enlace de phishing?", usage: null };
+      },
+    });
+    const [r] = await collectQuery(seguimiento, ctx({ config: e2 }), d);
+    expect(llamadas.embed).toEqual(["¿Qué hago si ya hice clic en el enlace de phishing?"]);
+    expect(r.rewritten_query).toBe("¿Qué hago si ya hice clic en el enlace de phishing?");
+    expect(r.messages.at(-1)?.content).toBe("¿Y en ese caso?");
+    expect(pedidos[0][1]).toContain("Última pregunta: ¿Y en ese caso?");
+  });
+
+  it("no reescribe una pregunta sin historial", async () => {
+    const { d, llamadas } = deps();
+    const [r] = await collectQuery(item, ctx({ config: e2 }), d);
+    expect(llamadas.embed).toEqual([item.user_input]);
+    expect(r.rewritten_query).toBeNull();
+  });
+
+  it("si la reescritura falla busca con la pregunta original y lo anota", async () => {
+    let n = 0;
+    const { d, llamadas } = deps({
+      generate: async () => {
+        n += 1;
+        return n === 1 ? { ok: false, status: 400, detail: "x" } : { ok: true, answer: "ok", usage: null };
+      },
+    });
+    const [r] = await collectQuery(seguimiento, ctx({ config: e2 }), d);
+    expect(llamadas.embed).toEqual(["¿Y en ese caso?"]);
+    expect(r.rewritten_query).toBeNull();
+    expect(r.rewrite_error).toBe("HTTP 400");
+    expect(r.response).toBe("ok");
+  });
+});
+
 describe("configuración de la línea base", () => {
   it("coincide con las constantes de producción", () => {
     expect(() => assertBaselineMatchesProduction(baseline)).not.toThrow();

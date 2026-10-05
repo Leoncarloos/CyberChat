@@ -29,13 +29,20 @@ import {
 } from "@/lib/ragPipeline";
 import { computeCorpus } from "./corpusHash";
 import { loadOrgMap, type OrgMap } from "./orgMap";
+import { rewriteQuery, type RewriteConfig } from "./rewrite";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 export type Config = {
   config_id: string;
   description?: string;
-  retrieval: { threshold: number; max_chunks: number; match_count: number; candidates: number };
+  retrieval: {
+    threshold: number;
+    max_chunks: number;
+    match_count: number;
+    candidates: number;
+    rewrite_query?: RewriteConfig;
+  };
   generator: GeneratorParams;
   history: { max_history: number };
   repetitions: number;
@@ -170,8 +177,17 @@ export async function collectQuery(item: DatasetItem, ctx: Context, deps: Deps) 
   // repeticiones, que solo miden la variación del generador.
   let embedding: number[];
   let t = deps.now();
+  const rewrite = await rewriteQuery(
+    item.history ?? [],
+    lastUserMessage(incoming),
+    config.retrieval.rewrite_query,
+    deps.generate
+  );
+  const rewriteOn = config.retrieval.rewrite_query?.enabled === true;
+  const rewriteMs = rewriteOn ? deps.now() - t : null;
+  if (rewriteOn) t = deps.now();
   try {
-    embedding = await deps.embed(lastUserMessage(incoming));
+    embedding = await deps.embed(rewrite.query);
   } catch (error) {
     return failed("embedding", message(error), { embedding: deps.now() - t });
   }
@@ -223,8 +239,11 @@ export async function collectQuery(item: DatasetItem, ctx: Context, deps: Deps) 
     matches_count: top.length,
     best_similarity: Number(top[0]?.similarity ?? 0),
     messages,
+    rewritten_query: rewrite.rewritten ? rewrite.query : null,
+    rewrite_error: rewrite.error,
+    rewrite_usage: rewrite.usage,
   };
-  const latency = { embedding: embeddingMs, search: searchMs, search_candidates: candidatesMs };
+  const latency = { ...(rewriteOn ? { rewrite: rewriteMs } : {}), embedding: embeddingMs, search: searchMs, search_candidates: candidatesMs };
 
   const records = [];
   for (let run = 1; run <= config.repetitions; run++) {
