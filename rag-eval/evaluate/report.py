@@ -97,7 +97,7 @@ def main() -> int:
           f"| Commit | `{meta['git_commit'][:10]}`{' (árbol con cambios sin commitear)' if meta.get('git_dirty') else ''} |",
           f"| `corpus_hash` | `{meta['corpus_hash'][:16]}…` |",
           f"| `index_hash` | `{meta['index_hash'][:16]}…` |",
-          f"| Juez RAGAS | {rag[0]['judge'] if rag else 'no disponible'} |",
+          f"| Juez RAGAS | {next((r['judge'] for r in rag if r.get('judge')), 'no disponible')} |",
           f"| Registros | {meta['records']} ({meta['records_with_error']} con error) |", ""]
 
     # --- Denominadores
