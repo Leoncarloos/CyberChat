@@ -106,6 +106,7 @@ def main() -> int:
     grupos = [resumen(filas, "todas")] + [
         resumen([f for f in filas if f["tipo"] == t], t) for t in ("documental", "seguimiento")
     ]
+    grupos = [g for g in grupos if g]
     print(f"Consultas evaluadas: {len(filas)} de {len({r['query_id'] for r in regs})}"
           f" · sin recuperación por error: {sin_recuperacion or 'ninguna'}")
     print("sin ningún fragmento relevante entre los candidatos:",
