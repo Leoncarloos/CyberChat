@@ -83,3 +83,8 @@ npx tsx --env-file=.env.rag-eval.local rag-eval/runner/seedCorpus.ts --org-map-o
 - `evaluate/human_review.py` listo (modos `muestra` y `analizar`). Hoja de 40 respuestas en `rag-eval/results/revision_humana.xlsx` (ignorada por git); falta que Fabian y Javier la completen por separado. El modo `analizar` se probó solo con calificaciones aleatorias de prueba, no con datos reales.
 - `evaluate/compare_configs.py` listo (emparejado por consulta, bootstrap IC 95 %, McNemar exacto / Wilcoxon, Holm sobre toda la invocación). Validado solo con E0 contra sí misma y contra una corrida simulada; falta ejecutarlo con E1–E6 reales. Requiere scipy en `rag-eval/.venv`.
 - `evaluate/report.py` listo: informe Markdown + 4 figuras en `results/<run_id>_informe/` (ignorado). Generado para E0. Con `--compare` agrega la tabla de compare_configs.py. Faltan solo configs E1–E6 y su ejecución.
+
+## Actualización — E1 y E2 ejecutadas (2026-10-05)
+- E1 (umbral 0,30) y E2 (reescritura de consulta con historial), 1 repetición cada una; comparación en `results/comparacion_E0_E1_E2.csv`, informes en `results/<run>_informe/`. Gasto del juicio: E1 $1,39 + E2 $1,30. Gasto total acumulado ≈ $5,3 de un tope de $8 (estimado por tokens y precio de lista; confirmar en la consola de Groq).
+- Tras Holm (20 pruebas) **ninguna diferencia es significativa**. Sin corregir: E2 sube «llega al prompt» de 0,76 a 0,86 (p=0,008) y en seguimiento hit@1 0,38→0,63 y llega al prompt 0,44→0,94; E1 sube «llega al prompt» a 0,84 sin cambiar Faithfulness (0,556→0,573). Son indicios, no resultados confirmados.
+- Pendiente: E3–E6 (top-k, fragmentos ≤450 caracteres con reindexación en desarrollo, etc.), revisión humana, repetir Q36.
