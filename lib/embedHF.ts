@@ -30,26 +30,44 @@ function normalize(raw: EmbeddingRaw): number[] {
   throw new Error("HF devolvió formato de embedding inesperado");
 }
 
+const RETRIES = 3;
+const RETRY_DELAY_MS = 4000;
+
+// EMBED_URL apunta a un servicio propio con el mismo modelo (embedding-space/); sin ella se usa
+// la API de Hugging Face, que depende de los créditos de Inference Providers.
 export async function embedHF(text: string): Promise<number[]> {
-  const token = process.env.HF_TOKEN;
-  if (!token) throw new Error("Falta HF_TOKEN");
+  const url = process.env.EMBED_URL;
+  const token = url ? process.env.EMBED_API_KEY : process.env.HF_TOKEN;
+  if (!url && !token) throw new Error("Falta HF_TOKEN");
 
   const input = text.trim().replace(/\s+/g, " ").slice(0, 512);
+  const endpoint =
+    url ??
+    `https://router.huggingface.co/hf-inference/models/${EMBED_MODEL}/pipeline/feature-extraction`;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
 
-  const resp = await fetch(
-    `https://router.huggingface.co/hf-inference/models/${EMBED_MODEL}/pipeline/feature-extraction`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ inputs: input, options: { wait_for_model: true } }),
-      cache: "no-store",
+  // Un Space gratuito se duerme y tarda en despertar: se reintenta un 5xx o un corte de red.
+  let resp: Response | null = null;
+  let rawText = "";
+  for (let attempt = 1; attempt <= (url ? RETRIES : 1); attempt++) {
+    try {
+      resp = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ inputs: input, options: { wait_for_model: true } }),
+        cache: "no-store",
+        signal: url ? AbortSignal.timeout(30000) : undefined,
+      });
+      rawText = await resp.text();
+      if (resp.status < 500) break;
+    } catch (error) {
+      if (attempt === RETRIES) throw error;
     }
-  );
+    if (attempt < RETRIES) await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+  }
+  if (!resp) throw new Error("Embedding sin respuesta");
 
-  const rawText = await resp.text();
   let raw: unknown = null;
   try {
     raw = rawText ? (JSON.parse(rawText) as EmbeddingRaw) : null;
