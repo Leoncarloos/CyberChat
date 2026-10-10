@@ -200,6 +200,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       answer,
+      retrieved_contexts: top.map((item) => String(item.content ?? "")),
       matchesCount: top.length,
       bestSimilarity: bestSim,
       usedContext: top.length > 0,

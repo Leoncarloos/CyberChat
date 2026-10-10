@@ -14,7 +14,7 @@ import {
 import { readAccessClaims } from "@/lib/accessClaims";
 
 type Conversation = { id: string; title: string; created_at: string; user_id: string };
-type StoredMessage = { id: string; role: "user" | "assistant"; content: string; created_at: string };
+type StoredMessage = { id: string; role: "user" | "assistant"; content: string; created_at: string; retrieved_contexts: string[] | null };
 type SourceItem = { rank: number; similarity: number; preview: string };
 type AssistantMeta = {
   matchesCount: number;
@@ -26,6 +26,7 @@ type UiMessage = StoredMessage & {
   meta?: AssistantMeta;
 };
 type ChatApiResponse = {
+  retrieved_contexts?: string[];
   answer?: string;
   matchesCount?: number;
   bestSimilarity?: number;
@@ -496,7 +497,13 @@ function ChatPageInner() {
       sources: Array.isArray(data?.sources) ? data.sources : [],
     };
 
-    const asstMsgRes = await addMessage(conversationId, "assistant", reply);
+    if (!Array.isArray(data?.retrieved_contexts) || !data.retrieved_contexts.every((item) => typeof item === "string")) {
+      setIsSending(false);
+      toast("error", "No se recibieron los contextos de la respuesta. Actualiza la aplicacion e intenta nuevamente.");
+      return;
+    }
+
+    const asstMsgRes = await addMessage(conversationId, "assistant", reply, data.retrieved_contexts);
     setIsSending(false);
 
     if (asstMsgRes.error) {

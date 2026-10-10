@@ -30,11 +30,21 @@ export async function listMessages(conversation_id: string) {
     .order("created_at", { ascending: true });
 }
 
-export async function addMessage(conversation_id: string, role: Role, content: string) {
+export async function addMessage(
+  conversation_id: string,
+  role: Role,
+  content: string,
+  retrieved_contexts: string[] | null = null
+) {
   const supabase = supabaseBrowser();
   return supabase
     .from("messages")
-    .insert({ conversation_id, role, content })
+    .insert({
+      conversation_id,
+      role,
+      content,
+      retrieved_contexts: role === "assistant" ? retrieved_contexts : null,
+    })
     .select("*")
     .single();
 }
