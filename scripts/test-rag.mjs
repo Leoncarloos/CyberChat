@@ -121,6 +121,9 @@ if (process.argv.includes("--live")) {
   const unrelated = { id: "22222222-2222-4222-8222-222222222222", document_id: "test", content: "Realiza copias de seguridad cada semana." };
   const selected = await retrieval.rerank("El ingreso al ERP queda exento del segundo factor por ser una herramienta interna?", [evidence, unrelated], process.env.GROQ_API_KEY);
   assert.deepEqual(selected.map((item) => item.id), [evidence.id]);
+  const rotation = { id: "55555555-5555-4555-8555-555555555555", document_id: "test", content: "MB TECH no establece una caducidad rutinaria de 90 dias para las contrasenas. No deben modificarse automaticamente cada tres meses. Deben cambiarse ante sospecha de compromiso, malware o una alerta de TI." };
+  const rotationSelected = await retrieval.rerank(rotationQuestion, [unrelated, rotation], process.env.GROQ_API_KEY);
+  assert.deepEqual(rotationSelected.map(item => item.id), [rotation.id]);
   const empty = await retrieval.rerank("Cual es el precio del almuerzo?", [evidence, unrelated], process.env.GROQ_API_KEY);
   assert.deepEqual(empty, []);
   const consent = { id: "33333333-3333-4333-8333-333333333333", document_id: "test", content: "Para contactar a nuevos clientes con fines comerciales, MB TECH exige consentimiento previo libre, expreso e informado." };
