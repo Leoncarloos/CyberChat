@@ -21,6 +21,9 @@ assert(chunks.some((chunk) => chunk.includes("MFA")), "Short rules must not be d
 for (const chunk of chunks) assert(await text.tokenCount(chunk) <= text.EMBEDDING_TOKEN_LIMIT);
 assert.deepEqual(await text.chunkDocument("", "empty.txt"), []);
 assert(retrieval.queryTerms("Que significa MFA y derechos ARCO?").includes("mfa"));
+assert(retrieval.queryTerms("El ingreso al ERP queda exento del segundo factor?").includes("mfa"));
+assert(retrieval.queryTerms("El ingreso al ERP queda exento del segundo factor?").includes("erp"));
+assert(retrieval.queryTerms("Un cliente pide saber que informacion mantiene sobre él. Que derecho ejerce?").includes("arco"));
 const a = { id: "a", document_id: "doc", content: "shared heading ".repeat(10) + "a".repeat(120) };
 const b = { id: "b", document_id: "doc", content: "shared heading ".repeat(10) + "b".repeat(120) };
 const fused = retrieval.fuseCandidates([a, b], [b]);
@@ -30,16 +33,41 @@ assert.equal(retrieval.fuseCandidates([a], [{ ...a, id: "duplicate" }]).length, 
 assert(retrieval.queryTerms("Contraseñas seguras").includes("contraseñas"));
 const originalFetch = globalThis.fetch;
 try {
-  globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: '{"ids":["b","b","a"]}' } }] }));
+  globalThis.fetch = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    assert.equal(body.response_format.type, "json_schema");
+    assert.equal(body.response_format.json_schema.strict, true);
+    assert.deepEqual(body.response_format.json_schema.schema.properties.ids.items.enum, ["a", "b"]);
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"ids":["b","b","a"]}' } }] }));
+  };
   assert.deepEqual((await retrieval.rerank("question", [a, b], "test-key")).map((c) => c.id), ["b", "a"]);
   globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: '{"ids":["unknown"]}' } }] }));
   await assert.rejects(() => retrieval.rerank("question", [a], "test-key"), /IDs invalidos/);
   globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: '{"ids":[]}' } }] }));
   assert.deepEqual(await retrieval.rerank("question", [a], "test-key"), []);
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: { code: "json_validate_failed", failed_generation: "PRIVATE DOCUMENT" } }), { status: 400 });
+  await assert.rejects(() => retrieval.rerank("question", [a], "test-key"), (error) => {
+    assert.match(error.message, /400 \(json_validate_failed\)/);
+    assert(!error.message.includes("PRIVATE DOCUMENT"));
+    return true;
+  });
+  globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: '{"ids":[]}' } }] }));
+  await assert.rejects(() => retrieval.rerank("question", [a], "test-key"), /salida incompleta/);
 } finally { globalThis.fetch = originalFetch; }
 console.log("PASS: token limit, short rules, empty documents, RRF, deduplication and reranking IDs.");
 
-if (process.argv[2]) {
+if (process.argv.includes("--live")) {
+  if (!process.env.GROQ_API_KEY) throw new Error("GROQ_API_KEY requerida para prueba real");
+  const evidence = { id: "11111111-1111-4111-8111-111111111111", document_id: "test", content: "El MFA es obligatorio en todas las cuentas de MB TECH: correo, ERP, VPN y servidores." };
+  const unrelated = { id: "22222222-2222-4222-8222-222222222222", document_id: "test", content: "Realiza copias de seguridad cada semana." };
+  const selected = await retrieval.rerank("El ingreso al ERP queda exento del segundo factor por ser una herramienta interna?", [evidence, unrelated], process.env.GROQ_API_KEY);
+  assert.deepEqual(selected.map((item) => item.id), [evidence.id]);
+  const empty = await retrieval.rerank("Cual es el precio del almuerzo?", [evidence, unrelated], process.env.GROQ_API_KEY);
+  assert.deepEqual(empty, []);
+  console.log("PASS: Groq strict reranking selects ERP/MFA evidence and rejects unrelated evidence.");
+}
+
+if (process.argv[2] && !process.argv[2].startsWith("--")) {
   const { readdir } = await import("node:fs/promises");
   const { join } = await import("node:path");
   for (const name of (await readdir(process.argv[2])).filter((name) => /^politica_\d+.*\.txt$/i.test(name))) {
