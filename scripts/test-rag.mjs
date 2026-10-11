@@ -26,12 +26,33 @@ assert(retrieval.queryTerms("Recibo una peticion de cancelacion de datos persona
 assert(retrieval.isPolicyQuestion("El ingreso al ERP queda exento del segundo factor?"));
 assert(retrieval.isPolicyQuestion("Un cliente pide saber que informacion mantiene la empresa sobre el"));
 assert(!retrieval.isPolicyQuestion("Hola"));
+const rotationQuestion = "¿La política exige cambiar por calendario una contraseña que tiene dos meses de uso si no existen alertas de seguridad?";
+assert(retrieval.isPolicyQuestion(rotationQuestion));
+assert(retrieval.focusedQueryTerms(rotationQuestion).includes("rotación"));
+assert(retrieval.queryTerms(rotationQuestion).includes("rutinarios"));
+assert.deepEqual(retrieval.focusedQueryTerms("¿Qué longitud debe tener una contraseña?"), []);
 const grounded = prompts.buildSystemPrompt("Evidencia de prueba", 1, true);
 assert(grounded.includes("autosuficiente"));
 assert(grounded.includes("derecho especifico"));
 assert(grounded.includes("punto no verificado"));
 assert(grounded.includes("[Fuente N]"));
 assert(prompts.buildSystemPrompt("", 0, true).includes("No encontre evidencia suficiente"));
+const routeSource = await readFile(new URL("../app/api/chat/route.ts", import.meta.url), "utf8");
+const guardStart = routeSource.indexOf("if (!top.length && policyQuestion)");
+assert(guardStart > 0 && guardStart < routeSource.indexOf('const groqRes = await fetch('));
+const guardBody = routeSource.slice(guardStart, routeSource.indexOf("const context =", guardStart));
+const guardResult = await loadTs("../app/api/chat/route.ts", () =>
+  `export function check() {
+    const top = [], policyQuestion = true;
+    const retrieval = { vector: [], lexicalCount: 0, candidates: [] };
+    const rerankStatus = "ok", EMBED_MODEL = "test", SIM_THRESHOLD = 0.38;
+    const NextResponse = { json: (body) => body };
+    ${guardBody}
+  }`);
+assert.equal(guardResult.check().retrievalDiagnostics.mode, "sin-evidencia");
+assert.deepEqual(guardResult.check().retrieved_contexts, []);
+assert(!guardResult.check().answer.includes("90"));
+assert(!guardResult.check().answer.includes("[Fuente"));
 
 const calls = [];
 globalThis.__ragTestAdmin = {

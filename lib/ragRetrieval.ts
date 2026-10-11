@@ -8,6 +8,10 @@ export type RagChunk = {
 const STOP_WORDS = new Set("que como cual cuales donde cuando para por con una uno unos las los del sus esta este esto debo debe segun empresa politica menciona tres ejemplos considera informacion significa hacer".split(" "));
 export function focusedQueryTerms(question: string): string[] {
   const normalized = question.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  if (/contrasen|credencial|\bclave\b/.test(normalized)
+    && /cambi|rotaci|caduc|calendario|meses|dias|periodic|rutinari/.test(normalized)) {
+    return ["rotación", "rotacion", "caducidad", "rutinarios", "periódicos", "periodicos"];
+  }
   const commercialContact = /comercial|marketing|publicidad|promoci[oó]n/.test(normalized)
     || /(?:nuevos?|potenciales?)\s+(?:contactos?|clientes?)/.test(normalized);
   if (commercialContact && /contact|escrib|envi|tratamiento|finalidad|consent/.test(normalized)) {

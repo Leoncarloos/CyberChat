@@ -165,6 +165,21 @@ export async function POST(req: Request) {
     const bestSim = Math.max(0, ...top.map((chunk) => Number(chunk.similarity ?? 0)));
     const policyQuestion = isPolicyQuestion(lastUserMsg);
 
+    // A prompt alone cannot prevent a model from inventing a company rule.
+    if (!top.length && policyQuestion) {
+      return NextResponse.json({
+        answer: "No encontré evidencia suficiente para confirmar ese punto en los fragmentos disponibles. Verifica la política correspondiente con el administrador.",
+        retrieved_contexts: [],
+        retrievalDiagnostics: {
+          vectorCandidates: retrieval.vector.length, lexicalCandidates: retrieval.lexicalCount,
+          fusedCandidates: retrieval.candidates.length, rerankStatus,
+          mode: "sin-evidencia", embeddingModel: EMBED_MODEL,
+          vectorFallbackThreshold: SIM_THRESHOLD,
+        },
+        matchesCount: 0, bestSimilarity: 0, usedContext: false, sources: [],
+      });
+    }
+
     const context = top.length > 0
       ? top
           .map(
