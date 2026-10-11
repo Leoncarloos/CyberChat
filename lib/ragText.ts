@@ -1,19 +1,27 @@
-import { AutoTokenizer } from "@xenova/transformers";
+import { Tokenizer } from "@huggingface/tokenizers";
 
 export const INDEX_VERSION = "token-sections-v2";
 export const EMBEDDING_TOKEN_LIMIT = 120;
-let tokenizerPromise: ReturnType<typeof AutoTokenizer.from_pretrained> | undefined;
+let tokenizerPromise: Promise<Tokenizer> | undefined;
+
+async function loadTokenizer() {
+  const base = "https://huggingface.co/Xenova/paraphrase-multilingual-MiniLM-L12-v2/resolve/main";
+  const files = await Promise.all(["tokenizer.json", "tokenizer_config.json"].map(async (file) => {
+    const response = await fetch(`${base}/${file}`, { signal: AbortSignal.timeout(30000) });
+    if (!response.ok) throw new Error(`No se pudo cargar ${file}: HTTP ${response.status}`);
+    return response.json();
+  }));
+  return new Tokenizer(files[0], files[1]);
+}
 
 export function getTokenizer() {
-  tokenizerPromise ??= AutoTokenizer.from_pretrained(
-    "Xenova/paraphrase-multilingual-MiniLM-L12-v2"
-  ).catch((error) => { tokenizerPromise = undefined; throw error; });
+  tokenizerPromise ??= loadTokenizer().catch((error) => { tokenizerPromise = undefined; throw error; });
   return tokenizerPromise;
 }
 
 export async function tokenCount(text: string): Promise<number> {
   const tokenizer = await getTokenizer();
-  return tokenizer.encode(text, null, { add_special_tokens: true }).length;
+  return tokenizer.encode(text, { add_special_tokens: true }).ids.length;
 }
 
 export async function extractDocumentText(name: string, buffer: Buffer): Promise<string> {
@@ -32,7 +40,7 @@ export async function extractDocumentText(name: string, buffer: Buffer): Promise
 
 export async function chunkDocument(text: string, name: string): Promise<string[]> {
   const tokenizer = await getTokenizer();
-  const count = (value: string) => tokenizer.encode(value, null, { add_special_tokens: true }).length;
+  const count = (value: string) => tokenizer.encode(value, { add_special_tokens: true }).ids.length;
   const shorten = (value: string, limit: number) => {
     const words = value.split(/\s+/);
     while (words.length && count(words.join(" ")) > limit) words.pop();

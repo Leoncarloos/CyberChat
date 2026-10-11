@@ -10,7 +10,7 @@ async function loadTs(path, transform = (source) => source) {
   return import(`data:text/javascript;base64,${Buffer.from(js).toString("base64")}`);
 }
 const text = await loadTs("../lib/ragText.ts", (source) => source.replace(
-  '"@xenova/transformers"', JSON.stringify(import.meta.resolve("@xenova/transformers"))));
+  '"@huggingface/tokenizers"', JSON.stringify(import.meta.resolve("@huggingface/tokenizers"))));
 const retrieval = await loadTs("../lib/ragRetrieval.ts", (source) => source.replace(
   'import { supabaseAdmin } from "@/lib/supabaseAdmin";',
   'const supabaseAdmin = () => { throw new Error("Database not used in unit tests"); };'));
