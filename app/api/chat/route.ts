@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/authz";
 import { embedHF, EMBED_MODEL } from "@/lib/embedHF";
 import { resolveOrgAdminId } from "@/lib/orgAdmin";
-import { retrieveHybrid, rerank } from "@/lib/ragRetrieval";
+import { retrieveHybrid, rerank, isPolicyQuestion } from "@/lib/ragRetrieval";
 import { chunkDocument, tokenCount, EMBEDDING_TOKEN_LIMIT } from "@/lib/ragText";
 
 type ChatMsg = { role: "system" | "user" | "assistant"; content: string };
@@ -42,6 +42,9 @@ function buildSystemPrompt(context: string, chunkCount: number, policyQuestion: 
     "Responde en español claro, concreto y accionable.",
     "### FORMATO DE RESPUESTA",
     "Empieza siempre con la respuesta directa en un parrafo breve, sin titulo inicial, saludo, repeticion de la pregunta ni preambulo documental.",
+    "La primera oracion debe resolver exactamente lo preguntado y ser autosuficiente: conserva el sistema, objeto o situacion relevante de la consulta sin copiarla completa. Ejemplo de estilo, no evidencia: 'No. El ingreso al sistema indicado requiere el control exigido por la politica. [Fuente N]'. Sustituye el sistema, control y cita solo con datos respaldados.",
+    "Por defecto usa una primera oracion directa y, solo si hace falta, un segundo parrafo de explicacion. Procura no superar 100 palabras para una consulta puntual; no recortes condiciones esenciales ni pasos pedidos para cumplir esa longitud.",
+    "Si solicitan una categoria, derecho, responsable, cantidad o requisito, identifica ese dato concreto antes de explicar. No sustituyas un derecho especifico por la enumeracion de todos los derechos ARCO, ni un requisito de consentimiento por una regla de canales comerciales.",
     "Pregunta puntual o definicion: responde en 1 o 2 parrafos breves, sin encabezados ni listas innecesarias. Si es de si/no, empieza con Si, No o No puedo confirmarlo, segun la evidencia.",
     "Procedimiento o incidente: primero indica la accion principal; despues presenta los pasos necesarios en una lista numerada, una accion por paso y en orden. No agregues pasos que no esten respaldados.",
     "Enumeracion o comparacion: usa una lista de vinetas, una idea por elemento; respeta la cantidad solicitada solo cuando haya evidencia suficiente.",
@@ -85,6 +88,9 @@ function buildSystemPrompt(context: string, chunkCount: number, policyQuestion: 
     "Los fragmentos a continuación provienen de documentos subidos por la empresa del usuario.",
     "INSTRUCCIONES:",
     "- Para responder esta consulta usa SOLO afirmaciones respaldadas por los fragmentos.",
+    "- No conviertas una pregunta puntual en un procedimiento completo. Incluye unicamente detalles necesarios para contestarla; omite consejos genericos, ejemplos y pasos de interfaces no solicitados ni documentados.",
+    "- En solicitudes de datos personales distingue el derecho del cliente de las facultades del empleado: no autorices borrar, anonimizar o decidir solicitudes por cuenta propia. Si los fragmentos exigen remision o intervencion de un responsable, conserva ese limite; si falta el responsable o procedimiento, declara ese punto no verificado sin inventarlo.",
+    "- No reutilices una misma contrasena entre servicios ni agregues restricciones concretas de contrasenas que no aparezcan en los fragmentos. No conviertas reducir un riesgo en eliminarlo por completo.",
     "- Responde directamente, sin frases introductorias sobre los documentos de la empresa. Conserva las citas de las fuentes utilizadas.",
     `- Cita las fuentes con [Fuente N], donde N es un entero entre 1 y ${chunkCount}. Usa solo los identificadores del contexto actual, nunca los del historial. No cites una fuente que no respalde la afirmacion.`,
     "- Las citas son obligatorias al responder con evidencia documental, incluso en respuestas de una sola frase. Ejemplo de formato: 'No abras enlaces de remitentes desconocidos. [Fuente N]' Sustituye N por el identificador real del fragmento que contiene esa regla; no copies un numero del ejemplo ni agregues citas para afirmaciones no respaldadas.",
@@ -157,7 +163,7 @@ export async function POST(req: Request) {
       top = retrieval.candidates.filter((chunk) => Number(chunk.similarity ?? 0) >= SIM_THRESHOLD).slice(0, MAX_CHUNKS);
     }
     const bestSim = Math.max(0, ...top.map((chunk) => Number(chunk.similarity ?? 0)));
-    const policyQuestion = /empresa|politica|política|mb\s*tech|seg[uú]n|debo|debemos|procedimiento|se debe/i.test(lastUserMsg);
+    const policyQuestion = isPolicyQuestion(lastUserMsg);
 
     const context = top.length > 0
       ? top

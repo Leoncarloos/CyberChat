@@ -14,6 +14,44 @@ const text = await loadTs("../lib/ragText.ts", (source) => source.replace(
 const retrieval = await loadTs("../lib/ragRetrieval.ts", (source) => source.replace(
   'import { supabaseAdmin } from "@/lib/supabaseAdmin";',
   'const supabaseAdmin = () => { throw new Error("Database not used in unit tests"); };'));
+const prompts = await loadTs("../app/api/chat/route.ts", (source) => source
+  .slice(source.indexOf("function buildSystemPrompt("), source.indexOf("export async function POST("))
+  .replace("function buildSystemPrompt(", "export function buildSystemPrompt("));
+const consentQuestion = "El equipo comercial quiere escribir a nuevos contactos. Que condicion establece la politica para esa finalidad?";
+assert.deepEqual(retrieval.focusedQueryTerms(consentQuestion), ["consentimiento"]);
+assert.deepEqual(retrieval.focusedQueryTerms("Un asesor atiende por WhatsApp personal. Esta permitido?"), []);
+assert(retrieval.queryTerms(consentQuestion).includes("consentimiento"));
+assert(retrieval.queryTerms("Un cliente solicita corregir su DNI. Que derecho ejerce?").includes("arco"));
+assert(retrieval.queryTerms("Recibo una peticion de cancelacion de datos personales").includes("dpo"));
+assert(retrieval.isPolicyQuestion("El ingreso al ERP queda exento del segundo factor?"));
+assert(retrieval.isPolicyQuestion("Un cliente pide saber que informacion mantiene la empresa sobre el"));
+assert(!retrieval.isPolicyQuestion("Hola"));
+const grounded = prompts.buildSystemPrompt("Evidencia de prueba", 1, true);
+assert(grounded.includes("autosuficiente"));
+assert(grounded.includes("derecho especifico"));
+assert(grounded.includes("punto no verificado"));
+assert(grounded.includes("[Fuente N]"));
+assert(prompts.buildSystemPrompt("", 0, true).includes("No encontre evidencia suficiente"));
+
+const calls = [];
+globalThis.__ragTestAdmin = {
+  from: () => ({ select: () => ({ eq: async () => ({ data: [{ id: "owned", name: "Policy" }], error: null }) }) }),
+  rpc: async (name, params) => {
+    calls.push({ name, params });
+    if (name === "match_document_chunks_scoped") return { data: [], error: null };
+    return { data: [{ id: params.search_terms === "consentimiento" ? "consent" : "channel", document_id: "owned", content: params.search_terms },
+      { id: "foreign", document_id: "another-company", content: "Must not leak" }], error: null };
+  },
+};
+try {
+  const scopedRetrieval = await loadTs("../lib/ragRetrieval.ts", (source) => source.replace(
+    'import { supabaseAdmin } from "@/lib/supabaseAdmin";', 'const supabaseAdmin = () => globalThis.__ragTestAdmin;'));
+  const found = await scopedRetrieval.retrieveHybrid("owner", null, [1], consentQuestion);
+  assert.equal(found.candidates[0].id, "consent");
+  assert(!found.candidates.some((c) => c.document_id === "another-company"));
+  assert(calls.every((c) => c.params.filter_user_id === "owner"));
+  assert(calls.some((c) => c.params.search_terms === "consentimiento"));
+} finally { delete globalThis.__ragTestAdmin; }
 
 const chunks = await text.chunkDocument("# Politica\nMFA\n" + "Conserva las credenciales y reporta incidentes. ".repeat(100), "politica.txt");
 assert(chunks.length > 1);
@@ -64,7 +102,33 @@ if (process.argv.includes("--live")) {
   assert.deepEqual(selected.map((item) => item.id), [evidence.id]);
   const empty = await retrieval.rerank("Cual es el precio del almuerzo?", [evidence, unrelated], process.env.GROQ_API_KEY);
   assert.deepEqual(empty, []);
+  const consent = { id: "33333333-3333-4333-8333-333333333333", document_id: "test", content: "Para contactar a nuevos clientes con fines comerciales, MB TECH exige consentimiento previo libre, expreso e informado." };
+  const channel = { id: "44444444-4444-4444-8444-444444444444", document_id: "test", content: "WhatsApp comercial debe utilizar los numeros oficiales integrados en el CRM." };
+  const consentSelected = await retrieval.rerank(consentQuestion, [channel, consent], process.env.GROQ_API_KEY);
+  assert.equal(consentSelected[0]?.id, consent.id);
+  async function answer(question, context) {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST", headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "openai/gpt-oss-20b", reasoning_effort: "low", temperature: 0.15, max_tokens: 900,
+        messages: [{ role: "system", content: prompts.buildSystemPrompt(`--- Fuente 1 ---\n${context}`, 1, true) }, { role: "user", content: question }] }),
+    });
+    assert(response.ok, `Generation HTTP ${response.status}`);
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content ?? "";
+    assert(content.includes("[Fuente 1]"));
+    assert(!/^\s*#/m.test(content));
+    return content;
+  }
+  assert.match(await answer(consentQuestion, consent.content), /consentimiento/i);
+  const access = await answer("Un cliente pide saber que informacion mantiene la empresa sobre el. Que derecho esta ejerciendo?",
+    "ARCO comprende acceso, rectificacion, cancelacion y oposicion. Acceso permite conocer los datos que mantiene la empresa; rectificacion permite corregirlos.");
+  assert.match(access.split(/[\n.!]/)[0], /acceso/i);
+  const cancellation = await answer("Que debe hacer el asesor que recibe una peticion de cancelacion de datos personales?",
+    "El asesor debe derivar inmediatamente la solicitud al DPO o al area legal. No debe ignorarla ni borrarla ni decidir por cuenta propia el resultado.");
+  assert.match(cancellation, /DPO|legal/i);
+  assert(!/(?:elimina|anonimiza) los datos/i.test(cancellation));
   console.log("PASS: Groq strict reranking selects ERP/MFA evidence and rejects unrelated evidence.");
+  console.log("PASS: consent prioritization and grounded, cited answers for consent, access and cancellation (synthetic fixtures; not a database retrieval test).");
 }
 
 if (process.argv[2] && !process.argv[2].startsWith("--")) {
