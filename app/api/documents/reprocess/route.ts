@@ -1,79 +1,52 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { embedHF } from "@/lib/embedHF";
-
-type DocumentRow = { id: string; storage_path: string; name: string };
-type ChunkRow = { id: string; document_id: string; content: string; chunk_index: number };
+import { chunkDocument, extractDocumentText, INDEX_VERSION } from "@/lib/ragText";
 
 export async function POST() {
   try {
     const auth = await requireAdmin({ forbiddenMessage: "Solo admins", requireRuc: false });
     if (!auth.ok) return auth.response;
-
     const admin = supabaseAdmin();
-    const userId = auth.user.id;
-
-    const { data: docs, error: docsErr } = await admin
-      .from("documents")
-      .select("id, storage_path, name")
-      .eq("uploaded_by", userId);
-
-    if (docsErr) return NextResponse.json({ error: docsErr.message }, { status: 500 });
-
-    const documents = (docs ?? []) as DocumentRow[];
-    if (documents.length === 0) {
-      return NextResponse.json({ ok: true, reprocessed: 0, totalChunks: 0 });
-    }
-
+    // Check schema before spending embedding quota; never delete from the client.
+    const ready = await admin.from("rag_index_backups").select("id").limit(0);
+    if (ready.error) return NextResponse.json({ error: "Ejecuta docs/sql/rag_hybrid_v2.sql antes de reindexar. No se modificaron los documentos." }, { status: 409 });
+    const { data: docs, error } = await admin.from("documents").select("id,name,storage_path")
+      .eq("uploaded_by", auth.user.id);
+    if (error) throw new Error(error.message);
     let totalChunks = 0;
-
-    for (const doc of documents) {
-      const { data: existingChunks, error: chunksReadErr } = await admin
-        .from("document_chunks")
-        .select("id, document_id, content, chunk_index")
-        .eq("document_id", doc.id)
-        .order("chunk_index", { ascending: true });
-
-      if (chunksReadErr) continue;
-
-      const chunks = (existingChunks ?? []) as ChunkRow[];
-      if (chunks.length === 0) continue;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rows: any[] = [];
-      for (const chunk of chunks) {
-        const embedding = await embedHF(chunk.content);
-        rows.push({
-          document_id: chunk.document_id,
-          chunk_index: chunk.chunk_index,
-          content: chunk.content,
-          embedding,
+    let reprocessed = 0;
+    const failures: { documentId: string; name: string }[] = [];
+    for (const doc of docs ?? []) {
+      try {
+        const downloaded = await admin.storage.from("documents").download(doc.storage_path);
+        if (downloaded.error || !downloaded.data) throw new Error("No se pudo leer el archivo original");
+        const text = await extractDocumentText(doc.name, Buffer.from(await downloaded.data.arrayBuffer()));
+        const chunks = await chunkDocument(text, doc.name);
+        if (!chunks.length) throw new Error("Sin fragmentos");
+        const rows = [];
+        for (const [index, content] of chunks.entries()) {
+          rows.push({ chunk_index: index, content, embedding: await embedHF(content) });
+        }
+        // Backup + replacement run in a single transaction per document.
+        const replaced = await admin.rpc("replace_document_chunks_v2", {
+          target_document_id: doc.id, owner_id: auth.user.id,
+          index_version: INDEX_VERSION, new_chunks: rows,
         });
+        if (replaced.error) throw new Error(replaced.error.message);
+        reprocessed++; totalChunks += rows.length;
+      } catch (error) {
+        console.error("[/api/documents/reprocess]", doc.id, error);
+        failures.push({ documentId: doc.id, name: doc.name });
       }
-
-      await admin.from("document_chunks").delete().eq("document_id", doc.id);
-      const { error: insertErr } = await admin.from("document_chunks").insert(rows);
-      if (insertErr) {
-        return NextResponse.json(
-          { error: `Error al re-procesar "${doc.name}": ${insertErr.message}` },
-          { status: 500 }
-        );
-      }
-
-      totalChunks += rows.length;
     }
-
-    return NextResponse.json({
-      ok: true,
-      reprocessed: documents.length,
-      totalChunks,
-    });
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Error desconocido";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ ok: failures.length === 0, reprocessed, totalChunks,
+      failures, indexVersion: INDEX_VERSION }, { status: failures.length ? 207 : 200 });
+  } catch (error) {
+    console.error("[/api/documents/reprocess]", error);
+    return NextResponse.json({ error: "No se pudo reindexar. Los cambios son atomicos por documento." }, { status: 500 });
   }
 }

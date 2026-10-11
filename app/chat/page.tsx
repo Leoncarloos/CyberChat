@@ -15,7 +15,7 @@ import { readAccessClaims } from "@/lib/accessClaims";
 
 type Conversation = { id: string; title: string; created_at: string; user_id: string };
 type StoredMessage = { id: string; role: "user" | "assistant"; content: string; created_at: string; retrieved_contexts: string[] | null };
-type SourceItem = { rank: number; similarity: number; preview: string };
+type SourceItem = { rank: number; similarity?: number; preview: string; documentName?: string; chunkId?: string; documentId?: string };
 type AssistantMeta = {
   matchesCount: number;
   bestSimilarity: number;
@@ -142,8 +142,66 @@ function renderInlineMarkdown(text: string) {
     .replace(/`(.+?)`/g, "<code>$1</code>");
 }
 
-function renderAssistantHtml(text: string) {
-  const normalized = text.replace(/\r/g, "");
+function messageSources(message: UiMessage): SourceItem[] {
+  const sources = message.meta?.sources?.length
+    ? message.meta.sources
+    : (message.retrieved_contexts ?? []).map((preview, index) => ({ rank: index + 1, preview }));
+  const citedRanks = new Set(
+    Array.from(message.content.matchAll(/\[(?:Fuente\s+)?(\d+)\]/gi), (match) => Number(match[1]))
+  );
+  return sources.filter((source) => citedRanks.has(source.rank));
+}
+
+function sourceTitle(source: SourceItem) {
+  const name = source.documentName || source.preview.match(/Documento:\s*([^\n]+?\.(?:txt|pdf|docx))/i)?.[1];
+  if (!name) return `Documento consultado ${source.rank}`;
+  const title = name.replace(/\.(txt|pdf|docx)$/i, "").replace(/^politica[_\s-]*\d+[_\s-]*/i, "").replace(/[_-]+/g, " ");
+  return title.charAt(0).toUpperCase() + title.slice(1);
+}
+
+function AssistantSources({ message }: { message: UiMessage }) {
+  const sources = messageSources(message);
+  if (!sources.length) return null;
+  return (
+    <details data-message-sources={message.id} className="mt-3 rounded-2xl border border-[var(--border)] bg-white/60 px-4 py-3">
+      <summary className="cursor-pointer text-sm font-semibold text-[var(--ink-soft)] marker:text-[var(--amber)]">
+        Fragmentos citados <span className="ml-2 rounded-full bg-[var(--paper-3)] px-2 py-0.5 text-xs">{sources.length}</span>
+      </summary>
+      <div className="mt-4 space-y-3">
+        {sources.map((source) => {
+          const content = message.retrieved_contexts?.[source.rank - 1] || source.preview;
+          const section = content.match(/^Secci[oó]n:\s*(.+)$/im)?.[1];
+          const excerpt = content.replace(/^(?:Documento|Secci[oó]n):[^\n]*(?:\n|$)/gim, "").trim();
+          return (
+          <article key={source.rank} data-source-rank={source.rank} tabIndex={-1} className="scroll-mt-6 rounded-xl border border-[var(--border)] bg-white p-4 outline-none focus:ring-2 focus:ring-[var(--amber)]">
+            <div className="flex items-start gap-3">
+              <span className="rounded-lg bg-[var(--paper-2)] px-2.5 py-1 text-sm font-bold text-[var(--amber-dim)]">{source.rank}</span>
+              <div className="min-w-0 flex-1">
+                <h4 className="font-semibold text-[var(--ink)]">{sourceTitle(source)}</h4>
+                {section ? <p className="mt-1 text-xs leading-5 text-[var(--ink-soft)]">{section}</p> : null}
+              </div>
+            </div>
+            <blockquote className="mt-3 whitespace-pre-line border-l-2 border-[var(--amber)] pl-3 text-sm leading-6 text-[var(--ink-soft)]">
+              {excerpt || content}
+            </blockquote>
+            <details className="mt-3 border-t border-[var(--paper-3)] pt-3 text-xs text-[var(--ink-soft)]">
+              <summary className="cursor-pointer">Detalles técnicos</summary>
+              <div className="mt-2 space-y-1 break-words">
+                {source.documentName ? <p>Archivo: {source.documentName}</p> : null}
+                {typeof source.similarity === "number" ? <p>Similitud semántica: {source.similarity.toFixed(2)}</p> : null}
+                {source.chunkId ? <p>Fragmento: {source.chunkId}</p> : null}
+              </div>
+            </details>
+          </article>
+          );
+        })}
+      </div>
+    </details>
+  );
+}
+
+function renderAssistantHtml(text: string, sources: SourceItem[] = []) {
+  const normalized = text.replace(/\r/g, "").replace(/^\s*Seg[uú]n los documentos de tu empresa\s*(?:\.{3}|…|[:,])?\s*/i, "");
   const lines = normalized.split("\n");
   const html: string[] = [];
   let listItems: string[] = [];
@@ -200,7 +258,11 @@ function renderAssistantHtml(text: string) {
   }
 
   flushList();
-  return html.join("");
+  return html.join("").replace(/\[\s*(?:Fuente\s+)?(\d+)\s*\]/gi, (_original, rank: string) =>
+    sources.some((source) => source.rank === Number(rank))
+      ? `<button type="button" data-citation="${Number(rank)}" aria-label="Ver fuente ${Number(rank)}" class="mx-1 inline-flex rounded-md bg-[var(--paper-2)] px-1.5 text-xs font-bold text-[var(--amber-dim)] hover:bg-[var(--paper-3)] focus-visible:outline-2">[${Number(rank)}]</button>`
+      : ""
+  );
 }
 
 function createEmptyAnswers() {
@@ -1001,43 +1063,31 @@ function ChatPageInner() {
                       ) : (
                         <div className="flex gap-4">
                           <div className="brand-mark !mt-1 !h-10 !w-10 !rounded-full !text-xs">C</div>
-                          <div className="max-w-[82%]">
+                          <div className="min-w-0 max-w-[calc(100%-3.5rem)] flex-1 sm:max-w-[82%]">
                             <div className="mb-2 font-mono text-[11px] tracking-[0.14em] text-[var(--ink-soft)]">
                               {formatTime(message.created_at)}
                             </div>
                             <div className="rounded-[1.4rem] rounded-tl-md border border-[var(--border)] bg-white px-6 py-5 shadow-[0_12px_28px_rgba(26,21,16,0.08)]">
                               <div
                                 className="max-w-none [&_code]:rounded-md [&_code]:border [&_code]:border-[var(--border)] [&_code]:bg-[var(--paper-2)] [&_code]:px-2 [&_code]:py-1 [&_code]:font-mono [&_code]:text-sm [&_code]:text-[var(--teal-dim)] [&_h3]:mb-3 [&_h3]:mt-0 [&_h3]:border-b [&_h3]:border-[var(--paper-3)] [&_h3]:pb-3 [&_h3]:font-[var(--font-display)] [&_h3]:text-3xl [&_h3]:font-black [&_li]:mb-2 [&_li]:text-lg [&_li]:leading-8 [&_p]:mb-4 [&_p]:text-lg [&_p]:leading-8 [&_strong]:text-[var(--amber-dim)] [&_u]:decoration-[var(--amber)] [&_u]:underline [&_ul]:list-disc [&_ul]:pl-6"
-                                dangerouslySetInnerHTML={{ __html: renderAssistantHtml(message.content) }}
+                                onClick={(event) => {
+                                  const citation = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-citation]");
+                                  if (!citation) return;
+                                  const container = event.currentTarget.closest(".flex-1");
+                                  const details = container?.querySelector<HTMLDetailsElement>("details[data-message-sources]");
+                                  const source = details?.querySelector<HTMLElement>(`article[data-source-rank="${Number(citation.dataset.citation)}"]`);
+                                  if (details && source) {
+                                    details.open = true;
+                                    source.focus({ preventScroll: true });
+                                    source.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                                  }
+                                }}
+                                dangerouslySetInnerHTML={{ __html: renderAssistantHtml(message.content, messageSources(message)) }}
                               />
 
-                              {message.meta?.usedContext ? (
-                                <div className="mt-5 rounded-xl border border-[rgba(10,126,126,0.2)] bg-[rgba(10,126,126,0.06)] px-4 py-3 text-sm text-[var(--teal-dim)]">
-                                  Respuesta generada usando contexto recuperado de la base documental.
-                                </div>
-                              ) : null}
                             </div>
 
-                            {message.meta?.sources?.length ? (
-                              <details className="mt-4 rounded-xl border border-[var(--border)] bg-[rgba(227,221,208,0.55)] px-4 py-3">
-                                <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--amber-dim)]">
-                                  {message.meta.sources.length} fuentes recuperadas de la base de conocimiento
-                                </summary>
-                                <div className="mt-3 space-y-3">
-                                  {message.meta.sources.map((source) => (
-                                    <div
-                                      key={`${message.id}-${source.rank}`}
-                                      className="rounded-lg border border-[var(--border)] bg-white/70 px-3 py-3 text-sm text-[var(--ink-soft)]"
-                                    >
-                                      <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--amber-dim)]">
-                                        Fuente #{source.rank} · similitud {source.similarity.toFixed(2)}
-                                      </div>
-                                      <p className="leading-6 text-[var(--ink)]">{source.preview}</p>
-                                    </div>
-                                  ))}
-                                </div>
-                              </details>
-                            ) : null}
+                            <AssistantSources message={message} />
                           </div>
                         </div>
                       )}

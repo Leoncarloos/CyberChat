@@ -12,6 +12,7 @@ type UploadResponse = {
 };
 
 type ReprocessResponse = {
+  failures?: { documentId: string; name: string }[];
   ok?: boolean;
   reprocessed?: number;
   totalChunks?: number;
@@ -151,6 +152,11 @@ export default function AdminPage() {
     const data = (await res.json()) as ReprocessResponse;
 
     setIsReprocessing(false);
+    if (data.failures?.length) {
+      setStatus(`Re-proceso parcial | docs: ${data.reprocessed ?? 0} | fallos: ${data.failures.length}`);
+      toast("error", `No se pudieron reindexar: ${data.failures.map((doc) => doc.name).join(", ")}`);
+      return;
+    }
     if (!res.ok) {
       toast("error", data.error ?? "Error en el re-proceso");
       setStatus("Error en re-proceso");

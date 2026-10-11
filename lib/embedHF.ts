@@ -1,6 +1,8 @@
 // Multilingual sentence-transformer — 384-dim, compatible con pgvector existente.
 // Reemplaza all-MiniLM-L6-v2 (inglés) para mayor precisión en español.
-const EMBED_MODEL =
+import { tokenCount, EMBEDDING_TOKEN_LIMIT } from "@/lib/ragText";
+
+export const EMBED_MODEL =
   "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2";
 export const EMBED_DIM = 384;
 
@@ -34,7 +36,11 @@ export async function embedHF(text: string): Promise<number[]> {
   const token = process.env.HF_TOKEN;
   if (!token) throw new Error("Falta HF_TOKEN");
 
-  const input = text.trim().replace(/\s+/g, " ").slice(0, 512);
+  const input = text.trim().replace(/\s+/g, " ");
+  if (!input) throw new Error("Texto vacio para embedding");
+  if (await tokenCount(input) > EMBEDDING_TOKEN_LIMIT) {
+    throw new Error("El texto excede el limite de tokens; debe fragmentarse antes de generar embeddings.");
+  }
 
   const resp = await fetch(
     `https://router.huggingface.co/hf-inference/models/${EMBED_MODEL}/pipeline/feature-extraction`,
@@ -64,5 +70,8 @@ export async function embedHF(text: string): Promise<number[]> {
   const emb = normalize((raw ?? []) as EmbeddingRaw);
   if (emb.length !== EMBED_DIM)
     throw new Error(`Embedding inválida: ${emb.length} dims (esperado ${EMBED_DIM})`);
+  if (!emb.every(Number.isFinite) || emb.every((value) => value === 0)) {
+    throw new Error("Embedding con valores no validos");
+  }
   return emb;
 }
