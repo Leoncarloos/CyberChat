@@ -32,7 +32,13 @@ export async function middleware(req: NextRequest) {
 
   // Refresca la sesión en cookies
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return res;
+  // Sin sesión, la página protegida no debe llegar a renderizarse: la redirección
+  // del cliente dejaba ver la pantalla vacía antes de volver al login.
+  if (!user) {
+    return matches(pathname, ACTIVE_REQUIRED)
+      ? NextResponse.redirect(new URL("/login", req.url))
+      : res;
+  }
 
   const claims = readAccessClaims(user);
 
