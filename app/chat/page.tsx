@@ -533,13 +533,20 @@ function ChatPageInner() {
 
     setMessages((prev) => [...prev, userMessage]);
 
-    const apiRes = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: historyForApi }),
-    });
-
-    const raw = await apiRes.text();
+    let apiRes: Response;
+    let raw: string;
+    try {
+      apiRes = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: historyForApi }),
+      });
+      raw = await apiRes.text();
+    } catch {
+      setIsSending(false);
+      toast("error", "Error al procesar la consulta, intente nuevamente.");
+      return;
+    }
     let data: ChatApiResponse | null = null;
     try {
       data = raw ? (JSON.parse(raw) as ChatApiResponse) : null;
