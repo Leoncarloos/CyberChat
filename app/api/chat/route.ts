@@ -25,6 +25,14 @@ const MAX_HISTORY = 12;
 // para no exponer qué servicios hay detrás ni sus mensajes crudos.
 const PROCESSING_ERROR = "Error al procesar la consulta, intente nuevamente.";
 
+// gpt-oss a veces corta con su negativa por defecto, sin decir por qué; el usuario
+// debe saber qué atiende el asistente (HU010-3) y que no accede a datos ajenos (HU010-4).
+const GENERIC_REFUSAL = /^\s*(lo siento,?\s*)?(pero\s*)?no puedo ayudar(te)? con (eso|esto|esa solicitud)\.?\s*$|^\s*i(['’]m| am) sorry,?\s*(but\s*)?i can(['’]|no)t help with (that|this)\.?\s*$/i;
+const SCOPE_REFUSAL =
+  "Solo puedo ayudarte con temas de ciberseguridad y protección de la información de tu empresa, " +
+  "y no tengo acceso a datos de otros usuarios, como correos, contraseñas o resultados. " +
+  "Si quieres, reformula tu consulta hacia un tema de ciberseguridad.";
+
 function processingError(logLabel: string, detail: unknown, status = 500) {
   console.error(`[/api/chat] ${logLabel}:`, detail);
   return NextResponse.json({ error: PROCESSING_ERROR }, { status });
@@ -205,8 +213,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const answer =
-      groqData?.choices?.[0]?.message?.content ?? "No pude generar respuesta.";
+    const raw = groqData?.choices?.[0]?.message?.content ?? "No pude generar respuesta.";
+    const answer = GENERIC_REFUSAL.test(raw) ? SCOPE_REFUSAL : raw;
 
     return NextResponse.json({
       answer,
