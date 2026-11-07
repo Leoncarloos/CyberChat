@@ -182,6 +182,9 @@ export default function DashboardPage() {
 
   const risk = RISK_CONFIG[data.riskLevel];
   const hasDiagnostic = Boolean(data.diagnostic);
+  // postTest es la evaluación más reciente: tras una recurrente ya no es el post-test original.
+  const latestIsRecurrent = data.postTestHistory[0]?.testType === "recurrente";
+  const latestLabel = latestIsRecurrent ? "Última evaluación" : "Post-Test";
 
   return (
     <main className="app-shell grid h-screen grid-cols-1 overflow-hidden bg-[var(--paper)] lg:grid-cols-[280px_1fr]">
@@ -278,9 +281,13 @@ export default function DashboardPage() {
             sub={data.diagnostic ? `${data.diagnostic.score}/${data.diagnostic.total} correctas` : "Sin datos"}
           />
           <KpiCard
-            label="Post-Test"
+            label={latestLabel}
             value={data.postTest ? `${data.postTest.pct}%` : "--"}
-            sub={data.postTest ? `${data.postTest.score}/${data.postTest.total} correctas` : "Pendiente"}
+            sub={
+              data.postTest
+                ? `${data.postTest.score}/${data.postTest.total} correctas${latestIsRecurrent ? " · Recurrente" : ""}`
+                : "Pendiente"
+            }
             colorClass={data.postTest ? "text-[var(--teal-dim)]" : "text-[var(--ink-soft)]"}
           />
           <KpiCard
@@ -305,7 +312,7 @@ export default function DashboardPage() {
               {risk.dot} {risk.label}
             </p>
             <p className="mt-2 text-sm text-[var(--ink-soft)]">
-              Basado en {data.postTest ? "post-test" : data.diagnostic ? "diagnóstico" : "sin datos"}
+              Basado en {data.postTest ? (latestIsRecurrent ? "última evaluación" : "post-test") : data.diagnostic ? "diagnóstico" : "sin datos"}
             </p>
           </div>
           <KpiCard
@@ -343,7 +350,8 @@ export default function DashboardPage() {
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-sm font-semibold text-[var(--ink)]">
-                      Post-Test ({data.postTest.score}/{data.postTest.total})
+                      {latestIsRecurrent ? "Última evaluación · Recurrente" : "Post-Test"} (
+                      {`${data.postTest.score}/${data.postTest.total}`})
                     </span>
                     <span className="font-mono text-sm text-[var(--teal-dim)]">
                       {data.postTest.pct}%
