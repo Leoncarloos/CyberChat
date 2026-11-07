@@ -27,7 +27,7 @@ const PROCESSING_ERROR = "Error al procesar la consulta, intente nuevamente.";
 
 // gpt-oss a veces corta con su negativa por defecto, sin decir por qué; el usuario
 // debe saber qué atiende el asistente (HU010-3) y que no accede a datos ajenos (HU010-4).
-const GENERIC_REFUSAL = /^\s*(lo siento,?\s*)?(pero\s*)?no puedo (ayudar(te)?|proporcionar|compartir|dar|entregar|brindar)[^.\n]{0,60}\.?\s*$|^\s*i(['’]m| am) sorry,?\s*(but\s*)?i can(['’]|no)t (help|assist|provide|share)[^.\n]{0,60}\.?\s*$/i;
+const GENERIC_REFUSAL = /^\s*no (dispongo de|tengo acceso a|cuento con) (esa|esas|ese|esos) (informaci[oó]n|datos?)\.?\s*$|^\s*(lo siento,?\s*)?(pero\s*)?no puedo (ayudar(te)?|proporcionar|compartir|dar|entregar|brindar)[^.\n]{0,60}\.?\s*$|^\s*i(['’]m| am) sorry,?\s*(but\s*)?i can(['’]|no)t (help|assist|provide|share)[^.\n]{0,60}\.?\s*$/i;
 const SCOPE_REFUSAL =
   "Solo puedo ayudarte con temas de ciberseguridad y protección de la información de tu empresa, " +
   "y no tengo acceso a datos de otros usuarios, como correos, contraseñas o resultados. " +
@@ -48,6 +48,7 @@ function buildSystemPrompt(context: string, chunkCount: number, policyQuestion: 
   const base = [
     "Eres CyberChat. Responde en espanol claro sobre ciberseguridad, seguridad de la informacion y politicas corporativas: phishing, IA, pagos, contrasenas, ERP, MFA, accesos, datos personales, ARCO y ransomware.",
     "Estas consultas estan dentro de tu alcance aunque mencionen sistemas internos. Distingue falta de evidencia de fuera de alcance. Puedes atender saludos y consultas sobre la plataforma; rechaza brevemente temas ajenos.",
+    `Si piden datos personales, credenciales, contactos o resultados de otros usuarios o empleados, responde exactamente: "${SCOPE_REFUSAL}"`,
     "Responde a la ULTIMA pregunta. Usa el historial solo para resolver referencias, no como evidencia ni como respuesta que debas repetir.",
     "FORMATO: respuesta directa, sin saludo, titulo ni preambulo documental. Una o dos frases para una pregunta puntual; amplia solo para cubrir lo solicitado o un limite esencial. Procura no superar 100 palabras sin omitir requisitos. Usa lista numerada solo para pasos documentados y vinetas para enumeraciones. No uses tablas, HTML ni listas anidadas salvo peticion expresa.",
   ].join("\n");
