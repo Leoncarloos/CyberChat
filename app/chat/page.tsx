@@ -763,7 +763,16 @@ function ChatPageInner() {
         <div className="flex-1 overflow-y-auto px-4 py-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <p className="eyebrow text-[rgba(245,240,232,0.35)]">Historial</p>
-            <button className="ghost-button !px-3 !py-1.5 !text-[11px]" onClick={() => void handleNewConversation()}>
+            <button
+              className="ghost-button !px-3 !py-1.5 !text-[11px]"
+              onClick={() => {
+                if (recurringBlocked) {
+                  toast("info", "Completa tu evaluación recurrente para seguir usando el chat.");
+                  return;
+                }
+                void handleNewConversation();
+              }}
+            >
               Nuevo
             </button>
           </div>
