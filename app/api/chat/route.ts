@@ -27,7 +27,7 @@ const PROCESSING_ERROR = "Error al procesar la consulta, intente nuevamente.";
 
 // gpt-oss a veces corta con su negativa por defecto, sin decir por qué; el usuario
 // debe saber qué atiende el asistente (HU010-3) y que no accede a datos ajenos (HU010-4).
-const GENERIC_REFUSAL = /^\s*(lo siento,?\s*)?(pero\s*)?no puedo ayudar(te)? con (eso|esto|esa solicitud)\.?\s*$|^\s*i(['’]m| am) sorry,?\s*(but\s*)?i can(['’]|no)t help with (that|this)\.?\s*$/i;
+const GENERIC_REFUSAL = /^\s*(lo siento,?\s*)?(pero\s*)?no puedo (ayudar(te)?|proporcionar|compartir|dar|entregar|brindar)[^.\n]{0,60}\.?\s*$|^\s*i(['’]m| am) sorry,?\s*(but\s*)?i can(['’]|no)t (help|assist|provide|share)[^.\n]{0,60}\.?\s*$/i;
 const SCOPE_REFUSAL =
   "Solo puedo ayudarte con temas de ciberseguridad y protección de la información de tu empresa, " +
   "y no tengo acceso a datos de otros usuarios, como correos, contraseñas o resultados. " +
