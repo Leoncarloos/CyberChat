@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { diagnosticTopics } from "@/lib/diagnosticTopics";
+import { rankTopics, topicScore } from "@/lib/topicPerformance";
 import { readAccessClaims } from "@/lib/accessClaims";
 
 type TopicPerf = { correct: number; total: number };
@@ -182,6 +183,8 @@ export default function DashboardPage() {
 
   const risk = RISK_CONFIG[data.riskLevel];
   const hasDiagnostic = Boolean(data.diagnostic);
+  const topicPerformance = data.currentTopicsPerformance ?? data.diagnostic?.topicsPerformance ?? {};
+  const rankedTopics = rankTopics(diagnosticTopics, topicPerformance);
   // postTest es la evaluación más reciente: tras una recurrente ya no es el post-test original.
   const latestIsRecurrent = data.postTestHistory[0]?.testType === "recurrente";
   const latestLabel = latestIsRecurrent ? "Última evaluación" : "Post-Test";
@@ -442,10 +445,10 @@ export default function DashboardPage() {
             <div className="rounded-[1.4rem] border border-[var(--border)] bg-white/80 px-6 py-6 shadow-[0_10px_24px_rgba(26,21,16,0.06)]">
               <p className="eyebrow">Desempeño por temática</p>
               <div className="mt-5 space-y-4">
-                {diagnosticTopics.map((topic) => {
-                  const perf = data.diagnostic!.topicsPerformance[topic.key];
+                {rankedTopics.map((topic) => {
+                  const perf = topicPerformance[topic.key];
                   if (!perf) return null;
-                  const pct = Math.round((perf.correct / perf.total) * 100);
+                  const pct = Math.round(Math.max(0, topicScore(perf)) * 100);
                   const barColor =
                     pct === 100
                       ? "bg-[var(--green)]"

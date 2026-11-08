@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { requireActiveUser } from "@/lib/authz";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { diagnosticTopics } from "@/lib/diagnosticTopics";
+import { rankTopics, topicScore } from "@/lib/topicPerformance";
 
 type TopicPerformance = Record<string, { correct: number; total: number }>;
 
@@ -178,13 +179,17 @@ export async function GET() {
     );
     const currentTopicsPerformance = latestWithTopics?.topics_performance ?? topicsPerformance;
 
-    const strongTopics = Object.entries(currentTopicsPerformance)
-      .filter(([, v]) => v.correct === v.total)
-      .map(([k]) => TOPIC_LABELS[k] ?? k);
+    const rankedTopics = rankTopics(diagnosticTopics, currentTopicsPerformance);
+    const strongTopics = rankedTopics
+      .filter((t) => topicScore(currentTopicsPerformance[t.key]) === 1)
+      .map((t) => t.label);
 
-    const weakTopics = Object.entries(currentTopicsPerformance)
-      .filter(([, v]) => v.correct < v.total)
-      .map(([k]) => TOPIC_LABELS[k] ?? k);
+    const weakTopics = rankedTopics
+      .filter((t) => {
+        const score = topicScore(currentTopicsPerformance[t.key]);
+        return score >= 0 && score < 1;
+      })
+      .map((t) => t.label);
 
     const lastEvalAt = attempts[0]?.taken_at ?? quiz?.taken_at ?? null;
     const nextEvaluation = lastEvalAt
