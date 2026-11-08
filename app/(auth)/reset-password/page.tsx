@@ -19,12 +19,27 @@ export default function ResetPasswordPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  // Se lee en el primer render: el cliente de Supabase quita el ?code= de la URL al canjearlo.
+  const [linkParams] = useState(() => {
+    if (typeof window === "undefined") return { hasError: false, fromLink: false };
+    const query = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const hasError = [query, hash].some((p) => p.has("error") || p.has("error_code"));
+    return { hasError, fromLink: query.has("code") || hash.get("type") === "recovery" };
+  });
 
   useEffect(() => {
     let cancelled = false;
 
+    // Un enlace vencido o ya usado vuelve con error aunque haya una sesión abierta; esa sesión
+    // no autoriza a cambiar la contraseña desde aquí.
+    if (linkParams.hasError) {
+      setLinkStatus("invalid");
+      return;
+    }
+
     supabase.auth.getSession().then(({ data }) => {
-      if (!cancelled && data.session) setLinkStatus("ready");
+      if (!cancelled && data.session && linkParams.fromLink) setLinkStatus("ready");
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
