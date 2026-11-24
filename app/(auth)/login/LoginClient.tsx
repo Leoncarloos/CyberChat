@@ -190,6 +190,10 @@ export default function LoginClient({ registered, reset, blocked }: LoginClientP
               Crear cuenta
             </a>
           </div>
+          <p className="mt-4 text-xs text-[var(--muted)]">
+            <a href="/privacidad" className="underline">Política de privacidad</a> ·{" "}
+            <a href="/mis-datos" className="underline">Derechos sobre mis datos (ARCO)</a>
+          </p>
         </div>
       </section>
     </main>

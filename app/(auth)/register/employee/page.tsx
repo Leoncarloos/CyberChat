@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { registerEmployeeSchema, flattenFieldErrors } from "@/lib/validators/auth";
 import PasswordStrengthHint from "@/components/PasswordStrengthHint";
+import DataConsentFields from "@/components/DataConsentFields";
 
 type EmployeeRegisterForm = {
   ruc: string;
@@ -12,6 +13,8 @@ type EmployeeRegisterForm = {
   email: string;
   password: string;
   confirmPassword: string;
+  dataConsent: boolean;
+  researchConsent: boolean;
 };
 
 const initialForm: EmployeeRegisterForm = {
@@ -21,6 +24,8 @@ const initialForm: EmployeeRegisterForm = {
   email: "",
   password: "",
   confirmPassword: "",
+  dataConsent: false,
+  researchConsent: false,
 };
 
 export default function EmployeeRegisterPage() {
@@ -58,6 +63,7 @@ export default function EmployeeRegisterPage() {
       email: true,
       password: true,
       confirmPassword: true,
+      dataConsent: true,
     });
 
     if (!validation.success) return;
@@ -248,6 +254,15 @@ export default function EmployeeRegisterPage() {
                 <p className="mt-1 text-xs text-[var(--red)]">{errorFor("confirmPassword")}</p>
               ) : null}
             </div>
+
+            <DataConsentFields
+              audience="employee"
+              dataConsent={form.dataConsent}
+              researchConsent={form.researchConsent}
+              onDataConsent={(v) => updateField("dataConsent", v)}
+              onResearchConsent={(v) => updateField("researchConsent", v)}
+              error={errorFor("dataConsent")}
+            />
 
             {serverError ? <div className="status-banner error">{serverError}</div> : null}
 

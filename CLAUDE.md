@@ -16,7 +16,7 @@ npm run lint     # ESLint
 |------|-------------|
 | `/` | Landing / redirect |
 | `/login` | Autenticación |
-| `/register` | Registro de empleado |
+| `/register` | Elección de registro: `/register/admin` (dueño + empresa) o `/register/employee` (solicitud de empleado) |
 | `/chat` | Chatbot RAG (todos los usuarios) |
 | `/admin` | Upload de documentos RAG (solo admin) |
 | `/manage` | Gestión de empleados (solo admin) |
@@ -27,20 +27,33 @@ npm run lint     # ESLint
 | `/api/quiz` | POST — guarda resultado de evaluación (post-test/recurrente) en `quiz_results` + `evaluation_attempts` + marca preguntas vistas (HU19/HU20) |
 | `/api/posttest` | GET — arma evaluación de 16 preguntas (2×8 temas) desde banco fijo `posttest_questions`, excluyendo preguntas ya vistas (HU19/HU20) |
 | `/api/recurring-test/status` | GET — indica si corresponde evaluación recurrente (≥5 días desde la última; bloqueante para employee, omitible para admin) (HU20) |
-| `/api/chat` | POST — inferencia RAG + Groq |
+| `/api/chat` | POST — RAG híbrido + Groq; devuelve la respuesta, las fuentes y `retrieved_contexts`. El navegador guarda la respuesta en `messages` (`lib/db.ts`) |
 | `/api/admin/employees` | GET/PATCH — CRUD empleados |
 | `/api/documents/upload-and-process` | POST — pipeline ingesta documentos |
+| `/api/documents/reprocess` | POST — reindexa los documentos del dueño; respalda los fragmentos anteriores en `rag_index_backups` (RPC `replace_document_chunks_v2`, atómico por documento) |
 | `/api/learning-path` | GET — ruta de aprendizaje (nivel por tema + atajos) · POST — persiste progreso por tema (HU11) |
+| `/privacidad` | Política de privacidad pública (Ley 29733 y D.S. 016-2024-JUS, art. 6) |
+| `/mis-datos` | Canal de derechos ARCO y gestión del consentimiento (cualquier usuario con sesión) |
+| `/api/privacy` | GET solicitudes ARCO y consentimientos propios · POST nueva solicitud (plazo en días hábiles, art. 69) · PATCH consentimiento de investigación |
 | `/org-dashboard` | Dashboard organizacional + resumen IA (solo admin) |
 | `/api/org-dashboard` | GET — métricas org agregadas (usa `lib/orgMetrics.ts`) |
 | `/api/org-summary` | GET — resumen ejecutivo IA (cache TTL 1h, auto-genera) · POST — regenera bajo demanda (HU17) |
 
 ## Roles
-- `employee` — acceso solo a `/chat`
-- `admin` — acceso a `/chat`, `/manage`, `/admin`
+- `employee` — `/chat` y `/dashboard`; requiere aprobación del dueño (`approval_status: active`)
+- `admin` (dueño de empresa) — además `/manage`, `/admin` y `/org-dashboard`
 
-La protección de rutas es **client-side** en cada `page.tsx` via `supabase.auth.getUser()`.
-El middleware (`middleware.ts`) solo refresca cookies de sesión, no bloquea.
+Autorización en tres capas, todas con el estado vigente (no el del JWT):
+1. **API routes:** `requireActiveUser()` / `requireAdmin()` de `lib/authz.ts` (401 sin sesión,
+   403 si la cuenta no está activa o el rol no corresponde). Es la protección real.
+2. **RLS:** las tablas con acceso directo desde el navegador exigen dato propio y
+   `private.is_active_user()`. En `messages`, el navegador puede insertar mensajes de
+   cualquier rol, pero solo en conversaciones propias.
+3. **Middleware:** refresca la sesión, cierra la de empleados no activos (`/login?blocked=…`)
+   y redirige a `/diagnostic` si falta el diagnóstico. Las páginas además redirigen por rol
+   en el cliente (solo navegación).
+
+Los dueños se registran sin verificación de correo (decisión del equipo).
 
 ## Variables de entorno (`.env.local`)
 ```
@@ -52,12 +65,30 @@ GROQ_API_KEY      # Groq — openai/gpt-oss-20b
 ```
 
 ## Pipeline RAG
-1. Texto usuario → embedding 384-dim (HF `paraphrase-multilingual-MiniLM-L12-v2`)
-2. Supabase RPC `match_document_chunks_scoped` → top-5 chunks (umbral 0.38),
-   acotado a la empresa: se pasa el id del dueño (`lib/orgAdmin.ts`), no el del
-   usuario, y se invoca con `supabaseAdmin` porque el RPC es SECURITY INVOKER
-3. Contexto + historial (últimos 12 mensajes) → Groq `openai/gpt-oss-20b`
-4. Respuesta + metadata de fuentes devuelta al cliente
+Indexación (`/api/documents/upload-and-process`, `lib/ragText.ts`):
+1. Extrae texto (PDF `pdf-extraction`, DOCX `mammoth`, TXT) · máx. 10 MB · sin OCR
+2. Fragmenta por secciones (`#`) y oraciones: máx. 120 tokens por fragmento contados con el
+   tokenizador del modelo, con prefijo «Documento/Sección» y solape de 1 oración corta
+3. Embedding 384-dim por fragmento (HF `paraphrase-multilingual-MiniLM-L12-v2`, `lib/embedHF.ts`);
+   `embedHF` rechaza textos de más de 120 tokens, nunca los recorta
+
+Consulta (`/api/chat`, `lib/ragRetrieval.ts`):
+1. Embedding del último mensaje del usuario (si pasa de 120 tokens: hasta 8 partes promediadas)
+2. Búsqueda híbrida acotada a la empresa: se pasa el id del dueño (`lib/orgAdmin.ts`), no el del
+   usuario, con `supabaseAdmin` porque los RPC son SECURITY INVOKER
+   - vectorial: RPC `match_document_chunks_scoped`, 20 candidatos
+   - léxica: RPC `match_document_chunks_lexical_scoped` (si no existe, `textSearch` sobre
+     `document_chunks`), 8 con términos específicos + 20 con todos
+   - fusión RRF, sin duplicados, máx. 20 candidatos
+3. Selección de evidencia: Groq `openai/gpt-oss-20b` (temp. 0, JSON schema) elige hasta 5
+   fragmentos. Si falla: los 5 más similares por vector con similitud ≥ 0.38
+   (`RAG_VECTOR_FALLBACK_THRESHOLD`)
+4. Sin evidencia + pregunta sobre políticas (`isPolicyQuestion`) → respuesta fija «No encontré
+   evidencia suficiente…» sin llamar al LLM
+5. Prompt con fragmentos numerados (citas `[Fuente N]`) o de orientación general + últimos 12
+   mensajes → Groq `openai/gpt-oss-20b` (temp. 0.15, máx. 900 tokens, reasoning low)
+6. Negativa genérica del modelo (`GENERIC_REFUSAL`) → se reemplaza por `SCOPE_REFUSAL`
+7. Devuelve respuesta + `sources` + `retrieved_contexts`; el chat muestra citas y «Fragmentos citados»
 
 ## Supabase
 - Identidad de usuario: no hay tabla `employees`/`profiles`. Rol, RUC, estado de aprobación y
@@ -72,10 +103,13 @@ GROQ_API_KEY      # Groq — openai/gpt-oss-20b
 - `evaluation_attempts` — intentos de evaluación con test_type (posttest/recurrente) y topics_performance por tema — HU22. SQL en `docs/sql/evaluation_attempts.sql`
 - `seen_questions` — preguntas del banco ya respondidas por usuario (anti-repetición, ciclo se reinicia por tema al agotarse) — HU22
 - `conversations` — historial de conversaciones por usuario
-- `messages` — mensajes dentro de cada conversación
+- `messages` — mensajes dentro de cada conversación; las respuestas guardan los fragmentos usados en `retrieved_contexts` (jsonb)
 - `documents` — documentos subidos por admin
 - `document_chunks` — chunks vectorizados (pgvector 384-dim), con índice HNSW sobre `embedding`
+- `rag_index_backups` — fragmentos anteriores de un documento, guardados al reindexar (`/api/documents/reprocess`)
 - `learning_progress` — progreso de la ruta por tema (user_id, topic_key, status: pendiente/en_progreso/completado) — HU16. SQL en `docs/sql/learning_progress.sql`
+- `consent_records` — prueba del consentimiento por finalidad (`servicio` obligatoria, `investigacion` opcional) y versión de la política; se registra al crear la cuenta (`lib/consent.ts`). SQL en `docs/sql/privacy_consent_arco.sql`
+- `arco_requests` — solicitudes ARCO con `due_at` en días hábiles con feriados de Perú (`lib/privacy.ts`); las atiende el equipo desde Supabase (columnas `status`, `response`)
 - `org_summaries` — cache + log de auditoría de resúmenes IA org (ruc, period, summary_text, warnings, metrics, generated_by, generated_at) — HU17. SQL en `docs/sql/org_summaries.sql`
 
 Clientes:
@@ -88,7 +122,9 @@ Clientes:
 - `void` para promises flotantes en event handlers
 - Siempre `escapeHtml` antes de `dangerouslySetInnerHTML`
 - Embeddings: normalizar siempre a `number[]` 384-dim antes de insertar
-- API routes: validar sesión con `supabaseServer()` + `getUser()` — nunca confiar en body
+- API routes: autorizar con `requireActiveUser()` / `requireAdmin()` — nunca confiar en body
+- Escrituras de resultados: solo con `supabaseAdmin` en API routes (las respuestas del asistente
+  las guarda el navegador con `lib/db.ts`)
 
 ## Documentación en `/docs`
 | Archivo | Contenido |

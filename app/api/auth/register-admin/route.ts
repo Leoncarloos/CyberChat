@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { registerAdminSchema, flattenFieldErrors } from "@/lib/validators/auth";
 import { translateAuthError } from "@/lib/authErrors";
 import { readAccessClaims } from "@/lib/accessClaims";
+import { recordRegistrationConsent } from "@/lib/consent";
 
 export async function POST(req: Request) {
   try {
@@ -22,7 +23,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const { ruc, businessName, tradeName, ownerName, email, phone, password } = parsed.data;
+    const { ruc, businessName, tradeName, ownerName, email, phone, password, researchConsent } =
+      parsed.data;
 
     const admin = supabaseAdmin();
     const usersResult = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -59,6 +61,14 @@ export async function POST(req: Request) {
 
     if (createResult.error) {
       return NextResponse.json({ error: translateAuthError(createResult.error) }, { status: 400 });
+    }
+
+    const consent = await recordRegistrationConsent(createResult.data.user.id, researchConsent);
+    if (!consent.ok) {
+      return NextResponse.json(
+        { error: "No se pudo completar el registro. Intenta nuevamente." },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true });

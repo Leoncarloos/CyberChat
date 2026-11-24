@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { registerAdminSchema, flattenFieldErrors } from "@/lib/validators/auth";
 import PasswordStrengthHint from "@/components/PasswordStrengthHint";
+import DataConsentFields from "@/components/DataConsentFields";
 
 type AdminRegisterForm = {
   ruc: string;
@@ -15,6 +16,8 @@ type AdminRegisterForm = {
   password: string;
   confirmPassword: string;
   acceptedTerms: boolean;
+  dataConsent: boolean;
+  researchConsent: boolean;
 };
 
 const initialForm: AdminRegisterForm = {
@@ -27,9 +30,11 @@ const initialForm: AdminRegisterForm = {
   password: "",
   confirmPassword: "",
   acceptedTerms: false,
+  dataConsent: false,
+  researchConsent: false,
 };
 
-type ValidatedField = Exclude<keyof AdminRegisterForm, "acceptedTerms">;
+type ValidatedField = Exclude<keyof AdminRegisterForm, "acceptedTerms" | "researchConsent">;
 
 export default function AdminRegisterPage() {
   const router = useRouter();
@@ -49,6 +54,8 @@ export default function AdminRegisterPage() {
         phone: form.phone,
         password: form.password,
         confirmPassword: form.confirmPassword,
+        dataConsent: form.dataConsent,
+        researchConsent: form.researchConsent,
       }),
     [form]
   );
@@ -78,6 +85,7 @@ export default function AdminRegisterPage() {
       phone: true,
       password: true,
       confirmPassword: true,
+      dataConsent: true,
     });
 
     if (!form.acceptedTerms) {
@@ -303,9 +311,18 @@ export default function AdminRegisterPage() {
               />
               <span>
                 Declaro que la información proporcionada es verdadera y acepto los Términos de
-                Servicio y la Política de Privacidad.
+                Servicio.
               </span>
             </label>
+
+            <DataConsentFields
+              audience="owner"
+              dataConsent={form.dataConsent}
+              researchConsent={form.researchConsent}
+              onDataConsent={(v) => updateField("dataConsent", v)}
+              onResearchConsent={(v) => updateField("researchConsent", v)}
+              error={errorFor("dataConsent")}
+            />
 
             {serverError ? <div className="status-banner error">{serverError}</div> : null}
 

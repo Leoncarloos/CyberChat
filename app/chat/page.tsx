@@ -852,6 +852,12 @@ function ChatPageInner() {
               Salir
             </button>
           </div>
+          <a
+            href="/mis-datos"
+            className="mt-3 block text-center font-mono text-[10px] uppercase tracking-[0.16em] text-[rgba(245,240,232,0.45)] hover:text-[rgba(245,240,232,0.8)]"
+          >
+            Mis datos y privacidad
+          </a>
         </div>
       </aside>
 

@@ -30,16 +30,24 @@ function fail(error: string, status: number): AuthFail {
  * el estado es el vigente y no el del token.
  */
 export async function requireActiveUser(): Promise<AuthOk | AuthFail> {
-  const supabase = await supabaseServer();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return fail("No auth", 401);
-
-  const claims = readAccessClaims(data.user);
+  const auth = await requireUser();
+  if (!auth.ok) return auth;
+  const { claims } = auth;
   if (!claims.role) return fail("Cuenta sin rol asignado", 403);
   if (claims.approvalStatus === "rejected") return fail(REJECTED_MESSAGE, 403);
   if (claims.approvalStatus !== "active") return fail(PENDING_MESSAGE, 403);
+  return auth;
+}
 
-  return { ok: true, user: data.user, claims, supabase };
+/**
+ * Solo sesión válida, sin exigir cuenta aprobada. Para los derechos sobre datos personales:
+ * un empleado pendiente o rechazado también es titular de sus datos y puede ejercerlos.
+ */
+export async function requireUser(): Promise<AuthOk | AuthFail> {
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) return fail("No auth", 401);
+  return { ok: true, user: data.user, claims: readAccessClaims(data.user), supabase };
 }
 
 export async function requireAdmin(

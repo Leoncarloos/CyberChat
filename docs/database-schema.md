@@ -309,3 +309,20 @@ reales, encontradas al verificar contra la base de datos en vivo:
    2026-09-12 (issue #16, ver nota al inicio del documento).
 2. Afirmaba un índice HNSW sobre `document_chunks.embedding` que no existía entonces —
    se creó el 2026-09-12 (issue #17, ver sección `document_chunks`).
+
+
+---
+
+### `consent_records`
+Prueba del consentimiento (Ley 29733; Reglamento D.S. 016-2024-JUS, art. 9). Una fila por
+finalidad (`servicio` obligatoria, `investigacion` opcional), versión de la política
+(`policy_version`) y decisión (`granted`). Un cambio de decisión cierra la fila vigente con
+`revoked_at` e inserta otra. `user_id` con `ON DELETE SET NULL` para conservar la prueba si se
+cancela la cuenta. RLS: `consent_records_select_own`; escritura solo vía service_role.
+
+### `arco_requests`
+Solicitudes de información, acceso, rectificación, cancelación, oposición y revocación.
+`due_at` = plazo del art. 69 del Reglamento en días hábiles (8 información, 20 acceso, 10 el
+resto), calculado en `lib/privacy.ts`. El equipo las atiende actualizando `status`
+(`recibida`/`en_proceso`/`atendida`/`denegada`), `response` y `responded_at`. RLS:
+`arco_requests_select_own`; escritura solo vía service_role. SQL: `docs/sql/privacy_consent_arco.sql`.

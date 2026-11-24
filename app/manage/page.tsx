@@ -302,6 +302,12 @@ export default function ManagePage() {
           >
             Cerrar sesión
           </button>
+          <a
+            href="/mis-datos"
+            className="mt-2 block text-center text-xs text-[rgba(245,240,232,0.5)] hover:text-[rgba(245,240,232,0.85)]"
+          >
+            Mis datos y privacidad
+          </a>
         </div>
       </aside>
 

@@ -70,6 +70,13 @@ export const loginSchema = z.object({
   password: z.string().min(1, "La contraseña es obligatoria"),
 });
 
+// Consentimiento para la finalidad principal: obligatorio porque sin esos datos no se puede
+// prestar el servicio (Reglamento, art. 3.2). El de investigación es facultativo.
+const dataConsentSchema = z
+  .boolean()
+  .refine((v) => v, "Debes autorizar el tratamiento de tus datos personales para crear la cuenta");
+const researchConsentSchema = z.boolean().optional().transform((v) => v ?? false);
+
 const passwordsMatch = (data: { password: string; confirmPassword: string }) =>
   data.password === data.confirmPassword;
 
@@ -83,6 +90,8 @@ export const registerAdminSchema = z
     phone: phoneSchema,
     password: passwordSchema,
     confirmPassword: z.string(),
+    dataConsent: dataConsentSchema,
+    researchConsent: researchConsentSchema,
   })
   .refine(passwordsMatch, { message: "Las contraseñas no coinciden", path: ["confirmPassword"] });
 
@@ -94,6 +103,8 @@ export const registerEmployeeSchema = z
     email: emailSchema,
     password: passwordSchema,
     confirmPassword: z.string(),
+    dataConsent: dataConsentSchema,
+    researchConsent: researchConsentSchema,
   })
   .refine(passwordsMatch, { message: "Las contraseñas no coinciden", path: ["confirmPassword"] });
 
