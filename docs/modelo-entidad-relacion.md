@@ -213,8 +213,8 @@ no puede registrarse dos veces para el mismo usuario.
 | `consent_records` | Prueba del consentimiento de cada usuario por finalidad (servicio obligatorio, investigación opcional) y versión de la política (Ley 29733) | — |
 | `arco_requests` | Solicitudes de derechos ARCO con su plazo de respuesta en días hábiles | — |
 
-Las tablas de privacidad ya existen en la base, pero las pantallas que las usan (`/privacidad` y
-`/mis-datos`) todavía no están publicadas.
+El consentimiento se registra al crear la cuenta; las solicitudes ARCO y el consentimiento de investigación se
+gestionan desde `/mis-datos`, y la política se publica en `/privacidad`.
 
 ---
 

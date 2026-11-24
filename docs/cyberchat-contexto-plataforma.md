@@ -360,7 +360,7 @@ No hay tabla de empresas ni de perfiles: la identidad vive en las cuentas de Sup
 | `arco_requests` | Solicitudes de derechos ARCO con su plazo de respuesta en días hábiles |
 | Storage `documents` | Archivos originales subidos |
 
-Las tablas `consent_records` y `arco_requests` ya existen en la base, pero las pantallas que las usan (`/privacidad` y `/mis-datos`) todavía no están publicadas.
+El consentimiento se registra al crear la cuenta; las solicitudes ARCO y el consentimiento de investigación se gestionan desde `/mis-datos`, y la política se publica en `/privacidad`.
 
 ---
 

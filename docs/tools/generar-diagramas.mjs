@@ -398,8 +398,8 @@ function modeloEntidadRelacion() {
   d.box(null, 20, 900, 440, 60, {
     shape: "note", fill: C.white, stroke: "#999999", align: "left", size: 13, pad: 8,
     lines: t(
-      ["Tablas de privacidad creadas en la base. Las pantallas", "/privacidad y /mis-datos aún no están publicadas."],
-      ["Privacy tables exist in the database. The /privacidad", "and /mis-datos screens are not published yet."]
+      ["Tablas de privacidad (Ley 29733): se registran al crear", "la cuenta y se gestionan desde /mis-datos."],
+      ["Privacy tables (Law 29733): recorded at sign-up and", "managed from /mis-datos."]
     ),
   });
 
