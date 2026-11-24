@@ -36,7 +36,7 @@
 <rect x="1010.25" y="270.875" width="251.5" height="30.25" fill="#ffffff"/><text x="1136" y="293.1" font-size="21" text-anchor="middle" fill="#1a1a1a" xml:space="preserve"><tspan>HTTPS · consultas y RPC</tspan></text>
 <rect x="1084" y="421.875" width="178" height="30.25" fill="#ffffff"/><text x="1173" y="444.1" font-size="21" text-anchor="middle" fill="#1a1a1a" xml:space="preserve"><tspan>HTTPS · archivos</tspan></text>
 <rect x="1636.25" y="270.875" width="41.5" height="30.25" fill="#ffffff"/><text x="1657" y="293.1" font-size="21" text-anchor="middle" fill="#1a1a1a" xml:space="preserve"><tspan>SQL</tspan></text>
-<rect x="883.5" y="746.875" width="199" height="30.25" fill="#ffffff"/><text x="983" y="769.1" font-size="21" text-anchor="middle" fill="#1a1a1a" xml:space="preserve"><tspan>HTTPS · respuestas</tspan></text>
-<rect x="1014.5" y="848.875" width="199" height="30.25" fill="#ffffff"/><text x="1114" y="871.1" font-size="21" text-anchor="middle" fill="#1a1a1a" xml:space="preserve"><tspan>HTTPS · embeddings</tspan></text>
+<rect x="800.75" y="748.125" width="418.5" height="27.75" fill="#ffffff"/><text x="1010" y="768.5" font-size="19" text-anchor="middle" fill="#1a1a1a" xml:space="preserve"><tspan>HTTPS · respuestas y selección de evidencia</tspan></text>
+<rect x="941" y="848.875" width="346" height="30.25" fill="#ffffff"/><text x="1114" y="871.1" font-size="21" text-anchor="middle" fill="#1a1a1a" xml:space="preserve"><tspan>HTTPS · embeddings y tokenizador</tspan></text>
 <rect x="339.5" y="817.875" width="115" height="30.25" fill="#ffffff"/><text x="397" y="840.1" font-size="21" text-anchor="middle" fill="#1a1a1a" xml:space="preserve"><tspan>despliegue</tspan></text>
 </svg>

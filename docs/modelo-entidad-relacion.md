@@ -1,10 +1,10 @@
 # Modelo entidad-relación — CyberChat
 
-Diagrama de la base de datos en producción: **11 tablas** en el esquema `public` de PostgreSQL 17,
+Diagrama de la base de datos en producción: **14 tablas** en el esquema `public` de PostgreSQL 17,
 más la tabla de identidades que gestiona Supabase Auth en el esquema `auth`.
 
 El modelo se extrajo directamente del catálogo del gestor (`information_schema.columns` y
-`pg_constraint`), de modo que refleja el estado real y no el previsto.
+`pg_constraint`), de modo que refleja el estado real y no el previsto. Última revisión: 23/11/2026.
 
 ---
 
@@ -44,6 +44,7 @@ erDiagram
         uuid conversation_id FK "CASCADE"
         text role "CHECK: user o assistant"
         text content
+        jsonb retrieved_contexts "Fragmentos usados en la respuesta del asistente"
         timestamptz created_at
     }
 
@@ -127,6 +128,38 @@ erDiagram
         timestamptz generated_at
     }
 
+    rag_index_backups {
+        uuid id PK
+        uuid document_id FK "CASCADE"
+        uuid owner_id "Administrador dueño; sin clave foránea"
+        text replacement_version "Versión del índice que reemplazó a la anterior"
+        jsonb previous_chunks "Fragmentos anteriores del documento"
+        timestamptz created_at
+    }
+
+    consent_records {
+        uuid id PK
+        uuid user_id FK "SET NULL en borrado"
+        text purpose "CHECK: servicio o investigacion"
+        text policy_version
+        bool granted
+        timestamptz granted_at
+        timestamptz revoked_at
+    }
+
+    arco_requests {
+        uuid id PK
+        uuid user_id FK "SET NULL en borrado"
+        text request_type "CHECK: informacion, acceso, rectificacion, cancelacion, oposicion o revocacion"
+        text detail "Entre 10 y 2000 caracteres"
+        text contact_email
+        text status "CHECK: recibida, en_proceso, atendida o denegada"
+        timestamptz created_at
+        date due_at "Plazo en días hábiles"
+        text response
+        timestamptz responded_at
+    }
+
     auth_users ||--o{ conversations : "mantiene"
     auth_users ||--o{ diagnostic_results : "rinde"
     auth_users ||--o{ quiz_results : "rinde"
@@ -135,9 +168,12 @@ erDiagram
     auth_users ||--o{ documents : "sube"
     auth_users ||--o{ seen_questions : "ya respondió"
     auth_users ||--o{ org_summaries : "genera"
+    auth_users ||--o{ consent_records : "otorga"
+    auth_users ||--o{ arco_requests : "solicita"
 
     conversations ||--o{ messages : "contiene"
     documents ||--o{ document_chunks : "se fragmenta en"
+    documents ||--o{ rag_index_backups : "se respalda en"
     posttest_questions ||--o{ seen_questions : "aparece en"
 ```
 
@@ -164,7 +200,7 @@ no puede registrarse dos veces para el mismo usuario.
 | Tabla | Contenido | Volumen actual |
 |---|---|---|
 | `auth_users` | Identidad y credenciales. `app_metadata` guarda rol, RUC, estado de aprobación y `diagnostic_done` (solo lo escribe el servidor); `user_metadata` guarda los datos de perfil | — |
-| `conversations` · `messages` | Historial del asistente virtual, una conversación con sus mensajes | — |
+| `conversations` · `messages` | Historial del asistente virtual, una conversación con sus mensajes. Las respuestas guardan los fragmentos que se usaron (`retrieved_contexts`) | — |
 | `diagnostic_results` | Resultado del diagnóstico inicial, uno por usuario | — |
 | `quiz_results` | Resultados de evaluaciones. Tabla heredada: se mantiene con doble escritura | — |
 | `evaluation_attempts` | Cada intento con su tipo y su desempeño por tema. Solo se añade, nunca se sobrescribe | — |
@@ -173,12 +209,18 @@ no puede registrarse dos veces para el mismo usuario.
 | `learning_progress` | Estado de cada tema en la ruta de aprendizaje del usuario | — |
 | `documents` · `document_chunks` | Documentos de cada empresa y sus fragmentos vectorizados para la búsqueda semántica | — |
 | `org_summaries` | Resúmenes generados por IA. Sirve de caché y de registro de auditoría | — |
+| `rag_index_backups` | Copia de los fragmentos anteriores de un documento cuando el administrador lo reindexa (`/api/documents/reprocess`), para poder recuperarlos | — |
+| `consent_records` | Prueba del consentimiento de cada usuario por finalidad (servicio obligatorio, investigación opcional) y versión de la política (Ley 29733) | — |
+| `arco_requests` | Solicitudes de derechos ARCO con su plazo de respuesta en días hábiles | — |
+
+Las tablas de privacidad ya existen en la base, pero las pantallas que las usan (`/privacidad` y
+`/mis-datos`) todavía no están publicadas.
 
 ---
 
 ## 4. Observaciones sobre el esquema
 
-Cuatro hallazgos surgidos al extraer el modelo. Ninguno impide el funcionamiento actual, pero conviene
+Cinco hallazgos surgidos al extraer el modelo. Ninguno impide el funcionamiento actual, pero conviene
 declararlos porque afectan la integridad de los datos.
 
 **1 · No existe una tabla de empresas.** La empresa es el eje de todo el sistema —el aislamiento entre
@@ -200,6 +242,9 @@ inconsistencia de criterio, no un fallo de funcionamiento.
 **4 · `document_chunks.document_id` admite nulo.** La relación con su documento no es obligatoria, de
 modo que el esquema permite insertar fragmentos huérfanos. El `CASCADE` evita que se generen al borrar,
 pero nada impide crearlos directamente.
+
+**5 · `rag_index_backups.owner_id` no tiene clave foránea.** Guarda el id del administrador que
+reindexó, pero el gestor no comprueba que ese usuario exista.
 
 ---
 
@@ -223,5 +268,5 @@ select con.contype, rel.relname, con.conname, pg_get_constraintdef(con.oid)
 
 > **Nota sobre el nombre `auth_users`.** La tabla real es `auth.users`, en el esquema `auth` que
 > administra Supabase. Mermaid no admite el punto en el nombre de una entidad, de modo que en el
-> diagrama figura como `auth_users`. Se incluye porque es el destino de ocho de las once claves
+> diagrama figura como `auth_users`. Se incluye porque es el destino de diez de las catorce claves
 > foráneas del modelo: sin ella, el diagrama quedaría desconectado.

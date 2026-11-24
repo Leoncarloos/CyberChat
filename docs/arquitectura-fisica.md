@@ -18,6 +18,6 @@ Las cuatro salidas se generan desde una sola definición con `node docs/tools/ge
 | Vercel · red perimetral | Entrega de archivos estáticos y middleware: refresca la cookie de sesión, cierra la de cuentas no activas y redirige al diagnóstico pendiente |
 | Vercel · funciones | Renderizado de páginas y todas las rutas `/api`; guardan las claves secretas |
 | Supabase | Autenticación, base de datos con búsqueda vectorial y almacenamiento de documentos |
-| Groq | Genera las respuestas del asistente y los resúmenes organizacionales |
-| Hugging Face | Convierte texto en vectores de 384 dimensiones para la búsqueda semántica |
+| Groq | Elige los fragmentos que sirven como evidencia, genera las respuestas del asistente, las recomendaciones y los resúmenes organizacionales |
+| Hugging Face | Convierte texto en vectores de 384 dimensiones para la búsqueda semántica. Las funciones también descargan de Hugging Face el tokenizador del modelo, con el que se cuentan los tokens al fragmentar |
 | GitHub | Código fuente desde el que Vercel construye y publica la aplicación |

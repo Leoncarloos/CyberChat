@@ -19,20 +19,22 @@ Las cuatro salidas se generan desde una sola definición con `node docs/tools/ge
 |---|---|---|
 | **UI** | Mostrar pantallas, capturar lo que hace el usuario y llamar a la BLL | `app/**/page.tsx`, `components/` |
 | **BLL** | Validar sesión y rol, aplicar reglas de negocio, orquestar el RAG, calificar evaluaciones y calcular métricas | `app/api/**/route.ts`, `lib/orgMetrics.ts`, `lib/learningPath.ts`, `lib/evaluationConfig.ts`, `lib/diagnosticBank.ts`, `lib/orgAdmin.ts`, `lib/validators/` |
-| **DAL** | Leer y escribir en la base, el almacenamiento y la autenticación; llamar a los modelos de IA | `lib/supabaseServer.ts`, `lib/supabaseAdmin.ts`, `lib/supabaseBrowser.ts`, `lib/db.ts`, `lib/embedHF.ts` |
+| **DAL** | Leer y escribir en la base, el almacenamiento y la autenticación; llamar a los modelos de IA | `lib/supabaseServer.ts`, `lib/supabaseAdmin.ts`, `lib/supabaseBrowser.ts`, `lib/db.ts`, `lib/embedHF.ts`, `lib/ragText.ts` (tokenizador y fragmentación), `lib/ragRetrieval.ts` (búsqueda híbrida y selección de evidencia) |
 
 ## Dónde entra la IA
 
 | Servicio | Lo usa | Para qué |
 |---|---|---|
 | Hugging Face · `paraphrase-multilingual-MiniLM-L12-v2` | Asistente RAG · Aprendizaje y métricas | Convertir documentos, preguntas y temas débiles en vectores para la búsqueda semántica |
-| Groq · `openai/gpt-oss-20b` | Asistente RAG | Responder preguntas con el contexto recuperado |
+| Groq · `openai/gpt-oss-20b` | Asistente RAG | Elegir los fragmentos que sirven como evidencia y responder la pregunta citándolos |
 | Groq · `openai/gpt-oss-20b` | Aprendizaje y métricas | Recomendaciones personalizadas y resumen ejecutivo de la empresa |
 
 ## Desviaciones del modelo en el código actual
 
 - **La UI salta la BLL en el chat.** El historial de conversaciones se lee y escribe desde el
   navegador con `lib/db.ts`, directo contra Supabase. La protección la dan las políticas RLS.
-- **Groq no tiene un cliente propio.** La llamada HTTP a Groq está escrita dentro de cuatro rutas
-  (`chat`, `dashboard`, `org-summary`, `recommendations`) en vez de estar en un módulo de la DAL
-  como `embedHF.ts`.
+- **Groq no tiene un cliente propio.** La llamada HTTP a Groq está escrita en cinco lugares: las rutas
+  `chat`, `dashboard`, `org-summary` y `recommendations`, y `lib/ragRetrieval.ts` (selección de
+  evidencia), en vez de estar en un solo módulo de la DAL como `embedHF.ts`.
+- **`lib/ragRetrieval.ts` mezcla capas.** Hace consultas a la base (DAL) y también decide qué
+  fragmentos usar (BLL).

@@ -315,7 +315,7 @@ function createDiagram(width, height) {
 
 // ============================================================ 1. Modelo ER
 function modeloEntidadRelacion() {
-  const d = createDiagram(1520, 900);
+  const d = createDiagram(1520, 1170);
   d.text(20, 4, 900, 32, [`[20]**${t("CyberChat · Modelo entidad-relación (base de datos)", "CyberChat · Entity-Relationship model (database)")}**`]);
 
   const ROW = 17;
@@ -354,8 +354,9 @@ function modeloEntidadRelacion() {
     uid, ["", "ruc", "text"], ["", "period", "text · week|month|quarter|all"], ["", "summary_text", "text"], ["", "warnings", "jsonb"], ["", "metrics", "jsonb"], ["FK", "generated_by", "uuid · SET NULL"], ["", "generated_at", "timestamptz"],
   ], { fill: "#d4d4d4" });
   table("conversations", 600, 80, 300, "conversations", [uid, userFk, ["", "title", "text"], ["", "created_at", "timestamptz"]], { fill: "#f7f7f7" });
-  table("messages", 1020, 72, 300, "messages", [
-    uid, ["FK", "conversation_id", "uuid · CASCADE"], ["", "role", "text · user|assistant"], ["", "content", "text"], ["", "created_at", "timestamptz"],
+  table("messages", 1020, 60, 300, "messages", [
+    uid, ["FK", "conversation_id", "uuid · CASCADE"], ["", "role", "text · user|assistant"], ["", "content", "text"],
+    ["", "retrieved_contexts", "jsonb"], ["", "created_at", "timestamptz"],
   ], { fill: "#f7f7f7" });
   table("users", 660, 350, 340, "auth.users", [
     uid, ["", "email", "text"], ["", "app_metadata", "jsonb"], ["", "   role · ruc · approval_status · diagnostic_done", ""],
@@ -379,6 +380,28 @@ function modeloEntidadRelacion() {
   table("questions", 840, 590, 260, "posttest_questions", [
     uid, ["", "topic_key", "text"], ["", "question", "text"], ["", "options", "jsonb"], ["", "correct_index", "int · 0..3"], ["", "explanation", "text"], ["", "active", "bool"], ["", "created_at", "timestamptz"],
   ], { fill: "#e4e4e4" });
+
+  table("backups", 20, 1000, 380, "rag_index_backups", [
+    uid, ["FK", "document_id", "uuid · CASCADE"], ["", "owner_id", t("uuid · sin FK", "uuid · no FK")], ["", "replacement_version", "text"],
+    ["", "previous_chunks", "jsonb"], ["", "created_at", "timestamptz"],
+  ], { fill: "#d4d4d4" });
+  const privacy = { stereo: t("privacidad · Ley 29733", "privacy · Law 29733"), fill: "#d4d4d4" };
+  table("consent", 520, 920, 380, "consent_records", [
+    uid, ["FK", "user_id", "uuid · SET NULL"], ["", "purpose", "text · servicio|investigacion"], ["", "policy_version", "text"],
+    ["", "granted", "bool"], ["", "granted_at", "timestamptz"], ["", "revoked_at", "timestamptz"],
+  ], privacy);
+  table("arco", 940, 920, 380, "arco_requests", [
+    uid, ["FK", "user_id", "uuid · SET NULL"], ["", "request_type", t("text · acceso|rectificación|…", "text · access|rectification|…")],
+    ["", "detail", "text"], ["", "contact_email", "text"], ["", "status", "text · recibida|en_proceso|…"],
+    ["", "created_at", "timestamptz"], ["", "due_at", t("date · días hábiles", "date · business days")], ["", "response", "text"], ["", "responded_at", "timestamptz"],
+  ], privacy);
+  d.box(null, 20, 900, 440, 60, {
+    shape: "note", fill: C.white, stroke: "#999999", align: "left", size: 13, pad: 8,
+    lines: t(
+      ["Tablas de privacidad creadas en la base. Las pantallas", "/privacidad y /mis-datos aún no están publicadas."],
+      ["Privacy tables exist in the database. The /privacidad", "and /mis-datos screens are not published yet."]
+    ),
+  });
 
   d.box(null, 70, 762, 340, 60, {
     shape: "note", fill: C.white, stroke: "#999999", align: "left", size: 13, pad: 8,
@@ -411,6 +434,12 @@ function modeloEntidadRelacion() {
   d.label([1070, 406], it(t("rinde", "takes")));
   d.edge("users", "quiz", { ...er, exit: [1, 0.53], entry: [0, 0.5], via: [[1130, 433.74], [1130, 655.5]] });
   d.edge("users", "progress", { ...er, exit: [1, 0.71], entry: [0, 0.5], via: [[1120, 462.18], [1120, 812]] });
+  d.edge("documents", "backups", { ...er, exit: [0, 0.75], entry: [0, 0.5], via: [[8, 275.25], [8, 1072]] });
+  d.label([110, 980], it(t("respalda al reindexar", "backed up on reindex")));
+  d.edge("users", "consent", { ...er, exit: [0.426, 1], entry: [0.5, 0], via: [[804.84, 880], [710, 880]] });
+  d.label([745, 880], it(t("otorga", "grants")));
+  d.edge("users", "arco", { ...er, exit: [0.426, 1], entry: [0.5, 0], via: [[804.84, 880], [1130, 880]] });
+  d.label([960, 880], it(t("solicita", "requests")));
   return d;
 }
 
@@ -471,8 +500,8 @@ function arquitecturaLogica() {
     ["•  Prioritizes the weakest topics", "•  Starter prompts per topic", "•  Personalized recommendations", "•  Progress per topic:", "    pending · in progress ·", "    completed"]
   ), { fill: "#ebebeb", ai: true });
   card("f5", 1176, 459, 326, 227, 5, t("Asistente virtual", "Virtual assistant"), t(
-    ["•  Responde dudas de ciberseguridad", "•  Usa los documentos de la empresa", "•  Muestra qué fragmentos usó", "•  Sin documentos: respuesta general", "•  Guarda el historial del chat"],
-    ["•  Answers cybersecurity questions", "•  Uses the company's documents", "•  Shows which fragments it used", "•  No documents: general answer", "•  Keeps the chat history"]
+    ["•  Responde dudas de ciberseguridad", "•  Usa los documentos de la empresa", "•  Cita los fragmentos que usó", "•  Sin evidencia de una política:", "    lo dice, no la inventa", "•  Guarda el historial del chat"],
+    ["•  Answers cybersecurity questions", "•  Uses the company's documents", "•  Cites the fragments it used", "•  No evidence for a policy:", "    says so, does not invent it", "•  Keeps the chat history"]
   ), { blue: true, ai: true });
 
   d.box("f6", 1613, 87, 385, 600, { shape: "round", radius: 6, fill: "#cfcfcf", stroke: "#8c8c8c" });
@@ -485,12 +514,12 @@ function arquitecturaLogica() {
     d.text(1644, y + 8, 320, h - 12, lines, { size: 16, valign: "top" });
   };
   panel(145, 155, t(
-    ["[17]**Mi dashboard · Empleado**", "•  Puntaje por tema y nivel", "•  Mejora: diagnóstico → post-test", "•  Consultas hechas al asistente", "•  Recomendaciones personalizadas"],
-    ["[17]**My dashboard · Employee**", "•  Score per topic and level", "•  Improvement: diagnostic → post-test", "•  Questions asked to the assistant", "•  Personalized recommendations"]
+    ["[17]**Mi dashboard · Empleado**", "•  Puntaje por tema y nivel de riesgo", "•  Mejora: diagnóstico → última", "    evaluación · historial", "•  Consultas hechas al asistente", "•  Recomendaciones personalizadas"],
+    ["[17]**My dashboard · Employee**", "•  Score per topic and risk level", "•  Improvement: diagnostic → latest", "    assessment · history", "•  Questions asked to the assistant", "•  Personalized recommendations"]
   ));
   panel(322, 192, t(
-    ["[17]**Dashboard organizacional ·**", "[17]**Administrador**", "•  Índice de concientización", "•  Personas con 50 % o más", "•  Riesgo por persona: bajo · medio · alto", "•  Temas más débiles del equipo", "•  Descarga en CSV"],
-    ["[17]**Organization dashboard ·**", "[17]**Administrator**", "•  Awareness index", "•  People scoring 50 % or higher", "•  Risk per person: low · medium · high", "•  Team's weakest topics", "•  CSV download"]
+    ["[17]**Dashboard organizacional ·**", "[17]**Administrador**", "•  Promedio test inicial vs. post-test", "•  Riesgo por persona: bajo · medio · alto", "•  Evaluación recurrente: al día ·", "    vencidas · sin iniciar", "•  Temas más débiles del equipo", "•  Descarga en CSV"],
+    ["[17]**Organization dashboard ·**", "[17]**Administrator**", "•  Initial test vs. post-test average", "•  Risk per person: low · medium · high", "•  Recurring assessment: up to date ·", "    overdue · not started", "•  Team's weakest topics", "•  CSV download"]
   ));
   panel(531, 125, t(
     [`[17]**Resumen ejecutivo · IA**`, "•  Texto breve para apoyar decisiones", "•  Usa datos agregados y anónimos", "•  Caché de 1 hora; se puede regenerar"],
@@ -575,8 +604,8 @@ function arquitectura3Capas() {
     ["Users and access", "registration · approval · roles ·", "data validation"]
   ));
   node("b2", 683, 307, 402, 128, C.bll, t(
-    ["Asistente RAG", "indexar documentos · recuperar el contexto", "de su organización · armar el prompt"],
-    ["RAG assistant", "index documents · retrieve its", "organization's context · build the prompt"]
+    ["Asistente RAG", "indexar · búsqueda híbrida · selección", "de evidencia con IA · prompt con citas"],
+    ["RAG assistant", "index · hybrid search · AI evidence", "selection · prompt with citations"]
   ));
   node("b3", 1123, 307, 402, 128, C.bll, t(
     ["Evaluaciones", "diagnóstico · post-test · recurrente ·", "calificación en el servidor"],
@@ -591,19 +620,22 @@ function arquitectura3Capas() {
     ["Clientes Supabase", "supabaseServer · supabaseAdmin ·", "supabaseBrowser"],
     ["Supabase clients", "supabaseServer · supabaseAdmin ·", "supabaseBrowser"]
   ));
-  node("d2", 683, 581, 402, 128, C.dal, [t("Historial del chat", "Chat history"), "lib/db.ts"]);
+  node("d2", 683, 581, 402, 128, C.dal, t(
+    ["Historial del chat", "lib/db.ts · preguntas, respuestas y", "fragmentos usados"],
+    ["Chat history", "lib/db.ts · questions, answers and", "fragments used"]
+  ));
   node("d3", 1123, 581, 402, 128, C.aiFill, t(
-    ["Cliente de embeddings", "lib/embedHF.ts · 512 caracteres por entrada"],
-    ["Embeddings client", "lib/embedHF.ts · 512 chars per input"]
+    ["Cliente de embeddings", "lib/embedHF.ts · máx. 120 tokens por", "entrada (lib/ragText.ts)"],
+    ["Embeddings client", "lib/embedHF.ts · max. 120 tokens per", "input (lib/ragText.ts)"]
   ), ai);
   node("d4", 1563, 581, 402, 128, C.aiFill, t(
-    ["Cliente del LLM", "llamada HTTP a la API de Groq"],
-    ["LLM client", "HTTP call to the Groq API"]
+    ["Cliente del LLM", "API de Groq: respuestas y selección", "de evidencia (lib/ragRetrieval.ts)"],
+    ["LLM client", "Groq API: answers and evidence", "selection (lib/ragRetrieval.ts)"]
   ), ai);
 
   node("s1", 242, 855, 549, 145, C.dal, ["Supabase · AWS us-west-2", "PostgreSQL 17 + pgvector · Auth · Storage"], { shape: "cyl" });
   node("s2", 830, 855, 549, 145, C.aiFill, ["Hugging Face Inference", "paraphrase-multilingual-MiniLM-L12-v2 · 384 dim"], ai);
-  node("s3", 1416, 855, 549, 145, C.aiFill, ["Groq Cloud", t("openai/gpt-oss-20b · generación de texto", "openai/gpt-oss-20b · text generation")], ai);
+  node("s3", 1416, 855, 549, 145, C.aiFill, ["Groq Cloud", t("openai/gpt-oss-20b · respuestas y", "openai/gpt-oss-20b · answers and"), t("selección de evidencia", "evidence selection")], ai);
 
   const down = { strokeWidth: 2.5, color: "#000000", exit: [0.552, 1], entry: [0.552, 0] };
   d.edge("ui", "bll", down);
@@ -631,7 +663,7 @@ function arquitectura3Capas() {
 
 // ============================================================ 4. Flujo RAG
 function flujoRag() {
-  const d = createDiagram(2000, 1100);
+  const d = createDiagram(2000, 1160);
   d.text(3, 6, 900, 40, [`[27]**${t("Flujo RAG de CyberChat", "CyberChat RAG flow")}**`]);
 
   const phase = (y, h, title) => {
@@ -639,7 +671,7 @@ function flujoRag() {
     d.box(null, 2, y, 1996, 48, { shape: "round", radius: 16, fill: "#f7f7f7", stroke: C.soft, layer: "back", lines: [`**${title}**`], size: 21 });
   };
   phase(65, 285, t("Fase 1 · Indexación (administrador)", "Phase 1 · Indexing (administrator)"));
-  phase(430, 618, t("Fase 2 · Consulta (cualquier usuario de la empresa)", "Phase 2 · Query (any user of the company)"));
+  phase(430, 678, t("Fase 2 · Consulta (cualquier usuario de la empresa)", "Phase 2 · Query (any user of the company)"));
 
   const step = (id, x, y, w, h, kind, lines, titleLines = 1) => {
     const style = {
@@ -652,20 +684,20 @@ function flujoRag() {
   };
 
   step("i1", 48, 143, 302, 159, "index", t(
-    ["Sube el documento", "PDF, DOCX o TXT · máx. 10", "MiB · sin OCR: un PDF", "escaneado sin texto se rechaza"],
-    ["Uploads document", "PDF, DOCX or TXT · max. 10", "MiB · no OCR: a scanned PDF", "without text is rejected"]
+    ["Sube el documento", "PDF, DOCX o TXT · máx. 10 MB ·", "sin OCR: un documento sin", "texto legible se rechaza"],
+    ["Uploads document", "PDF, DOCX or TXT · max. 10 MB ·", "no OCR: a document without", "readable text is rejected"]
   ));
   step("i2", 428, 143, 318, 159, "index", t(
     ["Extrae y limpia el texto", "pdf-extraction (PDF) · mammoth", "(DOCX) · UTF-8 (TXT)"],
     ["Extracts and cleans the text", "pdf-extraction (PDF) · mammoth", "(DOCX) · UTF-8 (TXT)"]
   ));
   step("i3", 824, 143, 318, 159, "index", t(
-    ["Fragmenta por oraciones", "máximo 800 caracteres por", "fragmento · solape de 1 oración"],
-    ["Splits by sentences", "at most 800 characters per", "fragment · 1-sentence overlap"]
-  ));
+    ["Fragmenta por secciones", "y oraciones", "máx. 120 tokens por fragmento,", "con «Documento» y «Sección» ·", "solapa 1 oración corta"],
+    ["Splits by sections", "and sentences", "max. 120 tokens per fragment,", "with «Document» and «Section» ·", "overlaps 1 short sentence"]
+  ), 2);
   step("i4", 1236, 143, 302, 159, "aiExt", t(
-    ["Genera un embedding", "por fragmento", "Hugging Face · paraphrase-", "multilingual-MiniLM-L12-v2 ·", "384 dim. · solo los primeros", "512 caracteres"],
-    ["Generates one embedding", "per fragment", "Hugging Face · paraphrase-", "multilingual-MiniLM-L12-v2 ·", "384 dim. · first 512 characters", "only"]
+    ["Genera un embedding", "por fragmento", "Hugging Face · paraphrase-", "multilingual-MiniLM-L12-v2 ·", "384 dim. · sin recortar texto"],
+    ["Generates one embedding", "per fragment", "Hugging Face · paraphrase-", "multilingual-MiniLM-L12-v2 ·", "384 dim. · no text truncation"]
   ), 2);
   d.box("i5", 1633, 135, 302, 175, {
     shape: "cyl", fill: C.white, size: 19,
@@ -684,33 +716,37 @@ function flujoRag() {
     ["Authenticates the user", "Supabase Auth session · active", "account · role and RUC read", "from app_metadata"]
   ));
   step("q3", 840, 508, 302, 159, "aiExt", t(
-    ["Genera el embedding", "de la consulta", "mismo modelo que la fase 1 ·", "primeros 512 caracteres"],
-    ["Generates the query", "embedding", "same model as phase 1 · first", "512 characters"]
+    ["Genera el embedding", "de la consulta", "mismo modelo · si pasa de 120", "tokens se divide (máx. 8", "partes) y se promedia"],
+    ["Generates the query", "embedding", "same model · over 120 tokens it", "is split (max. 8 parts) and", "averaged"]
   ), 2);
   step("q4", 1236, 484, 302, 207, "ai", t(
-    ["Resuelve la organización", "y busca", "RUC de la sesión → administrador", "dueño (si no existe, usa el id", "del propio usuario) · coseno", "con índice HNSW · 5 candidatos"],
-    ["Resolves the organization", "and searches", "session RUC → owning", "administrator (if not found, falls", "back to the user's own id) ·", "cosine with HNSW index · 5", "candidates"]
+    ["Búsqueda híbrida en", "su empresa", "RUC → administrador dueño ·", "vectorial: 20 candidatos ·", "léxica: texto completo · fusión", "RRF: máx. 20 sin duplicados"],
+    ["Hybrid search in", "the company", "RUC → owning administrator ·", "vector: 20 candidates ·", "lexical: full text · RRF", "fusion: max. 20, no duplicates"]
   ), 2);
-  step("q5", 1633, 508, 302, 159, "query", t(
-    ["Filtra los resultados", "quita duplicados (primeros 100", "caracteres) · descarta similitud", "< 0.38 · no repone candidatos"],
-    ["Filters results", "removes duplicates (first 100", "chars) · discards similarity <", "0.38 · no replenishment of", "candidates"]
+  step("q5", 1633, 484, 302, 207, "aiExt", t(
+    ["Selecciona la evidencia", "Groq · gpt-oss-20b elige hasta", "5 fragmentos · si falla: los 5", "más similares por vector", "(similitud ≥ 0.38)"],
+    ["Selects the evidence", "Groq · gpt-oss-20b picks up to", "5 fragments · if it fails: the", "5 most similar by vector", "(similarity ≥ 0.38)"]
   ));
-  d.box("q6", 1633, 714, 302, 174, { shape: "diamond", fill: C.bll, size: 21, lines: [t("¿Quedan fragmentos?", "Fragments left?")] });
-  step("q7", 1173, 746, 333, 111, "query", t(
-    ["Prompt con contexto documental", "fragmentos + reglas de alcance"],
-    ["Prompt with document context", "fragments + scope rules"]
+  d.box("q6", 1633, 730, 302, 174, { shape: "diamond", fill: C.bll, size: 21, lines: t(["¿Hay", "evidencia?"], ["Any", "evidence?"]) });
+  step("q7", 1173, 746, 333, 127, "query", t(
+    ["Prompt con contexto documental", "fragmentos numerados · cada", "afirmación lleva [Fuente N]"],
+    ["Prompt with document context", "numbered fragments · each", "statement carries [Fuente N]"]
   ));
-  step("q8", 1173, 889, 333, 127, "query", t(
-    ["Prompt de conocimiento general", "responde sin respaldo documental ·", "sugiere subir documentos"],
-    ["General-knowledge prompt", "answer without document support ·", "suggests uploading documents"]
+  step("q8", 1173, 919, 333, 127, "query", t(
+    ["Sin evidencia documental", "pregunta sobre políticas de la", "empresa → respuesta fija · otra", "pregunta → prompt general"],
+    ["No document evidence", "question about company policy →", "fixed answer · other question →", "general prompt"]
   ));
-  step("q9", 697, 753, 333, 143, "aiExt", t(
-    ["El LLM genera la respuesta", "Groq · openai/gpt-oss-20b · últimos", "12 mensajes · temp. 0.15 · máx. 900", "tokens"],
-    ["LLM generates the answer", "Groq · openai/gpt-oss-20b · last 12", "messages · temp. 0.15 · max. 900", "tokens"]
+  step("q9", 697, 746, 333, 160, "aiExt", t(
+    ["El LLM genera la respuesta", "Groq · openai/gpt-oss-20b ·", "últimos 12 mensajes · temp. 0.15", "· máx. 900 tokens · negativa", "genérica → mensaje de alcance"],
+    ["LLM generates the answer", "Groq · openai/gpt-oss-20b · last", "12 messages · temp. 0.15 · max.", "900 tokens · generic refusal →", "scope message"]
   ));
-  step("q10", 207, 762, 333, 127, "query", t(
-    ["Respuesta al usuario", "indica si usó contexto ·", "fuentes con % de similitud y", "vista previa (220 caracteres)"],
-    ["Answer to the user", "indicates whether it used context ·", "sources with similarity % and", "preview (220 chars)"]
+  step("q11", 697, 950, 333, 110, "query", t(
+    ["Respuesta fija, sin LLM", "«No encontré evidencia", "suficiente…»"],
+    ["Fixed answer, no LLM", "«No encontré evidencia", "suficiente…» (not enough evidence)"]
+  ));
+  step("q10", 207, 746, 333, 175, "query", t(
+    ["Respuesta al usuario", "fuentes: documento, similitud y", "vista previa · el chat muestra", "citas [1] y «Fragmentos citados»", "y guarda la respuesta con los", "fragmentos usados"],
+    ["Answer to the user", "sources: document, similarity and", "preview · the chat shows [1]", "citations and «Fragmentos", "citados» and saves the answer", "with the fragments used"]
   ));
 
   const right = { exit: [1, 0.5], entry: [0, 0.5] };
@@ -718,21 +754,25 @@ function flujoRag() {
   d.edge("i5", "q4", { dashed: true, color: "#444444", strokeWidth: 1.2, via: [[1784, 373], [1387, 373]] });
   d.label([1557, 373], t("base de conocimiento", "knowledge base"), { size: 19 });
   d.edge("q5", "q6");
-  d.edge("q6", "q7", { exit: [0, 0.5], entry: [1, 0.5] });
-  d.label([1570, 801], t("Sí", "Yes"), { size: 19 });
-  d.edge("q6", "q8", { exit: [0.5, 1], entry: [1, 0.5], via: [[1784, 952.5]] });
-  d.label([1676, 952], "No", { size: 19 });
-  d.edge("q7", "q9", { exit: [0.5, 0], entry: [0.5, 0], via: [[1339.5, 714], [863.5, 714]] });
-  d.edge("q8", "q9", { exit: [0, 0.5], entry: [0.5, 1], via: [[863.5, 952.5]] });
-  d.edge("q9", "q10", { exit: [0, 0.5], entry: [1, 0.492] });
+  d.edge("q6", "q7", { exit: [0, 0.5], entry: [1, 0.5], via: [[1560, 817], [1560, 809.5]] });
+  d.label([1570, 790], t("Sí", "Yes"), { size: 19 });
+  d.edge("q6", "q8", { exit: [0.5, 1], entry: [1, 0.5], via: [[1784, 982.5]] });
+  d.label([1676, 982], "No", { size: 19 });
+  d.edge("q7", "q9", { exit: [0, 0.5], entry: [1, 0.5], via: [[1100, 809.5], [1100, 826]] });
+  d.edge("q8", "q9", { exit: [0, 0.25], entry: [1, 0.85], via: [[1100, 950.75], [1100, 882]] });
+  d.label([1137, 896], t("otra pregunta", "other question"), { size: 17 });
+  d.edge("q8", "q11", { exit: [0, 0.75], entry: [1, 0.59], via: [[1100, 1014.25], [1100, 1014.9]] });
+  d.label([1101, 1078], t("política de la empresa", "company policy"), { size: 17 });
+  d.edge("q9", "q10", { exit: [0, 0.5], entry: [1, 0.457] });
+  d.edge("q11", "q10", { exit: [0, 0.5], entry: [0.5, 1], via: [[373.5, 1005]] });
 
   const legend = (x, o, label) => {
-    d.box(null, x, 1068, 32, 22, { shape: "round", radius: 4, ...o });
-    d.text(x + 44, 1065, 620, 28, [label], { size: 19 });
+    d.box(null, x, 1128, 32, 22, { shape: "round", radius: 4, ...o });
+    d.text(x + 44, 1125, 620, 28, [label], { size: 19 });
   };
   legend(2, { fill: C.white }, t("Indexación", "Indexing"));
   legend(318, { fill: C.bll }, t("Consulta", "Query"));
-  legend(635, { fill: C.aiFill, stroke: C.navy }, t("Paso con IA o búsqueda vectorial", "AI step or vector search"));
+  legend(635, { fill: C.aiFill, stroke: C.navy }, t("Paso con IA o búsqueda", "AI step or search"));
   legend(1108, { fill: C.aiFill, stroke: C.navy, dashed: true, strokeWidth: 2 }, t(
     "Envía texto a un servicio externo (Hugging Face o Groq)",
     "Sends text to an external service (Hugging Face or Groq)"
@@ -796,9 +836,9 @@ function arquitecturaFisica() {
   d.edge("rest", "pg", { exit: [1, 0.5], entry: [0, 0.5] });
   d.label([1657, 286], "SQL", big);
   d.edge("fn", "groq", { exit: [0.748, 1], entry: [0, 0.43], via: [[721.9, 761.73]] });
-  d.label([983, 762], t("HTTPS · respuestas", "HTTPS · responses"), big);
+  d.label([1010, 762], t("HTTPS · respuestas y selección de evidencia", "HTTPS · answers and evidence selection"), { size: 19 });
   d.edge("fn", "hf", { exit: [0.248, 1], entry: [0.496, 1], via: [[578.9, 864], [1823, 864]] });
-  d.label([1114, 864], "HTTPS · embeddings", big);
+  d.label([1114, 864], t("HTTPS · embeddings y tokenizador", "HTTPS · embeddings and tokenizer"), big);
   d.edge("github", "vercel", { dashed: true, strokeWidth: 1.2, exit: [0, 0.5], entry: [0, 0.847], via: [[397, 936.5], [397, 636]] });
   d.label([397, 833], t("despliegue", "deployment"), big);
   return d;

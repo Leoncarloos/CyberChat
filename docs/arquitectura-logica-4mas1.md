@@ -40,7 +40,7 @@ Las cuatro salidas se generan desde una sola definición con `node docs/tools/ge
 | 2 | **Documentos de la empresa** | El administrador sube políticas y guías (PDF, Word o TXT); la plataforma las lee y organiza; solo su empresa puede usarlas; se pueden eliminar o reprocesar | — |
 | 3 | **Diagnóstico y evaluaciones** | Diagnóstico inicial de 16 preguntas, post-test para medir la mejora y una nueva evaluación cada 5 días; resultado por tema en nivel bajo, medio o alto | — |
 | 4 | **Ruta de aprendizaje** | Prioriza los temas más débiles, ofrece prompts de arranque por tema y recomendaciones personalizadas, y registra el progreso por tema (pendiente, en progreso, completado) | Sí |
-| 5 | **Asistente virtual** | Responde dudas de ciberseguridad con los documentos de la empresa, muestra qué fragmentos usó, da una respuesta general si no hay documentos y guarda el historial del chat | Sí |
+| 5 | **Asistente virtual** | Responde dudas de ciberseguridad con los documentos de la empresa y cita los fragmentos que usó; si no encuentra evidencia sobre una política de la empresa, lo dice en vez de inventarla; guarda el historial del chat | Sí |
 | 6 | **Seguimiento del progreso** | Dashboard personal del empleado, dashboard organizacional del administrador y resumen ejecutivo generado con IA | Sí |
 
 ## Cómo se conectan
@@ -57,8 +57,8 @@ Las cuatro salidas se generan desde una sola definición con `node docs/tools/ge
 
 | Panel | Para quién | Contenido |
 |---|---|---|
-| Mi dashboard | Empleado | Puntaje por tema y nivel, mejora del diagnóstico al post-test, consultas hechas al asistente y recomendaciones personalizadas |
-| Dashboard organizacional | Administrador | Índice de concientización, personas con 50 % o más, riesgo por persona (bajo, medio, alto), temas más débiles del equipo y descarga en CSV |
+| Mi dashboard | Empleado | Puntaje por tema y nivel de riesgo, mejora del diagnóstico a la última evaluación con su historial, consultas hechas al asistente y recomendaciones personalizadas |
+| Dashboard organizacional | Administrador | Promedio del test inicial frente al post-test, riesgo por persona (bajo, medio, alto), evaluación recurrente (al día, vencidas, sin iniciar), temas más débiles del equipo y descarga en CSV |
 | Resumen ejecutivo · IA | Administrador | Texto breve para apoyar decisiones, hecho con datos agregados y anónimos; se guarda en caché 1 hora y se puede regenerar |
 
 ## Temas y niveles
