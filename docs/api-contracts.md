@@ -70,13 +70,12 @@ admin de su mismo RUC. Sin sesión requerida.
 
 ### POST `/api/chat`
 Inferencia RAG + LLM (Groq `openai/gpt-oss-20b`). Requiere cuenta activa (cualquier rol).
-El navegador guarda antes el mensaje del usuario (ver *Conversaciones y mensajes*); esta
-ruta guarda la respuesta del asistente en `messages` con `supabaseAdmin`.
+No escribe en la base: el navegador guarda el mensaje del usuario antes de llamar a esta ruta y
+la respuesta del asistente (con `retrieved_contexts`) después (ver *Conversaciones y mensajes*).
 
 #### Request
 ```json
 {
-  "conversation_id": "uuid",
   "messages": [
     { "role": "user", "content": "¿Qué es el phishing?" },
     { "role": "assistant", "content": "..." }
@@ -87,23 +86,32 @@ ruta guarda la respuesta del asistente en `messages` con `supabaseAdmin`.
 
 | Campo | Tipo | Requerido | Descripción |
 |-------|------|-----------|-------------|
-| `conversation_id` | string | ✓ | Conversación propia donde se guarda la respuesta. |
 | `messages` | `ChatMsg[]` | ✓ | Historial; solo los últimos 12 mensajes (sin `system`) se envían al LLM. Mínimo 1 mensaje. |
 | `document_id` | string | — | Filtra RAG a un documento específico. Si se omite, busca en todos los documentos del dueño de la empresa (resuelto desde el RUC de la sesión). |
 
-Búsqueda: `match_document_chunks_scoped` con `match_count: 5`, deduplicación y umbral de
-similitud `0.38`.
+Búsqueda híbrida (`lib/ragRetrieval.ts`): vectorial con `match_document_chunks_scoped` (20 candidatos)
+y léxica con `match_document_chunks_lexical_scoped`, fusionadas con RRF (máx. 20). El LLM (temp. 0) elige
+hasta 5 fragmentos; si falla, se usan los 5 más similares por vector con similitud ≥ `0.38`. Sin evidencia y
+con una pregunta sobre políticas, responde un texto fijo sin llamar al LLM (`retrievalDiagnostics.mode:
+"sin-evidencia"`). Si la consulta pasa de 120 tokens se divide; con más de 8 partes responde 400.
 
 #### Response 200
 ```json
 {
-  "answer": "string",
-  "message": { "id": "uuid", "conversation_id": "uuid", "role": "assistant", "content": "string", "created_at": "..." },
+  "answer": "string con citas [Fuente N]",
+  "retrieved_contexts": ["texto completo de cada fragmento usado"],
+  "retrievalDiagnostics": {
+    "vectorCandidates": 20, "lexicalCandidates": 12, "fusedCandidates": 20,
+    "rerankStatus": "ok | vector-fallback",
+    "mode": "documental | sin-evidencia | educativo-general",
+    "embeddingModel": "string", "vectorFallbackThreshold": 0.38
+  },
   "matchesCount": 3,
   "bestSimilarity": 0.72,
   "usedContext": true,
   "sources": [
-    { "rank": 1, "similarity": 0.72, "preview": "primeros 220 chars del chunk..." }
+    { "rank": 1, "chunkId": "uuid", "documentId": "uuid", "documentName": "string",
+      "similarity": 0.72, "preview": "primeros 220 chars del chunk..." }
   ]
 }
 ```
@@ -111,11 +119,10 @@ similitud `0.38`.
 #### Errores
 | Status | Causa |
 |--------|-------|
-| 400 | `messages` vacío o ausente, `conversation_id` ausente, o último mensaje de usuario vacío |
+| 400 | `messages` vacío o ausente, último mensaje de usuario vacío, o consulta de más de 8 partes |
 | 401 | Sin sesión o sesión inválida |
 | 403 | Cuenta pendiente, rechazada o sin rol |
-| 404 | La conversación no existe o no pertenece al usuario |
-| 500 | Falta `GROQ_API_KEY`, error de embedding, error del RPC o al guardar la respuesta — mensaje genérico "Error al procesar la consulta, intente nuevamente." (el detalle va al log) |
+| 500 | Falta `GROQ_API_KEY`, error de embedding o de la búsqueda — mensaje genérico "Error al procesar la consulta, intente nuevamente." (el detalle va al log) |
 | 502 | Groq respondió con error — mismo mensaje genérico |
 
 ---
@@ -194,20 +201,24 @@ Elimina un documento propio: borra el archivo de Storage y la fila en `documents
 ---
 
 ### POST `/api/documents/reprocess`
-Re-genera los embeddings de todos los chunks ya existentes de los documentos del admin
-autenticado (útil tras cambiar el modelo de embeddings). Requiere rol `admin`.
+Vuelve a leer los archivos originales de los documentos del admin autenticado, los fragmenta de
+nuevo y genera nuevos embeddings. Antes de reemplazar los fragmentos de cada documento guarda los
+anteriores en `rag_index_backups` (RPC `replace_document_chunks_v2`, atómico por documento: si uno
+falla, conserva sus fragmentos). Requiere rol `admin`.
 
-#### Response 200
+#### Response 200 (o 207 si algún documento falló)
 ```json
-{ "ok": true, "reprocessed": 3, "totalChunks": 87 }
+{ "ok": true, "reprocessed": 3, "totalChunks": 87, "failures": [], "indexVersion": "string" }
 ```
+`failures` lista `{ documentId, name }` de los documentos que no se reindexaron.
 
 #### Errores
 | Status | Causa |
 |--------|-------|
 | 401 | Sin sesión |
 | 403 | Cuenta no activa o sin rol `admin` |
-| 500 | Error Supabase al leer/insertar `document_chunks`, incluye el nombre del documento que falló |
+| 409 | Falta la tabla `rag_index_backups`; no se modifica ningún documento |
+| 500 | Error al leer los documentos — «No se pudo reindexar. Los cambios son atomicos por documento.» |
 
 ---
 
@@ -224,11 +235,10 @@ datos propios de un usuario con cuenta activa.
 | `renameConversation(id, title)` | `UPDATE` del título |
 | `deleteConversation(id)` | `DELETE` de sus `messages` y luego de la conversación |
 | `listMessages(conversation_id)` | `SELECT` de `messages`, orden cronológico |
-| `addUserMessage(conversation_id, content)` | `INSERT` con `role: 'user'` |
+| `addMessage(conversation_id, role, content, retrieved_contexts?)` | `INSERT` del mensaje del usuario o de la respuesta del asistente; `retrieved_contexts` solo se guarda en las respuestas |
 
-RLS solo permite insertar mensajes con `role = 'user'` desde el navegador; la respuesta
-del asistente la guarda `/api/chat` con `supabaseAdmin`, para que un usuario no pueda
-fabricar respuestas.
+RLS permite insertar mensajes de cualquier rol, pero solo en conversaciones propias y con la
+cuenta activa.
 
 ---
 

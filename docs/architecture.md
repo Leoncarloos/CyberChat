@@ -36,8 +36,9 @@ Browser
 ```
 File upload (PDF/DOCX/TXT, máx. 10 MB) — solo rol admin
   → Extracción de texto (pdf-extraction / mammoth / UTF-8) y limpieza de espacios
-  → Chunking por oraciones (máx. 800 caracteres, 1 oración de solapamiento)
-  → Embedding por chunk (HF API → float[384])
+  → Chunking por secciones (#) y oraciones (lib/ragText.ts): máx. 120 tokens por chunk contados
+    con el tokenizador del modelo, prefijo «Documento/Sección» y solape de 1 oración corta
+  → Embedding por chunk (HF API → float[384]); embedHF rechaza textos de más de 120 tokens
   → Supabase Storage (bucket: documents, path: {admin_id}/{uuid}.ext)
   → INSERT into documents (name, storage_path, uploaded_by = admin)
   → INSERT into document_chunks (document_id, chunk_index, content, embedding)
@@ -48,20 +49,27 @@ y el documento.
 
 ### Inferencia (usuario → `/api/chat`)
 ```
-POST { messages, conversation_id, document_id? }
+POST { messages, document_id? }
   → requireActiveUser() (sesión + cuenta aprobada)
-  → Verificar que conversation_id pertenece al usuario
   → Extraer último mensaje de usuario
-  → Embedding del query (HF API)
+  → Embedding del query (HF API); si pasa de 120 tokens se divide (máx. 8 partes) y se promedia
   → resolveOrgAdminId(RUC de la sesión) → id del dueño de la empresa
-  → RPC match_document_chunks_scoped(query_embedding, match_count=5, filter_user_id=dueño, filter_document_id)
-     (vía supabaseAdmin: el RPC es SECURITY INVOKER)
-  → Deduplicar y filtrar por umbral de similitud 0.38 → hasta 5 chunks
-  → System prompt con contexto documental, o de conocimiento general si no quedan chunks
+  → Búsqueda híbrida (lib/ragRetrieval.ts, vía supabaseAdmin: los RPC son SECURITY INVOKER)
+       vectorial: RPC match_document_chunks_scoped, 20 candidatos
+       léxica: RPC match_document_chunks_lexical_scoped (8 con términos específicos + 20 con todos;
+               si el RPC no existe, textSearch sobre document_chunks)
+       fusión RRF, sin duplicados, máx. 20 candidatos
+  → Selección de evidencia: Groq openai/gpt-oss-20b (temp 0, JSON schema) elige hasta 5 chunks
+       si falla: los 5 más similares por vector con similitud ≥ 0.38
+  → Sin evidencia y pregunta sobre políticas (isPolicyQuestion) → respuesta fija
+       «No encontré evidencia suficiente…», sin llamar al LLM
+  → System prompt con fragmentos numerados (citas [Fuente N]) o de orientación general
   → Groq chat/completions (openai/gpt-oss-20b, reasoning_effort=low, temp=0.15,
      max_tokens=900, últimos 12 mensajes)
-  → Guardar respuesta del asistente en messages (supabaseAdmin)
-  → Devolver { answer, message, matchesCount, bestSimilarity, usedContext, sources }
+  → Negativa genérica del modelo (GENERIC_REFUSAL) → mensaje de alcance (SCOPE_REFUSAL)
+  → Devolver { answer, retrieved_contexts, retrievalDiagnostics, matchesCount,
+     bestSimilarity, usedContext, sources }
+  → El navegador guarda la respuesta en messages con retrieved_contexts (lib/db.ts, RLS)
 ```
 
 ## Decisiones técnicas

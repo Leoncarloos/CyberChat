@@ -9,9 +9,13 @@
 - [x] Chat RAG con historial persistente (conversaciones renombrables y eliminables)
 - [x] Base documental por empresa: el dueño sube, todos los empleados del RUC consultan
 - [x] Ingesta de documentos PDF/DOCX/TXT (máx. 10 MB), listado, eliminación y reprocesamiento
-- [x] Chunking por oraciones (800 caracteres, 1 oración de solapamiento)
+- [x] Chunking por secciones y oraciones (máx. 120 tokens del modelo, 1 oración corta de solapamiento)
 - [x] Embeddings multilingües HuggingFace `paraphrase-multilingual-MiniLM-L12-v2` (384-dim)
-- [x] Búsqueda semántica con pgvector + índice HNSW (top-5, umbral 0.38)
+- [x] Búsqueda híbrida (vectorial pgvector + HNSW y léxica de texto completo, fusión RRF, máx. 20 candidatos)
+- [x] Selección de evidencia con el LLM (hasta 5 fragmentos; si falla, top-5 vectorial con similitud ≥ 0.38)
+- [x] Respuestas con citas [Fuente N] y «Fragmentos citados»; respuesta fija sin evidencia en preguntas de políticas
+- [x] Reindexación con respaldo de los fragmentos anteriores (`rag_index_backups`), atómica por documento
+- [x] Política de privacidad, consentimiento por finalidad y solicitudes ARCO (`/privacidad`, `/mis-datos`)
 - [x] Inferencia con Groq `openai/gpt-oss-20b` (`reasoning_effort: low`)
 - [x] Diagnóstico inicial obligatorio (16 preguntas, 8 temas × 2), calificado en servidor
 - [x] Post-test y evaluación recurrente cada 5 días desde banco fijo de 200 preguntas, sin repetición
