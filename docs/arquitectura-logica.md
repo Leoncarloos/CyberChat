@@ -1,7 +1,7 @@
 # Arquitectura lógica — CyberChat
 
 Esta vista describe **cómo se organiza el software en módulos funcionales y cómo se relacionan entre sí**.
-A diferencia de la arquitectura por capas (`arquitectura-capas.md`), que ordena el sistema por responsabilidad
+A diferencia de la arquitectura por capas ([arquitectura-3-capas.md](arquitectura-3-capas.md)), que ordena el sistema por responsabilidad
 técnica —presentación, aplicación, datos—, la arquitectura lógica se lee en términos del negocio: qué hace
 cada parte del sistema y de qué depende. Está pensada para ser comprensible sin conocimiento técnico previo.
 
