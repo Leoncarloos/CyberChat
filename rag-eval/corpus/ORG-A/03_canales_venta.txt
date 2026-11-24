@@ -1,0 +1,11 @@
+Ferretería Andina S.A.C. — Seguridad en los canales de venta digitales
+
+La empresa vende por WhatsApp Business, por su tienda web y por redes sociales. En WhatsApp Business solo se usa el número corporativo, nunca un número personal, y la verificación en dos pasos debe estar activada.
+
+Los pedidos de más de S/ 2,000 requieren una llamada de confirmación al cliente antes de despachar. Nunca se piden ni se aceptan datos de tarjeta, claves de banca por internet ni códigos de verificación por chat.
+
+La tienda web recibe pagos únicamente a través de una pasarela de pagos certificada; la empresa no almacena números de tarjeta. Si un cliente envía una captura de pago, caja debe verificar el depósito en la cuenta antes de entregar la mercadería.
+
+Las cuentas de Facebook e Instagram de la tienda tienen verificación en dos pasos y solo 3 personas son administradoras: Raúl Medina, Lucía Paredes y Marco Salas. Cuando un administrador deja la empresa, se le retira el acceso el mismo día.
+
+Las boletas y facturas enviadas por chat no deben mostrar el número de cuenta bancaria de la empresa, solo el enlace de pago oficial.

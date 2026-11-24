@@ -1,0 +1,11 @@
+Ferretería Andina S.A.C. — Control de accesos
+
+Cada colaborador recibe solo los accesos que necesita para su puesto. El sistema de facturación solo lo usan caja y contabilidad; el almacén solo ve el inventario.
+
+El alta de un colaborador nuevo la solicita su jefe directo a TI y se atiende en un máximo de 24 horas. La baja se atiende el mismo día de la salida: ese día se revocan el correo, el sistema de facturación y las cuentas de redes sociales.
+
+Cada 6 meses, Marco Salas revisa con los jefes quién tiene acceso a qué y retira los permisos que ya no se usan. Los administradores usan una cuenta distinta para las tareas administrativas y otra para su trabajo diario.
+
+La pantalla del equipo se bloquea automáticamente a los 5 minutos de inactividad. Al levantarte de tu puesto, bloquéala con las teclas Windows y L.
+
+Las visitas y los proveedores reciben una credencial en recepción, firman el registro de ingreso y siempre van acompañados. No se les da la clave del wifi interno; tienen una red de invitados separada.

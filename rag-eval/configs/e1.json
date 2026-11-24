@@ -1,0 +1,20 @@
+{
+  "config_id": "E1",
+  "description": "Umbral de similitud 0,30 en lugar de 0,38. Resto igual a E0. Elegido mirando la similitud del fragmento relevante en E0 (cubre 91 % de los relevantes y da contexto al 97 % de las consultas); es exploratorio, no confirmatorio.",
+  "retrieval": {
+    "threshold": 0.3,
+    "max_chunks": 5,
+    "match_count": 5,
+    "candidates": 20
+  },
+  "generator": {
+    "model": "openai/gpt-oss-20b",
+    "reasoning_effort": "low",
+    "temperature": 0.15,
+    "max_tokens": 900
+  },
+  "history": {
+    "max_history": 12
+  },
+  "repetitions": 1
+}

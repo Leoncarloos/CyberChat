@@ -1,0 +1,20 @@
+{
+  "config_id": "E0",
+  "description": "Línea base: los parámetros que corren en producción (lib/ragPipeline.ts). collect.ts rechaza este archivo si deja de coincidir con ellos.",
+  "retrieval": {
+    "threshold": 0.38,
+    "max_chunks": 5,
+    "match_count": 5,
+    "candidates": 20
+  },
+  "generator": {
+    "model": "openai/gpt-oss-20b",
+    "reasoning_effort": "low",
+    "temperature": 0.15,
+    "max_tokens": 900
+  },
+  "history": {
+    "max_history": 12
+  },
+  "repetitions": 3
+}

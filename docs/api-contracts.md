@@ -10,7 +10,7 @@ Desde 2026-09-29, todas las rutas salvo las de registro pasan por `requireActive
 no está aprobada (“Tu acceso todavía no ha sido aprobado…” / “Tu acceso fue rechazado…”) o
 si no tiene rol. Rol, RUC y estado se leen de `app_metadata`, nunca de `user_metadata`.
 
-> Actualizado 2026-09-11. `docs/user-stories.md` tiene el detalle de negocio de cada HU;
+> Actualizado 2026-10-01. `docs/user-stories.md` tiene el detalle de negocio de cada HU;
 > este documento es el contrato técnico exacto de cada ruta contra el código real.
 
 ---
@@ -69,11 +69,14 @@ admin de su mismo RUC. Sin sesión requerida.
 ## Chat y RAG
 
 ### POST `/api/chat`
-Inferencia RAG + LLM (Groq `openai/gpt-oss-20b`). Requiere sesión activa (cualquier rol).
+Inferencia RAG + LLM (Groq `openai/gpt-oss-20b`). Requiere cuenta activa (cualquier rol).
+El navegador guarda antes el mensaje del usuario (ver *Conversaciones y mensajes*); esta
+ruta guarda la respuesta del asistente en `messages` con `supabaseAdmin`.
 
 #### Request
 ```json
 {
+  "conversation_id": "uuid",
   "messages": [
     { "role": "user", "content": "¿Qué es el phishing?" },
     { "role": "assistant", "content": "..." }
@@ -84,13 +87,18 @@ Inferencia RAG + LLM (Groq `openai/gpt-oss-20b`). Requiere sesión activa (cualq
 
 | Campo | Tipo | Requerido | Descripción |
 |-------|------|-----------|-------------|
-| `messages` | `ChatMsg[]` | ✓ | Historial completo, solo los últimos 12 mensajes se usan como contexto. Mínimo 1 mensaje. |
-| `document_id` | string | — | Filtra RAG a un documento específico. Si se omite, busca en todos los del admin de la misma empresa. |
+| `conversation_id` | string | ✓ | Conversación propia donde se guarda la respuesta. |
+| `messages` | `ChatMsg[]` | ✓ | Historial; solo los últimos 12 mensajes (sin `system`) se envían al LLM. Mínimo 1 mensaje. |
+| `document_id` | string | — | Filtra RAG a un documento específico. Si se omite, busca en todos los documentos del dueño de la empresa (resuelto desde el RUC de la sesión). |
+
+Búsqueda: `match_document_chunks_scoped` con `match_count: 5`, deduplicación y umbral de
+similitud `0.38`.
 
 #### Response 200
 ```json
 {
   "answer": "string",
+  "message": { "id": "uuid", "conversation_id": "uuid", "role": "assistant", "content": "string", "created_at": "..." },
   "matchesCount": 3,
   "bestSimilarity": 0.72,
   "usedContext": true,
@@ -103,21 +111,25 @@ Inferencia RAG + LLM (Groq `openai/gpt-oss-20b`). Requiere sesión activa (cualq
 #### Errores
 | Status | Causa |
 |--------|-------|
-| 400 | `messages` vacío o ausente, o último mensaje de usuario vacío |
+| 400 | `messages` vacío o ausente, `conversation_id` ausente, o último mensaje de usuario vacío |
 | 401 | Sin sesión o sesión inválida |
-| 500 | Falta `GROQ_API_KEY`, error HF embedding, error Supabase RPC, error Groq |
+| 403 | Cuenta pendiente, rechazada o sin rol |
+| 404 | La conversación no existe o no pertenece al usuario |
+| 500 | Falta `GROQ_API_KEY`, error de embedding, error del RPC o al guardar la respuesta — mensaje genérico "Error al procesar la consulta, intente nuevamente." (el detalle va al log) |
+| 502 | Groq respondió con error — mismo mensaje genérico |
 
 ---
 
 ### POST `/api/documents/upload-and-process`
-Sube un documento y ejecuta el pipeline RAG completo (extracción → chunking →
-embedding). Body: `multipart/form-data`. Requiere sesión (cualquier rol autenticado
-puede subir — no hay chequeo de rol `admin` en este handler).
+Sube un documento y ejecuta el pipeline RAG completo (extracción → chunking por oraciones
+→ embedding). Body: `multipart/form-data`. Requiere rol `admin`. Todas las validaciones y
+los embeddings se resuelven antes de escribir; si falla una escritura se revierten el
+archivo en Storage y la fila en `documents`.
 
 #### Request
 ```
 Content-Type: multipart/form-data
-file: File (.pdf | .docx | .txt)
+file: File (.pdf | .docx | .txt, máx. 10 MB)
 ```
 
 #### Response 200
@@ -125,7 +137,7 @@ file: File (.pdf | .docx | .txt)
 {
   "ok": true,
   "document_id": "uuid",
-  "storage_path": "uuid/archivo.pdf",
+  "storage_path": "admin-uuid/archivo-uuid.pdf",
   "chunks": 42,
   "embedded": true
 }
@@ -134,9 +146,50 @@ file: File (.pdf | .docx | .txt)
 #### Errores
 | Status | Causa |
 |--------|-------|
-| 400 | Sin archivo, formato no soportado (`.${ext}` distinto de pdf/docx/txt), documento sin texto legible (ej. escaneado como imagen) |
+| 400 | Sin archivo, archivo > 10 MB, formato no soportado (distinto de pdf/docx/txt), documento sin texto legible (ej. escaneado como imagen), o sin texto suficiente para generar chunks |
 | 401 | Sin sesión |
-| 500 | Error Storage, error extracción de texto, error embedding, error inserción en `document_chunks` |
+| 403 | Cuenta no activa o sin rol `admin` |
+| 500 | Error de extracción, embedding, Storage o inserción en `documents`/`document_chunks` |
+
+---
+
+### GET `/api/documents`
+Lista los documentos subidos por el admin autenticado, más recientes primero, con su
+cantidad de chunks. Requiere rol `admin`.
+
+#### Response 200
+```json
+{
+  "documents": [
+    { "id": "uuid", "name": "politica-seguridad.pdf", "createdAt": "...", "chunkCount": 42 }
+  ]
+}
+```
+
+| Status | Causa |
+|--------|-------|
+| 401 | Sin sesión |
+| 403 | Cuenta no activa o sin rol `admin` |
+| 500 | Error Supabase |
+
+---
+
+### DELETE `/api/documents/[id]`
+Elimina un documento propio: borra el archivo de Storage y la fila en `documents`; los
+`document_chunks` se eliminan por `ON DELETE CASCADE`. Requiere rol `admin`.
+
+#### Response 200
+```json
+{ "ok": true }
+```
+
+| Status | Causa |
+|--------|-------|
+| 400 | `id` no es un UUID válido |
+| 401 | Sin sesión |
+| 403 | Cuenta no activa, sin rol `admin`, o el documento no lo subió este admin |
+| 404 | Documento no encontrado |
+| 500 | Error de Storage o Supabase |
 
 ---
 
@@ -153,100 +206,29 @@ autenticado (útil tras cambiar el modelo de embeddings). Requiere rol `admin`.
 | Status | Causa |
 |--------|-------|
 | 401 | Sin sesión |
-| 403 | Sin rol `admin` |
+| 403 | Cuenta no activa o sin rol `admin` |
 | 500 | Error Supabase al leer/insertar `document_chunks`, incluye el nombre del documento que falló |
 
 ---
 
 ## Conversaciones y mensajes
 
-### GET `/api/conversations/list`
-Lista las conversaciones del usuario autenticado, más recientes primero.
+No tienen API routes propias: el navegador opera directo sobre Supabase con
+`supabaseBrowser()` mediante las funciones de `lib/db.ts`, y RLS limita cada operación a
+datos propios de un usuario con cuenta activa.
 
-#### Response 200
-```json
-{ "conversations": [{ "id": "uuid", "title": "Nuevo chat", "created_at": "...", "user_id": "uuid" }] }
-```
+| Función (`lib/db.ts`) | Operación |
+|---|---|
+| `listConversations(user_id)` | `SELECT` de `conversations` del usuario, más recientes primero |
+| `createConversation(user_id)` | `INSERT` con `title: "Nuevo chat"` |
+| `renameConversation(id, title)` | `UPDATE` del título |
+| `deleteConversation(id)` | `DELETE` de sus `messages` y luego de la conversación |
+| `listMessages(conversation_id)` | `SELECT` de `messages`, orden cronológico |
+| `addUserMessage(conversation_id, content)` | `INSERT` con `role: 'user'` |
 
-| Status | Causa |
-|--------|-------|
-| 401 | Sin sesión |
-| 500 | Error Supabase |
-
----
-
-### POST `/api/conversations/new`
-Crea una conversación vacía (`title: "Nuevo chat"`) para el usuario autenticado.
-
-#### Response 200
-```json
-{ "conversation": { "id": "uuid", "title": "Nuevo chat", "created_at": "...", "user_id": "uuid" } }
-```
-
-| Status | Causa |
-|--------|-------|
-| 401 | Sin sesión |
-| 500 | Error Supabase |
-
----
-
-### POST `/api/conversations/rename`
-Renombra una conversación propia.
-
-#### Request
-```json
-{ "conversation_id": "uuid", "title": "Nuevo nombre" }
-```
-
-| Status | Causa |
-|--------|-------|
-| 400 | `conversation_id` o `title` ausentes |
-| 401 | Sin sesión |
-| 500 | Error Supabase (incluye el caso de conversación ajena — el `UPDATE` filtra por `user_id` y no falla, solo no afecta filas) |
-
----
-
-### POST `/api/messages/add`
-Agrega un mensaje a una conversación propia.
-
-#### Request
-```json
-{ "conversation_id": "uuid", "role": "user", "content": "texto" }
-```
-
-#### Response 200
-```json
-{ "message": { "id": "uuid", "role": "user", "content": "texto", "created_at": "..." } }
-```
-
-| Status | Causa |
-|--------|-------|
-| 400 | Campos requeridos ausentes |
-| 401 | Sin sesión |
-| 403 | La conversación no pertenece al usuario autenticado |
-| 500 | Error Supabase |
-
----
-
-### POST `/api/messages/list`
-Lista los mensajes de una conversación propia, orden cronológico.
-
-#### Request
-```json
-{ "conversation_id": "uuid" }
-```
-
-#### Response 200
-```json
-{ "messages": [{ "id": "uuid", "role": "user", "content": "texto", "created_at": "..." }] }
-```
-
-| Status | Causa |
-|--------|-------|
-| 400 | `conversation_id` ausente |
-| 401 | Sin sesión |
-| 403 | La conversación no pertenece al usuario |
-| 500 | Error Supabase |
+RLS solo permite insertar mensajes con `role = 'user'` desde el navegador; la respuesta
+del asistente la guarda `/api/chat` con `supabaseAdmin`, para que un usuario no pueda
+fabricar respuestas.
 
 ---
 
@@ -433,9 +415,10 @@ correcta viaja al navegador.
 
 | Status | Causa |
 |--------|-------|
-| 400 | Falla de validación Zod |
+| 400 | Falla de validación Zod o de alguna de las reglas de intento legítimo |
 | 401 | Sin sesión |
-| 500 | Error Supabase en cualquiera de los 3 inserts/upserts |
+| 403 | Diagnóstico aún no completado (no hay línea base contra la cual medir) |
+| 500 | Error Supabase al leer el banco o al insertar en `quiz_results`/`evaluation_attempts` |
 
 ---
 
@@ -737,14 +720,13 @@ error (fallback silencioso).
 ---
 
 ## Notas generales
-- Todos los endpoints (salvo login, que no tiene route propio) validan sesión con
-  `supabaseServer().auth.getUser()` antes de leer el body — nunca se confía en
+- Todos los endpoints (salvo login, que no tiene route propio, y los de registro) validan
+  sesión y cuenta activa con `requireActiveUser()` / `requireAdmin()` antes de leer el body — nunca se confía en
   `user_id`/rol enviados desde el cliente para operaciones sensibles.
 - Los endpoints marcados "**Validado con Zod**" rechazan payloads inválidos con `400` y
   `fieldErrors` por campo, verificado con `curl` directo (bypaseando el navegador) —
-  ver PRs #13 y #15. El resto de endpoints con body (`conversations/*`, `messages/*`,
-  `learning-path` POST) todavía solo hacen chequeos manuales de presencia (`if (!x)`),
-  no validación de forma/tipo — candidato a una próxima iteración del mismo patrón.
+  ver PRs #13 y #15. `POST /api/learning-path` también valida con Zod
+  (`learningPathBodySchema`); `/api/chat` solo hace chequeos manuales de presencia.
 - No hay paginación implementada en ningún endpoint — `listUsers` trae hasta 1000
   usuarios por página y no pagina más allá de eso; a la escala actual (3 MYPEs, 32
   empleados) no es un problema.

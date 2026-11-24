@@ -1,0 +1,11 @@
+Clínica Dental Sonrisa S.A.C. — Seguridad en los canales de atención y citas
+
+Los pacientes agendan citas en la plataforma web de la clínica o por teléfono. Los recordatorios de cita se envían por SMS y solo contienen la fecha y la hora, nunca el motivo de la consulta ni el tratamiento.
+
+Por WhatsApp solo se atiende con el número de la clínica. Nunca se envían por WhatsApp diagnósticos, presupuestos detallados con el historial del paciente ni fotos clínicas; para eso el paciente recibe un enlace de descarga con clave en su correo.
+
+Los pagos se hacen en caja con el POS de la clínica. No se aceptan pagos por transferencia comunicados por chat sin que recepción verifique el abono en la cuenta.
+
+La cuenta de Instagram de la clínica tiene verificación en dos pasos y solo 2 administradoras: la Dra. Carla Quispe y la recepcionista principal. Las fotos de antes y después solo se publican con un consentimiento firmado por el paciente.
+
+Los comprobantes electrónicos se envían al correo que el paciente registró en su ficha.

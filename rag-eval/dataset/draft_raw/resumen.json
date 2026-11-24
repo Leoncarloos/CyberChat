@@ -1,0 +1,7 @@
+{
+  "generado": "2026-10-04T17:16:29+00:00",
+  "modelo": "openai/gpt-oss-120b",
+  "llamadas": 22,
+  "tokens_entrada": 25643,
+  "tokens_salida": 41406
+}

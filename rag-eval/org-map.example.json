@@ -1,0 +1,5 @@
+{
+  "_nota": "Copia este archivo FUERA del repositorio, reemplaza los valores por el id del administrador de cada organización y apunta RAG_EVAL_ORG_MAP a la copia. Los ids se obtienen con: npx tsx --env-file=.env.local rag-eval/runner/corpusHash.ts --list",
+  "ORG-A": "00000000-0000-0000-0000-000000000000",
+  "ORG-B": "11111111-1111-1111-1111-111111111111"
+}

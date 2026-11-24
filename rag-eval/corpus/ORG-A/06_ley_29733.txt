@@ -1,0 +1,11 @@
+Ferretería Andina S.A.C. — Protección de datos personales de clientes (Ley N.° 29733)
+
+La empresa trata datos personales de sus clientes, como nombre, DNI, dirección de entrega y teléfono, y debe cumplir la Ley N.° 29733, Ley de Protección de Datos Personales. La responsable interna es Lucía Paredes, de administración.
+
+Solo se recogen datos de un cliente con su consentimiento previo, libre, informado y expreso. Los datos se usan únicamente para el despacho y la facturación del pedido; no se usan para otra finalidad, como enviar publicidad de terceros, sin un nuevo consentimiento.
+
+El cliente puede ejercer sus derechos de acceso, rectificación, cancelación y oposición escribiendo a datos@ferreteriaandina.example. La empresa se compromete a responder esas solicitudes en un máximo de 8 días hábiles.
+
+No se entregan datos de un cliente a otra persona, ni siquiera a un familiar, sin la autorización del titular.
+
+Si se pierde o se filtra una lista de clientes, el colaborador debe avisar de inmediato a Lucía Paredes, que decide las medidas y la comunicación a los afectados.

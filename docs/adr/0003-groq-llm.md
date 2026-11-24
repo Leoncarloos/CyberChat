@@ -1,6 +1,6 @@
 # ADR-0003 — Groq como proveedor de inferencia LLM
 
-**Estado:** Aceptada (modelo revisado el 2026-09-11)
+**Estado:** Aceptada (modelo revisado el 2026-09-11 y el 2026-09-26 — vigente: `openai/gpt-oss-20b`)
 **Fecha original:** anterior al 2026-09-11 · **Última revisión:** 2026-09-11
 
 ## Contexto

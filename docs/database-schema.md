@@ -105,8 +105,9 @@ vector_cosine_ops)`) para evitar el scan secuencial en la búsqueda por similitu
 ---
 
 ### `diagnostic_results`
-Resultado de la evaluación diagnóstica inicial por usuario (14 preguntas hardcodeadas
-en `lib/diagnosticQuestions.ts`, 8 temas × 2 — más info en `docs/user-stories.md`).
+Resultado de la evaluación diagnóstica inicial por usuario (16 preguntas fijas, 8 temas × 2,
+en `lib/diagnosticBank.ts` — server-only; metadatos de temas en `lib/diagnosticTopics.ts`.
+Más info en `docs/user-stories.md`).
 
 | Columna | Tipo | Descripción |
 |---------|------|-------------|
